@@ -121,7 +121,7 @@ service cloud.firestore {
         && u.role == 'customer'
         && u.strikes < 3                                   // 3 إنذارات = حظر
         && (u.strikes < 2 || d.payMethod == 'bankak')      // إنذاران = دفع مسبق إلزامي
-        && (u.delivered >= 2 || d.total <= 20000)          // حد أقصى لأول طلبين
+        && (u.delivered >= 2 || d.payMethod == 'bankak' || d.total <= 50000) // حد للكاش في أول طلبين
         && d.customerStrikes == u.strikes
         && d.customerDelivered == u.delivered
         && activeRest(d.restaurantId)

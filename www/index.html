@@ -150,6 +150,19 @@
     font-size:14px;text-align:center;opacity:0;pointer-events:none;transition:.25s;transform:translateY(10px)}
   #toast.on{opacity:1;transform:none}
   a.link{color:var(--accent);font-weight:700;text-decoration:none}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:0 20px 4px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex-shrink:0;border:0;padding:9px 15px;border-radius:999px;background:var(--fill);font-size:14px;white-space:nowrap}
+  .chip.on{background:var(--ink);color:#fff;font-weight:500}
+  .promo{margin:0 20px;border-radius:20px;background:var(--accent);color:#fff;padding:18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .cover .icon{color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 6px rgba(0,0,0,.15))}
+  .cover .tag2{position:absolute;bottom:10px;left:10px;background:var(--ink);color:#fff;font-size:12px;font-weight:500;padding:5px 10px;border-radius:999px}
+  .mini{display:flex;gap:12px;align-items:center;border:0;background:none;padding:0;text-align:right;width:100%}
+  .mini .cover{width:84px;height:84px;border-radius:16px;flex-shrink:0}
+  .tabs-h{display:flex;gap:22px;overflow-x:auto;padding:0 20px;border-bottom:1px solid var(--line);scrollbar-width:none;position:sticky;top:0;background:#fff;z-index:4}
+  .tabs-h::-webkit-scrollbar{display:none}
+  .tabs-h button{flex-shrink:0;border:0;background:none;padding:12px 0 10px;font-size:14px;color:var(--muted);border-bottom:2px solid transparent}
+  .tabs-h button.on{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -211,19 +224,31 @@
 
 <!-- ═════════ الزبون: الرئيسية ═════════ -->
 <section id="s-home" class="screen">
-  <div class="col gap14" style="padding:16px 20px 10px">
+  <div class="col gap14" style="padding:16px 20px 12px">
     <div class="row between">
-      <div class="col"><span class="muted" style="font-size:12px">أهلاً</span><b id="h-name" style="font-size:17px"></b></div>
-      <select id="h-city" aria-label="المدينة" style="height:44px;border:0;border-radius:14px;background:var(--fill);padding:0 12px;font-weight:700">
-        <option value="">كل المدن</option><option>أمدرمان</option><option>الخرطوم</option><option>بحري</option>
-      </select>
+      <label class="col" style="gap:2px">
+        <span class="muted" style="font-size:12px">أهلاً <span id="h-name"></span> · التوصيل إلى</span>
+        <span class="row gap6" style="font-weight:700;font-size:16px;color:var(--ink)">
+          <span style="color:var(--accent)"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+          <select id="h-city" aria-label="المدينة" style="border:0;background:none;font-weight:700;font-size:16px;padding:0;outline:none">
+            <option value="">كل المدن</option><option>أمدرمان</option><option>الخرطوم</option><option>بحري</option>
+          </select>
+        </span>
+      </label>
+      <button id="h-refresh" class="icon-btn" aria-label="تحديث"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
     </div>
     <label class="row gap10" style="height:48px;padding:0 14px;border-radius:14px;background:var(--fill)">
       <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#57534E" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
       <input id="h-search" placeholder="ابحث عن مطعم" aria-label="بحث" style="flex:1;border:0;background:none;outline:none;font-size:15px">
     </label>
   </div>
-  <div class="pad row between"><h2>المطاعم</h2><button id="h-refresh" class="link" style="border:0;background:none;color:var(--accent);font-weight:700;font-size:13px">تحديث</button></div>
+  <div class="promo">
+    <div class="col" style="gap:3px"><span style="font-size:12px;font-weight:500;opacity:.9">أكل شنو؟</span>
+      <b style="font-size:19px">أكل مطاعمك لحدي البيت</b><span style="font-size:13px">ادفع عند الاستلام أو ببنكك</span></div>
+    <svg aria-hidden="true" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h2l3 11.5M5.5 17.5 9 10h6l3.5 7.5M9 10 7.5 6H5"/></svg>
+  </div>
+  <div id="h-cats" class="chips" style="padding-top:16px;padding-bottom:16px"></div>
+  <div class="pad row between"><h2 id="h-title">المطاعم</h2><span id="h-count" class="muted"></span></div>
   <div id="h-list" class="list grow"></div>
   <nav class="tabs" data-nav="customer"></nav>
 </section>
@@ -280,7 +305,7 @@ const CONFIG = {
   SUB_PRICE: 0,          // سعر الاشتراك الشهري بالجنيه (عدّله)
   ADMIN_BANKAK: "",      // رقم حسابك في بنكك لاستلام الاشتراكات (عدّله)
   FREE_SEATS: 20,        // عدد المطاعم المؤهلة للشهرين المجانيين
-  NEW_LIMIT: 20000,      // الحد الأقصى لأول طلبين للزبون الجديد (مطابق للقواعد)
+  NEW_LIMIT: 50000,      // الحد الأقصى للدفع عند الاستلام في أول طلبين (مطابق للقواعد)
   DEFAULT_LOC: [15.6445, 32.4777] // أمدرمان
 };
 
@@ -295,6 +320,17 @@ const timeStr = t => { const d = tsDate(t); return d ? d.toLocaleTimeString("ar-
 const COLORS = ["#C2410C", "#15803D", "#1D4ED8", "#7C3AED", "#B45309", "#0F766E", "#BE185D"];
 const colorOf = s => COLORS[[...String(s)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
 const initial = s => esc(String(s || "؟").trim().charAt(0));
+const CAT_ICON = {
+  "مشويات": '<path d="M12 3c1 3 4 4.5 4 8a4 4 0 0 1-8 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-4 0-7Z"/><path d="M4 21h16M7 21l1-4h8l1 4"/>',
+  "فول وطعمية": '<path d="M3 11h18a9 9 0 0 1-18 0Z"/><path d="M8 7c0-1 1-2 2-2M13 7c0-1.5 1-3 3-3"/>',
+  "شاورما": '<path d="M7 3h10l-2 18H9Z"/><path d="M8 8h8M8.5 13h7"/>',
+  "وجبات سودانية": '<path d="M4 10h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6Z"/><path d="M2 10h20M9 6c0-1 1-1 1-2M14 6c0-1 1-1 1-2"/>',
+  "بيتزا وبرجر": '<path d="M12 3 3 19h18Z"/><circle cx="10" cy="13" r="1"/><circle cx="14" cy="15" r="1"/><circle cx="12" cy="9" r="1"/>',
+  "حلويات ومشروبات": '<path d="M6 8h12l-1.5 13h-9Z"/><path d="M5 8h14M12 8V3M9 13h6"/>'
+};
+const DEFAULT_ICON = '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>';
+const catIcon = (c, size = 56) => `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${CAT_ICON[c] || DEFAULT_ICON}</svg>`;
+const coverBg = s => { const c = colorOf(s); return `background:radial-gradient(circle at 20% 20%, rgba(255,255,255,.18) 0 2px, transparent 3px) 0 0/22px 22px, linear-gradient(135deg, ${c}, ${c}cc)`; };
 
 const I = {
   back: '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
@@ -459,22 +495,39 @@ async function showHome() {
   catch (e) { console.error(e); list.innerHTML = emptyState("تعذر تحميل المطاعم", "تأكد من الإنترنت ثم اضغط تحديث."); }
 }
 
+let homeCat = "";
 function renderHome() {
   const city = $("#h-city").value, q = $("#h-search").value.trim();
-  const items = restaurants
-    .filter(r => (!city || r.city === city) && (!q || r.name.includes(q)))
+  const inCity = restaurants.filter(r => !city || r.city === city);
+  const cats = [...new Set(inCity.map(r => r.category).filter(Boolean))];
+  if (homeCat && !cats.includes(homeCat)) homeCat = "";
+  $("#h-cats").innerHTML = [["", "الكل"], ...cats.map(c => [c, c])].map(([v, t]) =>
+    `<button class="chip ${homeCat === v ? "on" : ""}" data-cat="${esc(v)}">${esc(t)}</button>`).join("");
+  $("#h-cats").style.display = cats.length > 1 ? "" : "none";
+  const items = inCity
+    .filter(r => (!homeCat || r.category === homeCat) && (!q || r.name.includes(q)))
     .sort((a, b) => (b.isOpen ? 1 : 0) - (a.isOpen ? 1 : 0));
-  $("#h-list").innerHTML = items.length ? items.map(r => `
+  const open = items.filter(r => r.isOpen).length;
+  $("#h-title").textContent = city ? `مطاعم ${city}` : "المطاعم";
+  $("#h-count").textContent = items.length ? `${open} مفتوح الآن` : "";
+  const meta = r => `<div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>`;
+  const svc = r => [r.delivery && "توصيل", r.pickup && "استلام"].filter(Boolean).join(" · ");
+  $("#h-list").innerHTML = items.length ? items.map((r, i) => i < 3 || r.isOpen ? `
     <button class="card" data-rest="${esc(r.id)}">
-      <div class="cover" style="background:${colorOf(r.name)}">${initial(r.name)}
+      <div class="cover" style="${coverBg(r.name)}"><span class="icon">${catIcon(r.category, 60)}</span>
         <span class="tag" style="color:${r.isOpen ? "var(--green)" : "var(--muted)"}">${r.isOpen ? "مفتوح الآن" : "مغلق"}</span>
+        <span class="tag2">${svc(r)}</span>
       </div>
-      <b style="font-size:16px">${esc(r.name)}</b>
-      <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span>
-        ${r.delivery ? "<span>توصيل</span>" : ""}${r.pickup ? "<span>استلام</span>" : ""}</div>
+      <b style="font-size:16px">${esc(r.name)}</b>${meta(r)}
+    </button>` : `
+    <button class="mini" data-rest="${esc(r.id)}">
+      <div class="cover" style="${coverBg(r.name)}"><span class="icon">${catIcon(r.category, 32)}</span></div>
+      <div class="col gap6"><b style="font-size:15px">${esc(r.name)}</b>${meta(r)}
+        <span class="badge b-gray" style="align-self:flex-start">مغلق · ${svc(r)}</span></div>
     </button>`).join("")
     : emptyState("لا توجد مطاعم هنا بعد", "نضيف مطاعم جديدة باستمرار. جرّب مدينة أخرى.");
 }
+$("#h-cats").addEventListener("click", e => { const c = e.target.closest("[data-cat]"); if (c) { homeCat = c.dataset.cat; renderHome(); } });
 $("#h-city").addEventListener("change", renderHome);
 $("#h-search").addEventListener("input", renderHome);
 $("#h-refresh").addEventListener("click", showHome);
@@ -511,10 +564,13 @@ function renderRestaurant() {
   const { r, menu, offers } = curRest;
   const now = Date.now();
   const activeOffers = offers.filter(o => o.active && (!o.endsAt || tsDate(o.endsAt)?.getTime() > now));
-  const items = menu.sort((a, b) => (b.available ? 1 : 0) - (a.available ? 1 : 0));
+  const sections = [...new Set(menu.map(m => m.section || "الأصناف"))];
+  if (!sections.includes(curRest.sec)) curRest.sec = sections[0];
+  const items = menu.filter(m => (m.section || "الأصناف") === curRest.sec)
+    .sort((a, b) => (b.available ? 1 : 0) - (a.available ? 1 : 0));
   const n = cartCount();
   $("#r-body").innerHTML = `
-    <div class="cover" style="height:180px;border-radius:0;background:${colorOf(r.name)};font-size:60px">${initial(r.name)}
+    <div class="cover" style="height:190px;border-radius:0;${coverBg(r.name)}"><span class="icon">${catIcon(r.category, 72)}</span>
       <button class="icon-btn" data-go="home" aria-label="رجوع" style="position:absolute;top:16px;right:16px;background:#fff">${I.back}</button>
     </div>
     <div class="col gap10" style="padding:16px 20px 12px">
@@ -528,7 +584,8 @@ function renderRestaurant() {
         <button data-type="pickup" class="${cart.type === "pickup" ? "on" : ""}">استلام من المطعم</button></div>`
         : `<span class="badge b-gray" style="align-self:flex-start">${r.delivery ? "توصيل فقط" : "استلام من المطعم فقط"}</span>`}
     </div>
-    <div style="padding:0 20px;border-top:1px solid var(--line)" class="grow">
+    ${sections.length > 1 ? `<div class="tabs-h">${sections.map(x => `<button data-sec="${esc(x)}" class="${x === curRest.sec ? "on" : ""}">${esc(x)}</button>`).join("")}</div>` : ""}
+    <div style="padding:0 20px;${sections.length > 1 ? "" : "border-top:1px solid var(--line)"}" class="grow">
       ${items.length ? items.map(m => `
         <div class="item">
           <div class="col gap6 grow">
@@ -537,7 +594,7 @@ function renderRestaurant() {
             <b style="margin-top:2px">${money(m.price)}</b>
             ${!m.available ? '<span class="badge b-red" style="align-self:flex-start">غير متوفر اليوم</span>' : ""}
           </div>
-          <div class="thumb" style="background:${colorOf(m.name)}">${initial(m.name)}
+          <div class="thumb" style="${coverBg(m.name)};color:rgba(255,255,255,.92)">${catIcon(r.category, 34)}
             ${cart.items[m.id] ? `<span class="badge b-green" style="position:absolute;top:-6px;right:-6px">${cart.items[m.id].qty}</span>` : ""}
             <button class="add" data-add="${esc(m.id)}" aria-label="أضف ${esc(m.name)}" ${!r.isOpen || !m.available ? "disabled" : ""}>${I.plus}</button>
           </div>
@@ -559,6 +616,8 @@ $("#r-body").addEventListener("click", e => {
   }
   const t = e.target.closest("[data-type]");
   if (t) { cart.type = t.dataset.type; return renderRestaurant(); }
+  const sc = e.target.closest("[data-sec]");
+  if (sc) { curRest.sec = sc.dataset.sec; return renderRestaurant(); }
   if (e.target.closest("#r-cart")) openCart();
 });
 
@@ -621,6 +680,7 @@ function renderCart() {
         ${forcePrepaid ? `<div class="note n-red">${I.warn}بسبب طلبات سابقة لم تُستلم، الدفع المسبق عبر بنكك إلزامي لحسابك${!canBankak ? "، وهذا المطعم لا يقبل بنكك. اختر مطعماً آخر." : "."}</div>` : ""}
         <label class="radio"><input type="radio" name="pay" value="cash" ${draft.pay === "cash" ? "checked" : ""} ${forcePrepaid ? "disabled" : ""}>الدفع عند الاستلام</label>
         <label class="radio"><input type="radio" name="pay" value="bankak" ${draft.pay === "bankak" ? "checked" : ""} ${!canBankak ? "disabled" : ""}>تحويل بنكك ${!canBankak ? "(غير متاح لهذا المطعم)" : ""}</label>
+        ${me.delivered < 2 && draft.pay === "cash" && total > CONFIG.NEW_LIMIT ? `<div class="note n-orange">${I.info}<span>لأول طلبين في حسابك، الدفع عند الاستلام متاح حتى <b>${money(CONFIG.NEW_LIMIT)}</b>. ${canBankak ? "ادفع ببنكك أو قلّل الطلب." : "قلّل الطلب قليلاً."}</span></div>` : ""}
         ${draft.pay === "bankak" && canBankak ? `
           <div class="note n-blue">${I.info}<span>حوّل <b>${money(total)}</b> إلى حساب المطعم في بنكك: <b dir="ltr">${esc(r.bankak)}</b> ثم اكتب رقم العملية.</span></div>
           <label class="field">رقم العملية<input id="cart-txn" value="${esc(draft.txn)}" inputmode="numeric" dir="ltr"></label>` : ""}
@@ -681,7 +741,7 @@ function sendOrder(btn) {
     if (!draft.loc) return err("حدد موقعك على الخريطة.");
     if (draft.landmark.trim().length < 3) return err("اكتب وصفاً للمكان أو معلماً قريباً.");
   }
-  if (me.delivered < 2 && total > CONFIG.NEW_LIMIT) return err(`للحسابات الجديدة: الحد الأقصى ${money(CONFIG.NEW_LIMIT)} لأول طلبين.`);
+  if (me.delivered < 2 && draft.pay === "cash" && total > CONFIG.NEW_LIMIT) return err(`الدفع عند الاستلام متاح حتى ${money(CONFIG.NEW_LIMIT)} في أول طلبين. اختر بنكك أو قلّل الطلب.`);
   if (draft.pay === "bankak" && !draft.txn) return err("اكتب رقم عملية التحويل.");
   if (me.strikes >= 3) return err("حسابك موقوف بسبب تكرار عدم استلام الطلبات.");
   busy(btn, async () => {
@@ -786,7 +846,7 @@ $("#mo-list").addEventListener("click", e => { const b = e.target.closest("[data
 // ════════════════════════════════════════
 //                 المطعم
 // ════════════════════════════════════════
-let myRest = null, ownerOrders = [], ownerSeg = "new", ownerTabNow = "orders";
+let myRest = null, ownerOrders = [], ownerSeg = "new", ownerTabNow = "orders", ownerMenuCache = [];
 
 async function showOwner() {
   clearSubs();
@@ -924,6 +984,7 @@ async function renderOwnerMenu() {
   const body = $("#ow-body");
   body.innerHTML = `<div class="list">${skeleton(4, 76)}</div>`;
   const [menu, offers] = await Promise.all([F.listSub(myRest.id, "menu"), F.listSub(myRest.id, "offers")]);
+  ownerMenuCache = menu;
   if (ownerTabNow !== "menu") return;
   body.innerHTML = `<div class="list">
     <div class="row between"><h2>العروض</h2><button class="link" data-new="offer" style="border:0;background:none;color:var(--accent);font-weight:700">+ عرض جديد</button></div>
@@ -935,8 +996,8 @@ async function renderOwnerMenu() {
       : `<span class="muted">لا توجد عروض. أضف عرضاً مثل "توصيل مجاني فوق 10,000 ج".</span>`}
     <div class="row between" style="margin-top:8px"><h2>الأصناف</h2><button class="btn btn-sm btn-primary" data-new="item" style="width:auto;padding:0 14px">${I.plus}صنف جديد</button></div>
     ${menu.length ? menu.map(m => `<div class="box row gap10" style="padding:10px">
-      <div class="thumb" style="width:54px;height:54px;border-radius:12px;background:${colorOf(m.name)};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:20px;flex-shrink:0">${initial(m.name)}</div>
-      <div class="col grow"><b style="font-size:14px">${esc(m.name)}</b>
+      <div style="width:54px;height:54px;border-radius:12px;${coverBg(m.name)};display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${catIcon(myRest.category, 26)}</div>
+      <div class="col grow"><b style="font-size:14px">${esc(m.name)}</b>${m.section ? `<span class="muted" style="font-size:12px">${esc(m.section)}</span>` : ""}
         <span style="font-size:13px;color:${m.available ? "var(--muted)" : "var(--red)"}">${money(m.price)} · ${m.available ? "متوفر" : "غير متوفر"}</span></div>
       <button class="icon-btn" data-edit="${esc(m.id)}" aria-label="تعديل">${I.edit}</button></div>`).join("")
       : emptyState("المنيو فارغ", "أضف أصنافك ليتمكن الزبائن من الطلب.")}
@@ -958,6 +1019,8 @@ function itemSheet(m) {
   const b = openSheet(`<h2>${m ? "تعديل الصنف" : "صنف جديد"}</h2>
     <label class="field">اسم الصنف<input id="it-name" value="${esc(m?.name)}" placeholder="مثلاً: صحن كبدة مشوية"></label>
     <label class="field">الوصف (اختياري)<input id="it-desc" value="${esc(m?.desc)}" placeholder="مثلاً: مع سلطة دكوة وعيش"></label>
+    <label class="field">القسم<input id="it-sec" list="it-secs" value="${esc(m?.section)}" placeholder="مثلاً: مشويات، سندوتشات، مشروبات">
+      <datalist id="it-secs">${[...new Set(ownerMenuCache.map(x => x.section).filter(Boolean))].map(x => `<option value="${esc(x)}">`).join("")}</datalist></label>
     <label class="field">السعر بالجنيه<input id="it-price" type="number" inputmode="numeric" min="0" value="${m?.price ?? ""}"></label>
     <label class="row between box" style="padding:12px 14px"><span style="font-weight:500">متوفر اليوم</span>
       <span class="switch"><input type="checkbox" id="it-av" ${m ? (m.available ? "checked" : "") : "checked"}><span></span></span></label>
@@ -966,6 +1029,7 @@ function itemSheet(m) {
       ${m ? `<button id="it-del" class="btn btn-danger" style="width:110px">حذف</button>` : ""}</div>`);
   b.querySelector("#it-save").onclick = e => {
     const data = { name: b.querySelector("#it-name").value.trim(), desc: b.querySelector("#it-desc").value.trim(),
+      section: b.querySelector("#it-sec").value.trim(),
       price: Number(b.querySelector("#it-price").value), available: b.querySelector("#it-av").checked };
     if (data.name.length < 2) return b.querySelector("#it-err").textContent = "اكتب اسم الصنف.";
     if (!(data.price > 0)) return b.querySelector("#it-err").textContent = "اكتب سعراً صحيحاً.";
