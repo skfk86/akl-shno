@@ -648,7 +648,12 @@ async function showHome() {
   list.innerHTML = skeleton(3, 190);
   getMyLoc(false).then(p => p && restaurants.length && renderHome());
   try { restaurants = await F.listOpenRestaurants(); renderHome(); }
-  catch (e) { console.error(e); list.innerHTML = emptyState("تعذر تحميل المطاعم", "تأكد من الإنترنت ثم اضغط تحديث."); }
+  catch (e) {
+    console.error(e);
+    list.innerHTML = e.code === "permission-denied"
+      ? emptyState("القواعد المنشورة غير محدّثة", "انشر آخر نسخة من firestore.rules في Firebase Console ثم اضغط تحديث. (permission-denied)")
+      : emptyState("تعذر تحميل المطاعم", `تأكد من الإنترنت ثم اضغط تحديث. (${esc(e.code || e.message || "")})`);
+  }
 }
 
 let homeCat = "";
