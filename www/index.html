@@ -120,7 +120,6 @@
   .mapbox{position:relative;border-radius:16px;overflow:hidden;direction:ltr;z-index:1;isolation:isolate}
   .mapbox > div:first-child{width:100%;height:100%}
   .leaflet-container{font-family:inherit;background:#F2EFE9}
-  .map-soft .leaflet-tile-pane{filter:saturate(.45) contrast(1.04) brightness(1.04)}
   .leaflet-control-attribution{font-size:9px!important;background:rgba(255,255,255,.75)!important;border-radius:8px 0 0 0}
   .leaflet-control-attribution a{color:var(--muted)!important}
   .map-fab{position:absolute;z-index:500;width:44px;height:44px;border:0;border-radius:14px;background:#fff;color:var(--ink);
@@ -132,6 +131,13 @@
     filter:drop-shadow(0 3px 4px rgba(0,0,0,.25));transition:transform .15s}
   .moving .center-pin{transform:translate(-50%,-115%)}
   .center-pin::after{content:"";position:absolute;left:50%;bottom:-3px;width:10px;height:4px;margin-left:-5px;border-radius:50%;background:rgba(0,0,0,.25)}
+  .picker{position:fixed;inset:0;z-index:80;background:#fff;display:none;flex-direction:column;padding-top:env(safe-area-inset-top)}
+  .picker.on{display:flex}
+  .picker .mapbox{flex:1;border-radius:0}
+  .pk-panel{padding:16px 20px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;
+    border-radius:22px 22px 0 0;margin-top:-20px;background:#fff;position:relative;z-index:600;box-shadow:0 -6px 20px rgba(0,0,0,.08)}
+  .addr-card{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}
+  .addr-card .mapbox{height:120px;border-radius:0;pointer-events:none}
   .map-hint{position:absolute;z-index:500;top:10px;right:10px;background:var(--ink);color:#fff;font-size:12px;padding:6px 10px;border-radius:999px;direction:rtl}
   .mpin{width:40px;height:40px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.25);
     display:flex;align-items:center;justify-content:center;color:#fff}
@@ -377,6 +383,12 @@
   </div>
 </section>
 
+<div id="picker" class="picker" role="dialog" aria-modal="true">
+  <div class="header" style="position:relative;z-index:700"><button class="icon-btn" id="pk-close" aria-label="رجوع"></button><h1 id="pk-title" style="font-size:19px"></h1></div>
+  <div id="pk-map" class="mapbox"></div>
+  <div id="pk-panel" class="pk-panel"></div>
+</div>
+
 <div id="drawer" class="drawer" role="dialog" aria-modal="true" aria-label="القائمة"><div class="drawer-bg"></div><div class="drawer-body"></div></div>
 <div id="sheet" class="sheet" role="dialog" aria-modal="true"><div class="sheet-bg"></div><div class="sheet-body"></div></div>
 <div id="toast" role="status"></div>
@@ -467,6 +479,7 @@ const userIcon = () => L.divIcon({ className: "", iconSize: [18, 18], iconAnchor
 // خريطة باختيار الموقع بدبوس ثابت في المنتصف (تحريك الخريطة لا الدبوس)
 function pickerMap(boxId, start, zoom, onPick) {
   const box = $("#" + boxId);
+  if (!window.L) { box.innerHTML = emptyState("تعذر تحميل الخريطة", "تأكد من الإنترنت ثم حاول مرة أخرى."); return null; }
   box.innerHTML = `<div></div><span class="center-pin">${PIN_SVG}</span><span class="map-hint">حرّك الخريطة ليقع الدبوس على المكان</span>${zoomCtl()}
     <button class="map-fab" data-me style="bottom:12px;left:10px" aria-label="موقعي الحالي">${I.pin}</button>`;
   const m = makeMap(box.firstElementChild, start, zoom);
@@ -478,6 +491,50 @@ function pickerMap(boxId, start, zoom, onPick) {
   if (zoom >= 17) onPick(start); // موقع معروف مسبقاً: يُعتمد مباشرة
   return m;
 }
+// خريطة صغيرة ثابتة للعرض فقط
+function miniMap(boxId, loc) {
+  const box = $("#" + boxId); if (!box || !window.L) return;
+  box.innerHTML = "<div></div>";
+  const m = makeMap(box.firstElementChild, loc, 16);
+  [m.dragging, m.touchZoom, m.doubleClickZoom, m.scrollWheelZoom, m.boxZoom, m.keyboard].forEach(h => h.disable());
+  L.marker(loc, { interactive: false, icon: L.divIcon({ className: "", iconSize: [38, 46], iconAnchor: [19, 45],
+    html: `<span style="color:var(--accent);filter:drop-shadow(0 3px 4px rgba(0,0,0,.25))">${PIN_SVG}</span>` }) }).addTo(m);
+  setTimeout(() => m.invalidateSize(), 50);
+}
+
+// شاشة اختيار الموقع بملء الشاشة
+// mode: "order" (معلم + حفظ اختياري) | "address" (اسم إلزامي + معلم) | "restaurant"
+let pkMap = null;
+function openPicker({ title, start, mode, landmark = "", label = "", onConfirm }) {
+  $("#pk-title").textContent = title;
+  $("#pk-close").innerHTML = I.back;
+  $("#picker").classList.add("on");
+  let loc = start || null, lbl = label || (mode === "address" ? "البيت" : "");
+  const labels = mode === "order" ? ["", "البيت", "الشغل", "أهلي"] : ["البيت", "الشغل", "أهلي"];
+  const panel = $("#pk-panel");
+  panel.innerHTML = `
+    ${mode === "restaurant" ? `<span class="muted">ضع الدبوس على مدخل المطعم بالضبط ليصل إليه الزبائن والمندوبون.</span>` : `
+      <label class="field">وصف المكان (معلم قريب)<input id="pk-land" value="${esc(landmark)}" placeholder="مثلاً: جنب مسجد الحارة، الباب الأخضر"></label>
+      <div class="col gap6"><span style="font-size:13px;font-weight:500">${mode === "order" ? "احفظ هذا العنوان باسم" : "اسم العنوان"}</span>
+        <div class="chips" style="padding:0" id="pk-labels">${labels.map(l => `<button class="chip ${lbl === l ? "on" : ""}" data-lbl="${l}">${l || "لا تحفظ"}</button>`).join("")}</div></div>`}
+    <p id="pk-err" class="err"></p>
+    <button id="pk-ok" class="btn btn-primary">${mode === "restaurant" ? "حفظ موقع المطعم" : "تأكيد الموقع"}</button>`;
+  if (pkMap) { pkMap.remove(); pkMap = null; }
+  pkMap = pickerMap("pk-map", start || myLoc || CONFIG.DEFAULT_LOC, start || myLoc ? 17 : 13, p => loc = p);
+  if (!start && !myLoc) getMyLoc(false).then(p => p && pkMap && pkMap.setView(p, 17));
+  panel.onclick = e => {
+    const c = e.target.closest("[data-lbl]");
+    if (c) { lbl = c.dataset.lbl; panel.querySelectorAll("[data-lbl]").forEach(x => x.classList.toggle("on", x === c)); return; }
+    if (!e.target.closest("#pk-ok")) return;
+    const land = panel.querySelector("#pk-land")?.value.trim() || "";
+    if (!loc) return panel.querySelector("#pk-err").textContent = "حرّك الخريطة ليقع الدبوس على المكان.";
+    if (mode !== "restaurant" && land.length < 3) return panel.querySelector("#pk-err").textContent = "اكتب وصفاً للمكان أو معلماً قريباً.";
+    busy(e.target, async () => { await onConfirm(loc, { landmark: land, label: lbl }); closePicker(); });
+  };
+}
+function closePicker() { $("#picker").classList.remove("on"); if (pkMap) { pkMap.remove(); pkMap = null; } }
+$("#pk-close").addEventListener("click", closePicker);
+
 let myLoc = null;
 function getMyLoc(loud) {
   return new Promise(res => {
@@ -514,7 +571,9 @@ let me = null, isAdmin = false;
 let unsubs = [];
 const clearSubs = () => { unsubs.forEach(u => { try { u(); } catch {} }); unsubs = []; };
 
+let curScreen = "loading";
 function show(id) {
+  curScreen = id;
   document.querySelectorAll(".screen").forEach(e => e.classList.remove("on"));
   $("#s-" + id).classList.add("on");
   window.scrollTo(0, 0);
@@ -885,7 +944,7 @@ $("#r-body").addEventListener("click", e => {
 
 // ───── السلة ─────
 let map = null, marker = null;
-const draft = { zone: "", landmark: "", pay: "cash", txn: "", loc: null, save: false, saveLabel: "البيت" };
+const draft = { zone: "", landmark: "", label: "", pay: "cash", txn: "", loc: null, save: false, saveLabel: "البيت" };
 
 function openCart() {
   show("cart");
@@ -928,15 +987,16 @@ function renderCart() {
         </label>
         ${!cart.zones.length ? `<div class="note n-red">${I.info}المطعم لم يحدد مناطق التوصيل بعد. اختر الاستلام من المطعم.</div>` : ""}
         ${z?.min && sub < Number(z.min) ? `<div class="note n-orange">${I.info}الحد الأدنى لهذه المنطقة ${money(z.min)}</div>` : ""}
-        ${(me.addresses || []).length ? `<div class="chips" style="padding:0">${me.addresses.map((a, i) =>
-          `<button class="chip" data-addr="${i}">${I.pin} ${esc(a.label)}</button>`).join("")}</div>` : ""}
-        <div id="map" class="mapbox"></div>
-        <label class="field">وصف المكان (معلم قريب)
-          <input id="cart-landmark" value="${esc(draft.landmark)}" placeholder="مثلاً: جنب مسجد الحارة، الباب الأخضر">
-        </label>
-        <label class="row gap10" style="font-size:14px"><input type="checkbox" id="cart-save" ${draft.save ? "checked" : ""} style="width:18px;height:18px;accent-color:var(--accent)">احفظ العنوان باسم
-          <select id="cart-save-label" style="border:0;background:var(--fill);border-radius:10px;padding:6px 10px">
-            ${["البيت", "الشغل", "أهلي"].map(l => `<option ${draft.saveLabel === l ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        ${(me.addresses || []).length ? `<div class="col gap6"><span class="muted">عناويني المحفوظة</span><div class="chips" style="padding:0">${me.addresses.map((a, i) =>
+          `<button class="chip ${draft.label === a.label && draft.loc ? "on" : ""}" data-addr="${i}">${esc(a.label)}</button>`).join("")}</div></div>` : ""}
+        ${draft.loc ? `<div class="addr-card">
+            <div id="cart-mini" class="mapbox"></div>
+            <div class="row gap10" style="padding:12px 14px">
+              <span style="color:var(--accent)">${I.pin}</span>
+              <div class="col grow" style="min-width:0"><b style="font-size:14px">${esc(draft.label || "موقع التوصيل")}</b><span class="muted">${esc(draft.landmark)}</span></div>
+              <button id="cart-pick" class="btn btn-sm btn-ghost" style="width:auto;padding:0 14px">تغيير</button>
+            </div></div>`
+          : `<button id="cart-pick" class="btn btn-outline" style="height:60px">${I.pin}حدد موقع التوصيل على الخريطة</button>`}
       </section>` : `
       <section class="box col gap6"><b>استلام من المطعم</b><span class="muted">${esc(r.district)}، ${esc(r.city)} · ${esc(r.phone)}</span></section>`}
 
@@ -961,11 +1021,7 @@ function renderCart() {
     </div>
     <div class="bar"><button id="cart-send" class="btn btn-primary" style="justify-content:space-between;padding:0 18px"><span>تأكيد الطلب</span><span>${money(total)}</span></button></div>`;
 
-  if (cart.type === "delivery" && window.L) {
-    const start = draft.loc || myLoc || CONFIG.DEFAULT_LOC;
-    map = pickerMap("map", start, draft.loc || myLoc ? 17 : 13, p => draft.loc = p);
-    if (!draft.loc) getMyLoc(false).then(p => { if (p && map) map.setView(p, 17); });
-  }
+  if (cart.type === "delivery" && draft.loc) miniMap("cart-mini", draft.loc);
 }
 
 $("#cart-body").addEventListener("click", e => {
@@ -974,7 +1030,11 @@ $("#cart-body").addEventListener("click", e => {
   if (dec) { const it = cart.items[dec.dataset.dec]; it.qty--; if (it.qty <= 0) delete cart.items[it.id]; return renderCart(); }
   if (e.target.closest("#cart-back")) return openRestaurant(cart.r.id);
   const ad = e.target.closest("[data-addr]");
-  if (ad) { const a = me.addresses[+ad.dataset.addr]; draft.loc = [a.lat, a.lng]; draft.landmark = a.landmark; return renderCart(); }
+  if (ad) { const a = me.addresses[+ad.dataset.addr]; Object.assign(draft, { loc: [a.lat, a.lng], landmark: a.landmark, label: a.label, save: false }); return renderCart(); }
+  if (e.target.closest("#cart-pick")) return openPicker({
+    title: "موقع التوصيل", mode: "order", start: draft.loc, landmark: draft.landmark, label: draft.save ? draft.saveLabel : "",
+    onConfirm: (loc, x) => { Object.assign(draft, { loc, landmark: x.landmark, label: x.label, save: !!x.label, saveLabel: x.label || draft.saveLabel }); renderCart(); }
+  });
   if (e.target.closest("#cart-send")) return sendOrder(e.target.closest("#cart-send"));
 });
 $("#cart-body").addEventListener("change", e => {
@@ -995,7 +1055,7 @@ function sendOrder(btn) {
   if (cart.type === "delivery") {
     if (!z) return err("اختر منطقة التوصيل.");
     if (z.min && sub < Number(z.min)) return err(`الحد الأدنى لهذه المنطقة ${money(z.min)}.`);
-    if (!draft.loc) return err("حدد موقعك على الخريطة.");
+    if (!draft.loc) return err("حدد موقع التوصيل على الخريطة.");
     if (draft.landmark.trim().length < 3) return err("اكتب وصفاً للمكان أو معلماً قريباً.");
   }
   if (me.delivered < 2 && draft.pay === "cash" && total > CONFIG.NEW_LIMIT) return err(`الدفع عند الاستلام متاح حتى ${money(CONFIG.NEW_LIMIT)} في أول طلبين. اختر بنكك أو قلّل الطلب.`);
@@ -1184,7 +1244,7 @@ function showAccount() {
           <div class="kpi"><b style="font-size:16px">${money(spent)}</b><span>إجمالي المشتريات</span></div>
         </div>
         ${me.strikes ? `<div class="note n-red">${I.warn}<span>على حسابك ${me.strikes} إنذار بسبب طلبات لم تُستلم. ${me.strikes >= 2 ? "الدفع المسبق ببنكك إلزامي لطلباتك." : "إنذار آخر يجعل الدفع المسبق إلزامياً."}</span></div>` : ""}
-        <h2>عناويني</h2>
+        <div class="row between"><h2>عناويني</h2><button id="ac-addr-add" style="border:0;background:none;color:var(--accent);font-weight:700">+ إضافة عنوان</button></div>
         <div class="box col" style="padding:4px 14px">
           ${addrs.length ? addrs.map((a, i) => `<div class="row gap10" style="padding:10px 0;${i ? "border-top:1px solid var(--fill)" : ""}">
             <span style="color:var(--accent)">${I.pin}</span><div class="col grow"><b style="font-size:14px">${esc(a.label)}</b><span class="muted">${esc(a.landmark)}</span></div>
@@ -1203,6 +1263,15 @@ function showAccount() {
   unsubs.push(F.watchMyOrders(render, () => render([])));
   body.onclick = e => {
     if (e.target.closest("#ac-edit")) return editProfile();
+    if (e.target.closest("#ac-addr-add")) return openPicker({
+      title: "إضافة عنوان", mode: "address",
+      onConfirm: async (loc, x) => {
+        const addrs = (me.addresses || []).filter(a => a.label !== x.label);
+        addrs.unshift({ label: x.label, lat: loc[0], lng: loc[1], landmark: x.landmark });
+        await F.saveAddresses(addrs.slice(0, 5)); me.addresses = addrs.slice(0, 5);
+        toast("تم حفظ العنوان"); showAccount();
+      }
+    });
     const d = e.target.closest("[data-addr-del]");
     if (d) {
       const addrs = (me.addresses || []).filter((_, i) => i !== +d.dataset.addrDel);
@@ -1227,8 +1296,7 @@ function editProfile() {
 // ───── عن التطبيق ─────
 let aboutBack = "home";
 function showAbout() {
-  aboutBack = me?.role === "owner" && !isAdmin ? "settings" : "account";
-  clearSubs();
+  if (curScreen !== "about") aboutBack = curScreen;
   show("about");
   $("#ab-back").innerHTML = I.back;
   document.querySelector("#s-about .logo").innerHTML = I.food;
@@ -1236,7 +1304,7 @@ function showAbout() {
   $("#ab-links").innerHTML = CONFIG.ADMIN_WHATSAPP
     ? `<a class="btn btn-green" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، بخصوص أكل شنو؟\n")}" target="_blank" style="text-decoration:none">${I.wa}تواصل معنا عبر واتساب</a>` : "";
 }
-$("#ab-back").addEventListener("click", () => aboutBack === "settings" ? showOwner().then(() => ownerTab("settings")) : showAccount());
+$("#ab-back").addEventListener("click", () => show(aboutBack || "home"));
 
 // ════════════════════════════════════════
 //                 المطعم
@@ -1516,9 +1584,12 @@ async function renderOwnerSettings() {
       : `<div class="note n-orange">${I.info}أضف منطقة واحدة على الأقل ليستطيع الزبائن طلب التوصيل.</div>`}
     <h2 style="margin-top:6px">موقع المطعم</h2>
     <section class="box col gap10">
-      ${hasLoc(r) ? "" : `<div class="note n-orange">${I.info}حدد موقع مطعمك ليظهر للزبائن على الخريطة ويعرفوا المسافة إليه.</div>`}
-      <div id="st-map" class="mapbox" style="height:220px"></div>
-      <button id="st-loc-save" class="btn btn-sm btn-dark">حفظ الموقع</button>
+      ${hasLoc(r) ? `<div class="addr-card"><div id="st-mini" class="mapbox" style="height:150px"></div>
+          <div class="row gap10" style="padding:12px 14px"><span style="color:var(--green)">${I.check}</span>
+            <span class="grow" style="font-size:14px;font-weight:500">موقع المطعم محدد ويظهر للزبائن</span>
+            <button id="st-loc-edit" class="btn btn-sm btn-ghost" style="width:auto;padding:0 14px">تعديل</button></div></div>`
+        : `<div class="note n-orange">${I.info}حدد موقع مطعمك ليظهر للزبائن على الخريطة ويعرفوا المسافة إليه.</div>
+           <button id="st-loc-edit" class="btn btn-outline" style="height:60px">${I.pin}حدد موقع المطعم على الخريطة</button>`}
     </section>
     <h2 style="margin-top:6px">معلومات المطعم</h2>
     <section class="box col gap10">
@@ -1531,15 +1602,13 @@ async function renderOwnerSettings() {
     <button class="btn btn-ghost" data-go="about" style="margin-top:8px">${I.info2}عن التطبيق</button>
     <button class="btn btn-outline" data-logout2 style="margin-top:8px">تسجيل الخروج</button>
   </div>`;
-  let stLoc = hasLoc(r) ? [r.lat, r.lng] : null;
-  const stMap = window.L ? pickerMap("st-map", stLoc || myLoc || CONFIG.DEFAULT_LOC, stLoc || myLoc ? 17 : 13, p => stLoc = p) : null;
-  if (!stLoc && !myLoc) getMyLoc(false).then(p => p && stMap && stMap.setView(p, 17));
+  if (hasLoc(r)) miniMap("st-mini", [r.lat, r.lng]);
   body.onclick = e => {
     if (e.target.closest("[data-zone-new]")) return zoneSheet();
-    if (e.target.closest("#st-loc-save")) {
-      if (!stLoc) return toast("حرّك الخريطة ليقع الدبوس على مطعمك.");
-      return busy(e.target, async () => { await F.updateMyRestaurant({ lat: stLoc[0], lng: stLoc[1] }); myRest.lat = stLoc[0]; myRest.lng = stLoc[1]; toast("تم حفظ موقع المطعم"); });
-    }
+    if (e.target.closest("#st-loc-edit")) return openPicker({
+      title: "موقع المطعم", mode: "restaurant", start: hasLoc(r) ? [r.lat, r.lng] : null,
+      onConfirm: async loc => { await F.updateMyRestaurant({ lat: loc[0], lng: loc[1] }); myRest.lat = loc[0]; myRest.lng = loc[1]; toast("تم حفظ موقع المطعم"); renderOwnerSettings(); }
+    });
     const zd = e.target.closest("[data-zone-del]");
     if (zd) return busy(zd, async () => { await F.deleteSub("zones", zd.dataset.zoneDel); renderOwnerSettings(); });
     if (e.target.closest("#st-bankak-save")) {
