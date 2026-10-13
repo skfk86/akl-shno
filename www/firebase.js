@@ -3,7 +3,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup
+  getAuth, GoogleAuthProvider, signInWithCredential, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
 import {
   getFirestore, doc, collection, getDoc, getDocs, query, where, orderBy,
@@ -24,7 +24,38 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 
 // ───────── الحساب ─────────
-// ملاحظة: داخل Capacitor استخدم plugin تسجيل دخول Google الأصلي بدل signInWithPopup.
+// دخول Google الأصلي عبر @capacitor-firebase/authentication،
+// ثم تمرير الـ idToken إلى JS SDK حتى تعمل قواعد Firestore.
+export async function signInGoogle() {
+  const FA = window.Capacitor?.Plugins?.FirebaseAuthentication;
+  if (!FA) throw new Error("NATIVE_ONLY");
+  const r = await FA.signInWithGoogle();
+  const cred = GoogleAuthProvider.credential(r.credential.idToken);
+  return signInWithCredential(auth, cred);
+}
+
+export async function logout() {
+  await window.Capacitor?.Plugins?.FirebaseAuthentication?.signOut();
+  await signOut(auth);
+}
+
+export function watchAuth(cb) { return onAuthStateChanged(auth, cb); }
+
+export async function getProfile() {
+  const s = await getDoc(doc(db, "users", auth.currentUser.uid));
+  return s.exists() ? s.data() : null;
+}
+
+export async function createRestaurant({ name, category, city, district, phone }) {
+  const uid = auth.currentUser.uid;
+  await setDoc(doc(db, "restaurants", uid), {
+    ownerId: uid, name, category, city, district, phone,
+    isOpen: false, delivery: true, pickup: true,
+    subActiveUntil: null, freeTrial: false,
+    createdAt: serverTimestamp()
+  });
+}
+
 export async function createProfile({ role, name, phone }) {
   const uid = auth.currentUser.uid;
   await setDoc(doc(db, "users", uid), {
@@ -36,13 +67,14 @@ export async function createProfile({ role, name, phone }) {
 
 // ───────── المطاعم الظاهرة للزبون ─────────
 // الشرط where إلزامي، وإلا ترفض القواعد الاستعلام.
+// تصفية المدينة تتم في التطبيق لتجنب الحاجة لفهرس مركّب في البداية.
 export async function listOpenRestaurants(city) {
   const q = query(
     collection(db, "restaurants"),
-    where("subActiveUntil", ">", Timestamp.now()),
-    where("city", "==", city)
+    where("subActiveUntil", ">", Timestamp.now())
   );
-  return (await getDocs(q)).docs.map(d => ({ id: d.id, ...d.data() }));
+  const all = (await getDocs(q)).docs.map(d => ({ id: d.id, ...d.data() }));
+  return city ? all.filter(r => r.city === city) : all;
 }
 
 // ───────── إنشاء طلب ─────────

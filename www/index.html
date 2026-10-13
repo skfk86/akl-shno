@@ -1,5 +1,360 @@
 <!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>أكل شنو؟</title></head>
-<body><h1 style="text-align:center;font-family:sans-serif">أكل شنو؟</h1></body></html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#C2410C">
+<title>أكل شنو؟</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --accent:#C2410C; --accent-dark:#9A3412; --accent-soft:#FFF7ED;
+    --ink:#1C1917; --muted:#57534E; --line:#E7E5E4; --fill:#F5F5F4; --bg:#FFFFFF;
+    --green:#15803D; --green-soft:#DCFCE7; --red:#B91C1C;
+    --r:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;font-size:15px}
+  button,input,select{font-family:inherit;font-size:inherit;color:inherit}
+  button{cursor:pointer}
+  .screen{display:none;min-height:100dvh;flex-direction:column;
+    padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+  .screen.on{display:flex}
+  .pad{padding:0 24px}
+  .grow{flex:1}
+  h1{margin:0;font-size:24px;font-weight:700}
+  h2{margin:0;font-size:18px;font-weight:700}
+  .muted{color:var(--muted);font-size:14px}
+  .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+    height:56px;border:0;border-radius:var(--r);font-size:16px;font-weight:700}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:active{background:var(--accent-dark)}
+  .btn-outline{background:#fff;border:1px solid #D6D3D1}
+  .btn:disabled{opacity:.6}
+  .icon-btn{width:44px;height:44px;border:0;border-radius:14px;background:var(--fill);
+    display:flex;align-items:center;justify-content:center}
+  .field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500}
+  .field input,.field select,.phone{height:52px;padding:0 14px;border:0;border-radius:14px;
+    background:var(--fill);font-size:15px;font-weight:400;outline:none;width:100%}
+  .field input:focus,.field select:focus{box-shadow:0 0 0 2px var(--accent)}
+  .phone{display:flex;align-items:center;gap:8px;direction:ltr}
+  .phone b{color:var(--muted)}
+  .phone input{flex:1;background:none;border:0;outline:none;height:100%;font-size:15px}
+  .row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;
+    padding:5px 12px;border-radius:999px}
+  .badge-green{color:var(--green);background:var(--green-soft)}
+  .err{color:var(--red);font-size:13px;min-height:18px}
+
+  /* الترحيب */
+  .hero{flex:1;background:var(--accent);color:#fff;border-radius:0 0 36px 36px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
+  .logo{width:96px;height:96px;border-radius:28px;background:#fff;color:var(--accent);
+    display:flex;align-items:center;justify-content:center}
+  .role{display:flex;align-items:center;gap:14px;width:100%;padding:16px;border-radius:18px;
+    border:1px solid var(--line);background:#fff;text-align:right}
+  .role.primary{border:2px solid var(--accent)}
+  .role .ic{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .role span{display:flex;flex-direction:column;gap:2px}
+
+  /* الرئيسية */
+  .top{padding:16px 20px 12px;display:flex;flex-direction:column;gap:14px}
+  .search{display:flex;align-items:center;gap:10px;height:48px;padding:0 14px;border-radius:14px;background:var(--fill)}
+  .search input{flex:1;border:0;background:none;outline:none;font-size:15px}
+  .list{padding:4px 20px 20px;display:flex;flex-direction:column;gap:16px}
+  .card{display:flex;flex-direction:column;gap:8px;border:0;background:none;padding:0;text-align:right}
+  .cover{height:140px;border-radius:18px;background:var(--line);position:relative;overflow:hidden}
+  .cover img{width:100%;height:100%;object-fit:cover}
+  .cover .open{position:absolute;top:10px;right:10px;background:#fff;color:var(--green);
+    font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px}
+  .meta{display:flex;gap:14px;font-size:13px;color:var(--muted)}
+  .skel{background:linear-gradient(90deg,var(--fill),#ECEAE8,var(--fill));background-size:200% 100%;
+    animation:sh 1.2s infinite;border-radius:12px}
+  @keyframes sh{to{background-position:-200% 0}}
+  .empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:48px 24px;color:var(--muted)}
+  .empty .ic{width:72px;height:72px;border-radius:24px;background:var(--accent-soft);color:var(--accent);
+    display:flex;align-items:center;justify-content:center}
+  nav.tabs{position:sticky;bottom:0;height:72px;border-top:1px solid var(--line);background:#fff;
+    display:flex;justify-content:space-around;align-items:center}
+  nav.tabs button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;
+    font-size:11px;color:var(--muted);min-width:64px;min-height:44px}
+  nav.tabs button.on{color:var(--accent);font-weight:700}
+
+  .spinner{width:36px;height:36px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(1turn)}}
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- تحميل -->
+<section id="s-loading" class="screen on"><div class="center"><div class="spinner"></div></div></section>
+
+<!-- الترحيب -->
+<section id="s-welcome" class="screen">
+  <div class="hero">
+    <div class="logo">
+      <svg aria-hidden="true" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+    </div>
+    <span style="font-size:34px;font-weight:700">أكل شنو؟</span>
+    <span style="font-size:15px;text-align:center;line-height:1.7">أكل مطاعمك المفضلة<br>لحدي باب البيت</span>
+  </div>
+  <div class="pad" style="padding-top:28px;padding-bottom:32px;display:flex;flex-direction:column;gap:14px">
+    <h2 style="text-align:center;margin-bottom:4px">كيف تريد استخدام التطبيق؟</h2>
+    <button class="role primary" data-role="customer">
+      <div class="ic" style="background:var(--accent-soft);color:var(--accent)">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+      </div>
+      <span><b style="font-size:16px">أريد أن أطلب أكل</b><small class="muted">تصفح المطاعم واطلب للبيت</small></span>
+    </button>
+    <button class="role" data-role="owner">
+      <div class="ic" style="background:var(--fill)">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-1.5-5h-15Z"/><path d="M4 9v11h16V9M9 20v-6h6v6"/></svg>
+      </div>
+      <span><b style="font-size:16px">أملك مطعماً</b><small style="color:var(--green);font-weight:500">أول شهرين مجاناً</small></span>
+    </button>
+    <p id="welcome-err" class="err" role="alert"></p>
+  </div>
+</section>
+
+<!-- بيانات الزبون -->
+<section id="s-customer" class="screen">
+  <div class="pad" style="padding-top:24px;display:flex;flex-direction:column;gap:20px;flex:1">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h1>أهلاً بك</h1>
+      <span class="muted">أكمل بياناتك لتبدأ الطلب</span>
+    </div>
+    <label class="field">الاسم
+      <input id="c-name" autocomplete="name" required>
+    </label>
+    <label class="field">رقم الهاتف
+      <span class="phone"><b>+249</b><input id="c-phone" inputmode="tel" placeholder="9X XXX XXXX" maxlength="9"></span>
+      <small class="muted" style="font-weight:400">قد يتصل بك المطعم لتأكيد طلبك الأول</small>
+    </label>
+    <p id="c-err" class="err" role="alert"></p>
+  </div>
+  <div class="pad" style="padding-top:12px;padding-bottom:28px">
+    <button id="c-save" class="btn btn-primary">ابدأ الطلب</button>
+  </div>
+</section>
+
+<!-- تسجيل مطعم -->
+<section id="s-owner" class="screen">
+  <div class="pad" style="padding-top:24px;display:flex;flex-direction:column;gap:16px;flex:1">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h1>سجّل مطعمك</h1>
+      <span class="badge badge-green" style="align-self:flex-start">شهران مجاناً لأول المطاعم</span>
+    </div>
+    <label class="field">اسم المطعم
+      <input id="o-name" placeholder="مثلاً: مطعم النيلين">
+    </label>
+    <label class="field">نوع الأكل
+      <select id="o-cat">
+        <option value="">اختر التصنيف</option>
+        <option>مشويات</option><option>فول وطعمية</option><option>شاورما</option>
+        <option>وجبات سودانية</option><option>بيتزا وبرجر</option><option>حلويات ومشروبات</option>
+      </select>
+    </label>
+    <div class="row2">
+      <label class="field">المدينة
+        <select id="o-city">
+          <option value="">اختر</option>
+          <option>أمدرمان</option><option>الخرطوم</option><option>بحري</option>
+        </select>
+      </label>
+      <label class="field">الحي
+        <input id="o-district" placeholder="مثلاً: الثورة">
+      </label>
+    </div>
+    <label class="field">هاتف المطعم
+      <span class="phone"><b>+249</b><input id="o-phone" inputmode="tel" placeholder="9X XXX XXXX" maxlength="9"></span>
+    </label>
+    <p id="o-err" class="err" role="alert"></p>
+  </div>
+  <div class="pad" style="padding-top:12px;padding-bottom:28px">
+    <button id="o-save" class="btn btn-primary">إرسال الطلب</button>
+  </div>
+</section>
+
+<!-- المطعم بانتظار التفعيل -->
+<section id="s-pending" class="screen">
+  <div class="center">
+    <div class="empty" style="padding:0">
+      <div class="ic">
+        <svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      </div>
+    </div>
+    <h1>مطعمك قيد المراجعة</h1>
+    <p class="muted" style="line-height:1.8;margin:0">سنتواصل معك على هاتف المطعم لتفعيل الفترة المجانية.<br>بعد التفعيل يظهر مطعمك للزبائن مباشرة.</p>
+    <button class="btn btn-outline" data-logout style="max-width:240px;margin-top:12px">تسجيل الخروج</button>
+  </div>
+</section>
+
+<!-- الرئيسية (الزبون) -->
+<section id="s-home" class="screen">
+  <div class="top">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <span class="muted" style="font-size:12px">أهلاً</span>
+        <b id="h-name" style="font-size:17px"></b>
+      </div>
+      <select id="h-city" aria-label="المدينة" style="height:44px;border:0;border-radius:14px;background:var(--fill);padding:0 12px;font-weight:700">
+        <option value="">كل المدن</option><option>أمدرمان</option><option>الخرطوم</option><option>بحري</option>
+      </select>
+    </div>
+    <label class="search">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#57534E" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="h-search" placeholder="ابحث عن مطعم" aria-label="بحث">
+    </label>
+  </div>
+  <div style="padding:0 20px"><h2>المطاعم</h2></div>
+  <div id="h-list" class="list grow"></div>
+  <nav class="tabs">
+    <button class="on"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z"/></svg>الرئيسية</button>
+    <button><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>طلباتي</button>
+    <button data-logout><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>خروج</button>
+  </nav>
+</section>
+
+<script type="module">
+import {
+  signInGoogle, logout, watchAuth, getProfile,
+  createProfile, createRestaurant, listOpenRestaurants, auth
+} from "./firebase.js";
+
+const $ = s => document.querySelector(s);
+const show = id => {
+  document.querySelectorAll(".screen").forEach(e => e.classList.remove("on"));
+  $("#s-" + id).classList.add("on");
+};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const validPhone = p => /^[19]\d{8}$/.test(p.replace(/\s/g, ""));
+
+let chosenRole = localStorage.getItem("role") || null;
+let restaurants = [];
+
+// ───── التوجيه حسب حالة الدخول ─────
+watchAuth(async user => {
+  if (!user) return show("welcome");
+  show("loading");
+  try {
+    const p = await getProfile();
+    if (!p) {
+      if (chosenRole === "owner") return show("owner");
+      $("#c-name").value = user.displayName || "";
+      return show("customer");
+    }
+    if (p.role === "owner") return show("pending");
+    $("#h-name").textContent = p.name;
+    show("home");
+    loadHome();
+  } catch (e) {
+    console.error(e);
+    show("welcome");
+    $("#welcome-err").textContent = "تعذر الاتصال. تأكد من الإنترنت وحاول مرة أخرى.";
+  }
+});
+
+// ───── الترحيب ─────
+document.querySelectorAll("[data-role]").forEach(b => b.addEventListener("click", async () => {
+  chosenRole = b.dataset.role;
+  localStorage.setItem("role", chosenRole);
+  $("#welcome-err").textContent = "";
+  try {
+    await signInGoogle();
+  } catch (e) {
+    $("#welcome-err").textContent = e.message === "NATIVE_ONLY"
+      ? "تسجيل الدخول يعمل داخل التطبيق على الهاتف فقط."
+      : "لم يكتمل تسجيل الدخول. حاول مرة أخرى.";
+  }
+}));
+
+document.querySelectorAll("[data-logout]").forEach(b => b.addEventListener("click", async () => {
+  localStorage.removeItem("role");
+  chosenRole = null;
+  await logout();
+}));
+
+// ───── بيانات الزبون ─────
+$("#c-save").addEventListener("click", async e => {
+  const name = $("#c-name").value.trim();
+  const phone = $("#c-phone").value.trim();
+  if (name.length < 2) return $("#c-err").textContent = "اكتب اسمك.";
+  if (!validPhone(phone)) return $("#c-err").textContent = "رقم الهاتف غير صحيح. 9 أرقام بعد +249.";
+  e.target.disabled = true;
+  try {
+    await createProfile({ role: "customer", name, phone: "+249" + phone });
+    $("#h-name").textContent = name;
+    show("home");
+    loadHome();
+  } catch (err) {
+    console.error(err);
+    $("#c-err").textContent = "تعذر الحفظ. حاول مرة أخرى.";
+  } finally { e.target.disabled = false; }
+});
+
+// ───── تسجيل مطعم ─────
+$("#o-save").addEventListener("click", async e => {
+  const v = id => $(id).value.trim();
+  const data = { name: v("#o-name"), category: v("#o-cat"), city: v("#o-city"), district: v("#o-district"), phone: v("#o-phone") };
+  if (data.name.length < 2) return $("#o-err").textContent = "اكتب اسم المطعم.";
+  if (!data.category || !data.city || !data.district) return $("#o-err").textContent = "أكمل التصنيف والمدينة والحي.";
+  if (!validPhone(data.phone)) return $("#o-err").textContent = "رقم الهاتف غير صحيح.";
+  data.phone = "+249" + data.phone;
+  e.target.disabled = true;
+  try {
+    await createProfile({ role: "owner", name: auth.currentUser.displayName || data.name, phone: data.phone });
+    await createRestaurant(data);
+    show("pending");
+  } catch (err) {
+    console.error(err);
+    $("#o-err").textContent = "تعذر الحفظ. حاول مرة أخرى.";
+  } finally { e.target.disabled = false; }
+});
+
+// ───── الرئيسية ─────
+async function loadHome() {
+  const list = $("#h-list");
+  list.innerHTML = Array(3).fill('<div class="skel" style="height:190px"></div>').join("");
+  try {
+    restaurants = await listOpenRestaurants();
+    renderHome();
+  } catch (e) {
+    console.error(e);
+    list.innerHTML = emptyState("تعذر تحميل المطاعم", "تأكد من الإنترنت ثم اسحب للتحديث.");
+  }
+}
+
+function renderHome() {
+  const city = $("#h-city").value;
+  const q = $("#h-search").value.trim();
+  const items = restaurants.filter(r => (!city || r.city === city) && (!q || r.name.includes(q)));
+  const list = $("#h-list");
+  if (!items.length) {
+    list.innerHTML = emptyState("لا توجد مطاعم هنا بعد", "نضيف مطاعم جديدة باستمرار. جرّب مدينة أخرى.");
+    return;
+  }
+  list.innerHTML = items.map(r => `
+    <button class="card" data-id="${esc(r.id)}">
+      <div class="cover">
+        ${r.image ? `<img src="${esc(r.image)}" alt="" loading="lazy">` : ""}
+        ${r.isOpen ? '<span class="open">مفتوح الآن</span>' : ""}
+      </div>
+      <b style="font-size:16px">${esc(r.name)}</b>
+      <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>
+    </button>`).join("");
+}
+
+function emptyState(title, sub) {
+  return `<div class="empty">
+    <div class="ic"><svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>
+    <b style="color:var(--ink);font-size:16px">${title}</b><span>${sub}</span></div>`;
+}
+
+$("#h-city").addEventListener("change", renderHome);
+$("#h-search").addEventListener("input", renderHome);
+</script>
+</body>
+</html>
