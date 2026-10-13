@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function planFields() { return ['plan', 'planUntil', 'planSource', 'planProduct', 'planToken', 'planOrderId', 'planSyncedAt']; }
+    function validPlan(p) { return p in ['free', 'starter', 'pro', 'business']; }
+
+    // حساب المستخدم: يقرأ ويعدّل بياناته فقط
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && request.resource.data.plan == 'free'
+        && !request.resource.data.keys().hasAny(['planUntil', 'planToken', 'planOrderId']);
+      allow update: if isOwner(uid)
+        && validPlan(request.resource.data.get('plan', 'free'))
+        && (
+          // تعديل عادي لا يمس الخطة
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(planFields())
+          // أو تفعيل خطة من Google Play: يجب أن يحمل رمز الشراء ورقم الطلب
+          || (request.resource.data.planSource == 'google_play'
+              && request.resource.data.planToken is string && request.resource.data.planToken.size() > 10
+              && request.resource.data.planOrderId is string && request.resource.data.planOrderId.matches('GPA[.].+'))
+          // أو الرجوع للخطة المجانية
+          || request.resource.data.plan == 'free'
+        );
+      allow delete: if isOwner(uid);   // حذف الحساب من داخل التطبيق (متطلب Google Play)
+
+      // مشاريع المستخدم (مقسّمة لأجزاء بسبب حد حجم المستند)
+      match /apps/{appId} {
+        allow read, write: if isOwner(uid);
+        match /parts/{part} {
+          allow read, write: if isOwner(uid)
+            && (request.method == 'delete' || request.resource.data.d.size() <= 900000);
+        }
+      }
+    }
+
+    // ══ سحابة بانِي: بيانات التطبيقات المبنية ببانِي ══
+    // apps/{appId}: صاحب التطبيق (owner) وأنماط مجموعاته (modes):
+    //   content = محتوى عام (دروس، منتجات): يقرؤه الجميع، ويعدّله صاحب التطبيق فقط
+    //   private = بيانات كل مستخدم (طلبات، حجوزات، تقدّم): صاحبها وصاحب التطبيق فقط
+    //   shared  = مشترك بين المسجّلين (دردشة، تعليقات): يقرؤه المسجّلون، ويعدّل كلٌّ ما كتبه
+    match /apps/{appId} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.owner == request.auth.uid;
+      allow update: if signedIn() && resource.data.owner == request.auth.uid
+        && request.resource.data.owner == resource.data.owner;
+      allow delete: if signedIn() && resource.data.owner == request.auth.uid;
+
+      function appDoc() { return get(/databases/$(database)/documents/apps/$(appId)).data; }
+      function appOwner() { return signedIn() && appDoc().owner == request.auth.uid; }
+      function mode(col) { return appDoc().modes.get(col, 'private'); }
+      function authorOf(d) { return d.get('userId', d.get('uid', d.get('ownerId', ''))); }
+
+      match /{col}/{id} {
+        allow read: if mode(col) == 'content'
+          || (mode(col) == 'shared' && signedIn())
+          || appOwner()
+          || (signedIn() && id == request.auth.uid)
+          || (signedIn() && resource != null && authorOf(resource.data) == request.auth.uid);
+        allow create: if appOwner()
+          || (mode(col) == 'shared' && signedIn())
+          || (mode(col) == 'private' && signedIn()
+              && (authorOf(request.resource.data) == request.auth.uid || id == request.auth.uid));
+        allow update: if appOwner()
+          || (mode(col) != 'content' && signedIn()
+              && (authorOf(resource.data) == request.auth.uid || id == request.auth.uid)
+              && authorOf(request.resource.data) == authorOf(resource.data));
+        allow delete: if appOwner()
+          || (mode(col) != 'content' && signedIn()
+              && (authorOf(resource.data) == request.auth.uid || id == request.auth.uid));
+      }
+    }
+
+    // أي شيء آخر ممنوع
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
