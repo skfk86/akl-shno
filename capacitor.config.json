@@ -1,0 +1,8 @@
+{
+  "appId": "com.aklshno.app",
+  "appName": "أكل شنو؟",
+  "webDir": "www",
+  "plugins": {
+    "FirebaseAuthentication": { "skipNativeAuth": false, "providers": ["google.com"] }
+  }
+}
