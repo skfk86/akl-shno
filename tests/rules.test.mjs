@@ -120,14 +120,14 @@ await t("المطعم لا يغيّر مبلغ الطلب", () => assertFails(up
 await t("بدء التحضير", () => assertSucceeds(updateDoc(doc(db("owner"), "orders", "o1"), { status: "preparing" })));
 await t("خرج للتوصيل بوقت الخادم", () => assertSucceeds(updateDoc(doc(db("owner"), "orders", "o1"), { status: "out_for_delivery", outAt: serverTimestamp() })));
 await t("تم التسليم يزيد سجل الزبون", async () => {
-  const b = writeBatch(db("owner"));
-  b.update(doc(db("owner"), "orders", "o1"), { status: "delivered" });
-  b.update(doc(db("owner"), "users", "cust"), { delivered: increment(1), lastDeliveredOrder: "o1" });
+  const s = db("owner"), b = writeBatch(s);
+  b.update(doc(s, "orders", "o1"), { status: "delivered" });
+  b.update(doc(s, "users", "cust"), { delivered: increment(1), lastDeliveredOrder: "o1" });
   await assertSucceeds(b.commit());
 });
 await t("لا يُزاد سجل الزبون مرة ثانية لنفس الطلب", async () => {
-  const b = writeBatch(db("owner"));
-  b.update(doc(db("owner"), "users", "cust"), { delivered: increment(1), lastDeliveredOrder: "o1" });
+  const s = db("owner"), b = writeBatch(s);
+  b.update(doc(s, "users", "cust"), { delivered: increment(1), lastDeliveredOrder: "o1" });
   await assertFails(b.commit());
 });
 await seed();
