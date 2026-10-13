@@ -69,16 +69,17 @@ export async function createRestaurant({ name, category, city, district, phone }
   await setDoc(doc(db, "restaurants", uid()), {
     ownerId: uid(), name, category, city, district, phone,
     isOpen: false, delivery: true, pickup: true, bankak: "",
-    subActiveUntil: null, freeTrial: false,
+    subActiveUntil: null, freeTrial: false, listed: false,
     createdAt: serverTimestamp()
   });
 }
 
-// الشرط where إلزامي، وإلا ترفض القواعد الاستعلام.
-// تصفية المدينة تتم في التطبيق لتجنب الحاجة لفهرس مركّب في البداية.
+// الشرط where('listed') إلزامي، وإلا ترفض القواعد الاستعلام.
+// المنتهي اشتراكه يُخفى هنا؛ ولا يستطيع استقبال طلبات أصلاً بحكم القواعد.
 export async function listOpenRestaurants(city) {
-  const q = query(collection(db, "restaurants"), where("subActiveUntil", ">", Timestamp.now()));
-  const all = list(await getDocs(q));
+  const q = query(collection(db, "restaurants"), where("listed", "==", true));
+  const now = Date.now();
+  const all = list(await getDocs(q)).filter(r => r.subActiveUntil && r.subActiveUntil.toMillis() > now);
   return city ? all.filter(r => r.city === city) : all;
 }
 
@@ -189,7 +190,7 @@ function extend(current, days) {
 
 export function adminActivateTrial(r, days = 60) {
   return updateDoc(doc(db, "restaurants", r.id), {
-    subActiveUntil: extend(r.subActiveUntil, days), freeTrial: true
+    subActiveUntil: extend(r.subActiveUntil, days), freeTrial: true, listed: true
   });
 }
 
@@ -201,7 +202,7 @@ export async function adminApprovePayment(p, restaurant, days = 30) {
   const b = writeBatch(db);
   b.update(doc(db, "payments", p.id), { status: "approved" });
   b.update(doc(db, "restaurants", p.restaurantId), {
-    subActiveUntil: extend(restaurant?.subActiveUntil, days)
+    subActiveUntil: extend(restaurant?.subActiveUntil, days), listed: true
   });
   await b.commit();
 }

@@ -1,82 +1,202 @@
 rules_version = '2';
+
+// أكل شنو؟ — قواعد Firestore
+// تعمل على الخطة المجانية Spark بدون Cloud Functions.
+// كل منطق الإنذارات والحظر والاشتراكات مفروض هنا، فلا يمكن تجاوزه بتعديل التطبيق.
+
 service cloud.firestore {
-  match /databases/{database}/documents {
+  match /databases/{db}/documents {
 
+    // ───────── دوال مساعدة ─────────
     function signedIn() { return request.auth != null; }
-    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
-    function planFields() { return ['plan', 'planUntil', 'planSource', 'planProduct', 'planToken', 'planOrderId', 'planSyncedAt']; }
-    function validPlan(p) { return p in ['free', 'starter', 'pro', 'business']; }
+    function uid() { return request.auth.uid; }
+    function isAdmin() {
+      return signedIn() && exists(/databases/$(db)/documents/admins/$(uid()));
+    }
+    function userDoc(id) { return get(/databases/$(db)/documents/users/$(id)).data; }
+    function restDoc(id) { return get(/databases/$(db)/documents/restaurants/$(id)).data; }
+    function activeRest(id) {
+      let r = restDoc(id);
+      return r.subActiveUntil != null && r.subActiveUntil > request.time;
+    }
+    function changedOnly(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
 
-    // حساب المستخدم: يقرأ ويعدّل بياناته فقط
-    match /users/{uid} {
-      allow read: if isOwner(uid);
-      allow create: if isOwner(uid)
-        && request.resource.data.plan == 'free'
-        && !request.resource.data.keys().hasAny(['planUntil', 'planToken', 'planOrderId']);
-      allow update: if isOwner(uid)
-        && validPlan(request.resource.data.get('plan', 'free'))
-        && (
-          // تعديل عادي لا يمس الخطة
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(planFields())
-          // أو تفعيل خطة من Google Play: يجب أن يحمل رمز الشراء ورقم الطلب
-          || (request.resource.data.planSource == 'google_play'
-              && request.resource.data.planToken is string && request.resource.data.planToken.size() > 10
-              && request.resource.data.planOrderId is string && request.resource.data.planOrderId.matches('GPA[.].+'))
-          // أو الرجوع للخطة المجانية
-          || request.resource.data.plan == 'free'
-        );
-      allow delete: if isOwner(uid);   // حذف الحساب من داخل التطبيق (متطلب Google Play)
+    // ───────── الأدمن ─────────
+    // أنشئ مستنداً باسم uid حسابك يدوياً من Firebase Console: admins/{uid}
+    match /admins/{id} {
+      allow read: if signedIn() && uid() == id;
+      allow write: if false;
+    }
 
-      // مشاريع المستخدم (مقسّمة لأجزاء بسبب حد حجم المستند)
-      match /apps/{appId} {
-        allow read, write: if isOwner(uid);
-        match /parts/{part} {
-          allow read, write: if isOwner(uid)
-            && (request.method == 'delete' || request.resource.data.d.size() <= 900000);
-        }
+    // ───────── المستخدمون ─────────
+    match /users/{userId} {
+      allow read: if signedIn() && (uid() == userId || isAdmin());
+
+      allow create: if signedIn() && uid() == userId
+        && request.resource.data.keys().hasOnly(['role', 'name', 'phone', 'addresses', 'strikes', 'delivered', 'createdAt'])
+        && request.resource.data.role in ['customer', 'owner']
+        && request.resource.data.strikes == 0
+        && request.resource.data.delivered == 0;
+
+      allow update: if isAdmin()
+        || (signedIn() && uid() == userId && changedOnly(['name', 'phone', 'addresses']))
+        || strikeFromReport(userId)
+        || deliveredFromOrder(userId);
+    }
+
+    // إنذار: +1 فقط، وفي نفس الـ batch الذي ينشئ بلاغاً جديداً عن هذا الزبون.
+    function strikeFromReport(userId) {
+      let rid = request.resource.data.lastReportId;
+      let rep = getAfter(/databases/$(db)/documents/reports/$(rid)).data;
+      return signedIn()
+        && changedOnly(['strikes', 'lastReportId'])
+        && request.resource.data.strikes == resource.data.strikes + 1
+        && !exists(/databases/$(db)/documents/reports/$(rid))
+        && rep.restaurantId == uid()
+        && rep.customerId == userId;
+    }
+
+    // طلب مستلَم: +1 مع تحويل الطلب إلى delivered في نفس الـ batch.
+    function deliveredFromOrder(userId) {
+      let oid = request.resource.data.lastDeliveredOrder;
+      let before = get(/databases/$(db)/documents/orders/$(oid)).data;
+      let after = getAfter(/databases/$(db)/documents/orders/$(oid)).data;
+      return signedIn()
+        && changedOnly(['delivered', 'lastDeliveredOrder'])
+        && request.resource.data.delivered == resource.data.delivered + 1
+        && before.status in ['out_for_delivery', 'ready']
+        && after.status == 'delivered'
+        && after.restaurantId == uid()
+        && after.customerId == userId;
+    }
+
+    // ───────── المطاعم ─────────
+    // معرّف المطعم = uid صاحبه.
+    // listed يضبطه الأدمن فقط عند التفعيل؛ القائمة تُستعلم بـ where('listed', '==', true)
+    // والتطبيق يخفي المنتهي اشتراكه. استقبال الطلبات نفسه مشروط بالاشتراك الساري (activeRest).
+    match /restaurants/{rid} {
+      allow get: if (resource.data.subActiveUntil != null && resource.data.subActiveUntil > request.time)
+        || (signedIn() && (uid() == rid || isAdmin()));
+      allow list: if signedIn() && (resource.data.listed == true || isAdmin());
+
+      allow create: if signedIn() && uid() == rid
+        && userDoc(uid()).role == 'owner'
+        && request.resource.data.ownerId == uid()
+        && request.resource.data.subActiveUntil == null
+        && request.resource.data.freeTrial == false
+        && request.resource.data.listed == false;
+
+      allow update: if isAdmin()
+        || (signedIn() && uid() == rid
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'subActiveUntil', 'freeTrial', 'listed', 'rating', 'ratingCount']));
+
+      // المنيو والعروض ومناطق التوصيل
+      match /{sub}/{docId} {
+        allow read: if true;
+        allow write: if signedIn() && uid() == rid && sub in ['menu', 'offers', 'zones'];
       }
     }
 
-    // ══ سحابة بانِي: بيانات التطبيقات المبنية ببانِي ══
-    // apps/{appId}: صاحب التطبيق (owner) وأنماط مجموعاته (modes):
-    //   content = محتوى عام (دروس، منتجات): يقرؤه الجميع، ويعدّله صاحب التطبيق فقط
-    //   private = بيانات كل مستخدم (طلبات، حجوزات، تقدّم): صاحبها وصاحب التطبيق فقط
-    //   shared  = مشترك بين المسجّلين (دردشة، تعليقات): يقرؤه المسجّلون، ويعدّل كلٌّ ما كتبه
-    match /apps/{appId} {
-      allow read: if true;
-      allow create: if signedIn() && request.resource.data.owner == request.auth.uid;
-      allow update: if signedIn() && resource.data.owner == request.auth.uid
-        && request.resource.data.owner == resource.data.owner;
-      allow delete: if signedIn() && resource.data.owner == request.auth.uid;
+    // ───────── الطلبات ─────────
+    match /orders/{oid} {
+      allow read: if signedIn()
+        && (resource.data.customerId == uid() || resource.data.restaurantId == uid() || isAdmin());
 
-      function appDoc() { return get(/databases/$(database)/documents/apps/$(appId)).data; }
-      function appOwner() { return signedIn() && appDoc().owner == request.auth.uid; }
-      function mode(col) { return appDoc().modes.get(col, 'private'); }
-      function authorOf(d) { return d.get('userId', d.get('uid', d.get('ownerId', ''))); }
+      allow create: if signedIn() && validNewOrder();
 
-      match /{col}/{id} {
-        allow read: if mode(col) == 'content'
-          || (mode(col) == 'shared' && signedIn())
-          || appOwner()
-          || (signedIn() && id == request.auth.uid)
-          || (signedIn() && resource != null && authorOf(resource.data) == request.auth.uid);
-        allow create: if appOwner()
-          || (mode(col) == 'shared' && signedIn())
-          || (mode(col) == 'private' && signedIn()
-              && (authorOf(request.resource.data) == request.auth.uid || id == request.auth.uid));
-        allow update: if appOwner()
-          || (mode(col) != 'content' && signedIn()
-              && (authorOf(resource.data) == request.auth.uid || id == request.auth.uid)
-              && authorOf(request.resource.data) == authorOf(resource.data));
-        allow delete: if appOwner()
-          || (mode(col) != 'content' && signedIn()
-              && (authorOf(resource.data) == request.auth.uid || id == request.auth.uid));
-      }
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.customerId == uid()
+            && resource.data.status == 'new'
+            && request.resource.data.status == 'cancelled'
+            && changedOnly(['status']))
+        || (signedIn() && resource.data.restaurantId == uid() && validTransition(oid));
     }
 
-    // أي شيء آخر ممنوع
-    match /{document=**} {
-      allow read, write: if false;
+    function validNewOrder() {
+      let d = request.resource.data;
+      let u = userDoc(uid());
+      return d.customerId == uid()
+        && u.role == 'customer'
+        && u.strikes < 3                                   // 3 إنذارات = حظر
+        && (u.strikes < 2 || d.payMethod == 'bankak')      // إنذاران = دفع مسبق إلزامي
+        && (u.delivered >= 2 || d.total <= 20000)          // حد أقصى لأول طلبين
+        && d.customerStrikes == u.strikes
+        && d.customerDelivered == u.delivered
+        && activeRest(d.restaurantId)
+        && d.status == 'new'
+        && d.reported == false
+        && d.type in ['delivery', 'pickup']
+        && d.payMethod in ['cash', 'bankak']
+        && d.total is number && d.total > 0
+        && d.createdAt == request.time;
+    }
+
+    function validTransition(oid) {
+      let from = resource.data.status;
+      let to = request.resource.data.status;
+      return
+        (changedOnly(['status']) && (
+            (from == 'new' && to in ['accepted', 'rejected'])
+         || (from == 'accepted' && to == 'preparing')
+         || (from == 'preparing' && to == 'ready')
+         || (from in ['out_for_delivery', 'ready'] && to == 'delivered')))
+        || (from in ['preparing', 'ready'] && to == 'out_for_delivery'
+            && resource.data.type == 'delivery'
+            && changedOnly(['status', 'outAt'])
+            && request.resource.data.outAt == request.time)
+        || (from == 'out_for_delivery'
+            && changedOnly(['reported'])
+            && resource.data.reported == false
+            && request.resource.data.reported == true
+            && existsAfter(/databases/$(db)/documents/reports/$(oid)));
+    }
+
+    // ───────── البلاغات ─────────
+    match /reports/{oid} {
+      allow read: if signedIn()
+        && (resource.data.customerId == uid() || resource.data.restaurantId == uid() || isAdmin());
+
+      allow create: if signedIn() && validNewReport(oid);
+
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.customerId == uid()
+            && resource.data.status == 'open'
+            && request.resource.data.status == 'disputed'
+            && changedOnly(['status', 'dispute'])
+            && request.resource.data.dispute is string
+            && request.resource.data.dispute.size() <= 300);
+    }
+
+    function validNewReport(oid) {
+      let d = request.resource.data;
+      let o = get(/databases/$(db)/documents/orders/$(oid)).data;
+      let cust = d.customerId;
+      return o.restaurantId == uid()
+        && o.status == 'out_for_delivery'
+        && o.reported == false
+        && d.restaurantId == uid()
+        && cust == o.customerId
+        && d.reason in ['no_answer', 'refused', 'fake_address']
+        && d.status == 'open'
+        && d.createdAt == request.time
+        && getAfter(/databases/$(db)/documents/orders/$(oid)).data.reported == true
+        && getAfter(/databases/$(db)/documents/users/$(cust)).data.strikes
+             == get(/databases/$(db)/documents/users/$(cust)).data.strikes + 1;
+    }
+
+    // ───────── مدفوعات الاشتراك (بنكك) ─────────
+    match /payments/{pid} {
+      allow read: if signedIn() && (resource.data.restaurantId == uid() || isAdmin());
+      allow create: if signedIn()
+        && request.resource.data.restaurantId == uid()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.txnId is string
+        && request.resource.data.txnId.size() <= 40
+        && request.resource.data.amount is number
+        && request.resource.data.createdAt == request.time;
+      allow update: if isAdmin();
     }
   }
 }
