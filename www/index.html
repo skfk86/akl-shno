@@ -96,11 +96,17 @@
   .search:focus-within{box-shadow:0 0 0 2px var(--accent)}
   .list{padding:8px 20px 20px;display:flex;flex-direction:column;gap:14px}
 
+  /* خلفية العلامة: تدرج برتقالي مع نقاط مثل أغلفة المطاعم */
+  .brand-bg{background:radial-gradient(circle at 20% 20%, rgba(255,255,255,.14) 0 2px, transparent 3px) 0 0/22px 22px,
+    linear-gradient(140deg,#EA580C,var(--accent) 55%,var(--accent-dark))}
+
   /* الترحيب */
-  .hero{flex:1;background:var(--accent);color:#fff;border-radius:0 0 36px 36px;
+  .hero{flex:1;color:#fff;border-radius:0 0 36px 36px;max-height:62dvh;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
   .logo{width:96px;height:96px;border-radius:28px;background:#fff;color:var(--accent);
-    display:flex;align-items:center;justify-content:center}
+    display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(67,20,7,.3)}
+  .role{transition:transform .12s,border-color .15s}
+  .role:active{transform:scale(.98)}
   .role{display:flex;align-items:center;gap:14px;width:100%;padding:16px;border-radius:18px;
     border:1px solid var(--line);background:#fff;text-align:right}
   .role.primary{border:2px solid var(--accent)}
@@ -216,7 +222,7 @@
   .chips::-webkit-scrollbar{display:none}
   .chip{flex-shrink:0;border:0;padding:9px 15px;border-radius:999px;background:var(--fill);font-size:14px;white-space:nowrap}
   .chip.on{background:var(--ink);color:#fff;font-weight:500}
-  .promo{margin:0 20px;border-radius:20px;background:var(--accent);color:#fff;padding:18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .promo{margin:0 20px;border-radius:20px;color:#fff;box-shadow:0 6px 18px rgba(194,65,12,.25);padding:18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
   .cover .icon{color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 6px rgba(0,0,0,.15))}
   .cover .tag2{position:absolute;bottom:10px;left:10px;background:var(--ink);color:#fff;font-size:12px;font-weight:500;padding:5px 10px;border-radius:999px}
   .mini{display:flex;gap:12px;align-items:center;border:0;background:none;padding:0;text-align:right;width:100%}
@@ -233,12 +239,12 @@
 
 <!-- ═════════ الترحيب ═════════ -->
 <section id="s-welcome" class="screen">
-  <div class="hero">
+  <div class="hero brand-bg">
     <div class="logo"><svg aria-hidden="true" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>
     <span style="font-size:34px;font-weight:700">أكل شنو؟</span>
     <span style="font-size:15px;text-align:center;line-height:1.7">أكل مطاعمك المفضلة<br>لحدي باب البيت</span>
   </div>
-  <div class="pad col gap14" style="padding-top:28px;padding-bottom:32px">
+  <div class="pad col gap14" style="padding-top:28px;padding-bottom:32px;margin-top:auto">
     <h2 style="text-align:center">كيف تريد استخدام التطبيق؟</h2>
     <button class="role primary" data-role="customer">
       <div class="ic" style="background:var(--accent-soft);color:var(--accent)"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></div>
@@ -305,10 +311,10 @@
       <input id="h-search" placeholder="ابحث عن مطعم" aria-label="بحث" style="flex:1;border:0;background:none;outline:none;font-size:15px">
     </label>
   </div>
-  <div class="promo">
+  <div class="promo brand-bg">
     <div class="col" style="gap:3px"><span style="font-size:12px;font-weight:500;opacity:.9">أكل شنو؟</span>
       <b style="font-size:19px">أكل مطاعمك لحدي البيت</b><span style="font-size:13px">ادفع عند الاستلام أو ببنكك</span></div>
-    <svg aria-hidden="true" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h2l3 11.5M5.5 17.5 9 10h6l3.5 7.5M9 10 7.5 6H5"/></svg>
+    <span style="width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h2l3 11.5M5.5 17.5 9 10h6l3.5 7.5M9 10 7.5 6H5"/></svg></span>
   </div>
   <div id="h-top"></div>
   <div id="h-cats" class="chips" style="padding-top:16px;padding-bottom:16px"></div>
@@ -374,7 +380,7 @@
   <div class="header"><button class="icon-btn" id="ab-back" aria-label="رجوع"></button><h1>عن التطبيق</h1></div>
   <div class="col gap14 grow" style="padding:8px 20px 24px">
     <div class="col" style="align-items:center;gap:10px;padding:16px 0">
-      <div class="logo" style="background:var(--accent);color:#fff;width:84px;height:84px;border-radius:24px"></div>
+      <div class="logo brand-bg" style="color:#fff;width:84px;height:84px;border-radius:24px"></div>
       <b style="font-size:24px">أكل شنو؟</b><span class="muted" id="ab-ver"></span>
     </div>
     <p style="line-height:1.9;margin:0">أكل شنو؟ يجمع مطاعم السودان في مكان واحد: تصفح المنيو، اطلب للبيت أو استلم من المطعم، وتابع طلبك لحظة بلحظة. الدفع عند الاستلام أو ببنكك.</p>
@@ -741,7 +747,7 @@ function renderHome() {
       || (myLoc && hasLoc(a) && hasLoc(b) ? distKm(myLoc, [a.lat, a.lng]) - distKm(myLoc, [b.lat, b.lng]) : 0));
   homeItems = items;
   const top = inCity.filter(r => r.ratingCount).sort((a, b) => avgOf(b) - avgOf(a) || b.ratingCount - a.ratingCount).slice(0, 8);
-  $("#h-top").innerHTML = top.length && !q ? `<div class="pad row between" style="margin-top:18px;margin-bottom:10px"><h2 id="top-title">الأعلى تقييماً</h2>${starIcon("#F59E0B", 18)}</div>
+  $("#h-top").innerHTML = top.length && !q ? `<div class="pad row gap6" style="margin-top:18px;margin-bottom:10px">${starIcon("#F59E0B", 20)}<h2 id="top-title">الأعلى تقييماً</h2></div>
     <div class="hscroll">${top.map(r => `<button class="top-card" data-rest="${esc(r.id)}">
       <div class="cover" style="${coverBg(r.name)}"><span class="icon">${catIcon(r.category, 36)}</span></div>
       <b style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.name)}</b>
@@ -860,11 +866,11 @@ function renderRestaurant() {
     .sort((a, b) => (b.available ? 1 : 0) - (a.available ? 1 : 0));
   const n = cartCount();
   $("#r-body").innerHTML = `
-    <div class="cover" style="height:190px;border-radius:0;${coverBg(r.name)}"><span class="icon">${catIcon(r.category, 72)}</span>
+    <div class="cover" style="height:210px;border-radius:0;box-shadow:none;${coverBg(r.name)}"><span class="icon" style="margin-bottom:24px">${catIcon(r.category, 72)}</span>
       <button class="icon-btn" data-go="home" aria-label="رجوع" style="position:absolute;top:16px;right:16px;background:#fff">${I.back}</button>
     </div>
-    <div class="col gap10" style="padding:16px 20px 12px">
-      <div class="row between"><h1>${esc(r.name)}</h1>
+    <div class="col gap10" style="padding:20px 20px 12px;margin-top:-24px;border-radius:24px 24px 0 0;background:#fff;position:relative">
+      <div class="row between gap10"><h1>${esc(r.name)}</h1>
         <span class="badge ${r.isOpen ? "b-green" : "b-gray"}">${r.isOpen ? "مفتوح الآن" : "مغلق"}</span></div>
       <div class="meta" style="align-items:center">${ratingTag(r)}${verifiedTag(r)}<span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>
       ${r.hours ? `<span class="muted">ساعات العمل: ${esc(r.hours)}</span>` : ""}
@@ -1117,7 +1123,7 @@ async function renderTrack(o) {
   $("#t-body").innerHTML = `
     <div class="header"><button class="icon-btn" data-go="myorders" aria-label="رجوع">${I.back}</button>
       <div class="col"><h1 style="font-size:19px">طلب #${esc(o.id.slice(-5).toUpperCase())}</h1><span class="muted">${esc(o.restaurantName)}</span></div></div>
-    <div style="margin:4px 20px 0;padding:20px;border-radius:22px;background:${ended ? "var(--fill)" : "var(--accent)"};color:${ended ? "var(--ink)" : "#fff"}" class="col gap6">
+    <div style="margin:4px 20px 0;padding:20px;border-radius:22px;${ended ? "background:var(--fill)" : "box-shadow:0 6px 18px rgba(194,65,12,.25)"};color:${ended ? "var(--ink)" : "#fff"}" class="col gap6 ${ended ? "" : "brand-bg"}">
       <span style="font-size:13px">حالة الطلب</span><span style="font-size:26px;font-weight:700">${headline}</span>
       <span style="font-size:14px">${o.type === "pickup" ? "استلام من المطعم" : "توصيل إلى " + esc(o.zone)}</span>
     </div>
