@@ -2,3 +2,4 @@ node_modules/
 android/app/build/
 *.keystore
 *.jks
+tests/firestore.rules
