@@ -18,6 +18,9 @@
     --r:16px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}
+  svg{flex-shrink:0}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
     font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;font-size:15px}
   button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
@@ -36,8 +39,9 @@
   .muted{color:var(--muted);font-size:13px}
   .err{color:var(--red);font-size:13px;min-height:18px;margin:0}
   .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
-    height:54px;border:0;border-radius:var(--r);font-size:16px;font-weight:700}
-  .btn-sm{height:44px;font-size:14px;border-radius:14px}
+    height:54px;border:0;border-radius:var(--r);font-size:16px;font-weight:700;transition:transform .12s,background .15s}
+  .btn:active:not(:disabled){transform:scale(.98)}
+  .btn-sm{height:44px;font-size:14px;border-radius:14px;white-space:nowrap}
   .btn-primary{background:var(--accent);color:#fff}
   .btn-primary:active{background:var(--accent-dark)}
   .btn-dark{background:var(--dark);color:#fff}
@@ -68,10 +72,11 @@
   .n-orange{background:var(--accent-soft);color:var(--accent-dark)}
   .n-blue{background:#EFF6FF;color:#1E3A8A}
   .n-red{background:var(--red-soft);color:#991B1B}
-  .box{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px}
+  .box{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 1px 2px rgba(28,25,23,.04)}
   .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;padding:4px;border-radius:14px;background:var(--fill);font-size:13px}
   .seg button{border:0;background:none;padding:10px 4px;border-radius:10px;color:var(--muted)}
-  .seg button.on{background:#fff;color:var(--ink);font-weight:700}
+  .seg button{transition:background .15s,color .15s}
+  .seg button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(28,25,23,.1)}
   .switch{position:relative;width:48px;height:28px;flex-shrink:0}
   .switch input{opacity:0;width:100%;height:100%;margin:0;position:absolute;cursor:pointer;z-index:1}
   .switch span{position:absolute;inset:0;border-radius:999px;background:#D6D3D1;transition:.2s}
@@ -84,7 +89,11 @@
     display:flex;justify-content:space-around;align-items:center;padding-bottom:env(safe-area-inset-bottom);z-index:5}
   nav.tabs button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;
     font-size:11px;color:var(--muted);min-width:64px;min-height:44px}
+  nav.tabs button{position:relative}
   nav.tabs button.on{color:var(--accent);font-weight:700}
+  nav.tabs button.on::before{content:"";position:absolute;top:-13px;width:28px;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
+  .search{height:48px;padding:0 14px;border-radius:14px;background:var(--fill);transition:box-shadow .15s}
+  .search:focus-within{box-shadow:0 0 0 2px var(--accent)}
   .list{padding:8px 20px 20px;display:flex;flex-direction:column;gap:14px}
 
   /* الترحيب */
@@ -98,8 +107,9 @@
   .role .ic{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
   /* البطاقات */
+  .card:active,.mini:active,.top-card:active{opacity:.85}
   .card{display:flex;flex-direction:column;gap:7px;border:0;background:none;padding:0;text-align:right;width:100%}
-  .cover{height:140px;border-radius:18px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;
+  .cover{height:140px;border-radius:18px;box-shadow:0 2px 8px rgba(28,25,23,.08);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;
     font-size:44px;font-weight:700;color:rgba(255,255,255,.9)}
   .cover .tag{position:absolute;top:10px;right:10px;background:#fff;font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px}
   .meta{display:flex;gap:12px;font-size:13px;color:var(--muted);flex-wrap:wrap}
@@ -152,7 +162,7 @@
   .steps li{display:flex;gap:14px;min-height:60px}
   .dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
   .vline{width:2px;flex:1}
-  .ocard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .ocard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 3px rgba(28,25,23,.05)}
   .ocard.hot{border:2px solid var(--accent)}
   .dark-head{background:var(--dark);color:#fff;padding:16px 20px;display:flex;flex-direction:column;gap:14px}
   .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -193,7 +203,7 @@
   .mrow:active{background:var(--fill)}
   .mrow .chev{margin-inline-start:auto;color:var(--muted);transform:scaleX(-1)}
   .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-  .kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px;box-shadow:0 1px 2px rgba(28,25,23,.04)}
   .kpi b{font-size:22px}.kpi span{font-size:12px;color:var(--muted)}
   .bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding-top:8px}
   .bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;font-size:11px;color:var(--muted)}
@@ -290,7 +300,7 @@
       </label>
       <button id="h-refresh" class="icon-btn" aria-label="تحديث"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
     </div>
-    <label class="row gap10" style="height:48px;padding:0 14px;border-radius:14px;background:var(--fill)">
+    <label class="search row gap10">
       <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#57534E" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
       <input id="h-search" placeholder="ابحث عن مطعم" aria-label="بحث" style="flex:1;border:0;background:none;outline:none;font-size:15px">
     </label>
@@ -409,12 +419,13 @@ const CONFIG = {
 // ═════════ أدوات ═════════
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const LOC = "ar-SD-u-nu-latn"; // أرقام لاتينية في التاريخ والوقت لتطابق الأسعار
 const money = n => Number(n || 0).toLocaleString("en") + " ج";
 const wa = (phone, text = "") => `https://wa.me/${String(phone).replace(/\D/g, "")}${text ? "?text=" + encodeURIComponent(text) : ""}`;
 const validPhone = p => /^[19]\d{8}$/.test(p.replace(/\s/g, ""));
 const tsDate = t => t?.toDate ? t.toDate() : null;
 const daysLeft = t => { const d = tsDate(t); return d ? Math.ceil((d - Date.now()) / 864e5) : null; };
-const timeStr = t => { const d = tsDate(t); return d ? d.toLocaleTimeString("ar-SD", { hour: "numeric", minute: "2-digit" }) : ""; };
+const timeStr = t => { const d = tsDate(t); return d ? d.toLocaleTimeString(LOC, { hour: "numeric", minute: "2-digit" }) : ""; };
 const COLORS = ["#C2410C", "#15803D", "#1D4ED8", "#7C3AED", "#B45309", "#0F766E", "#BE185D"];
 const colorOf = s => COLORS[[...String(s)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
 const initial = s => esc(String(s || "؟").trim().charAt(0));
@@ -481,7 +492,7 @@ function pickerMap(boxId, start, zoom, onPick) {
   const box = $("#" + boxId);
   if (!window.L) { box.innerHTML = emptyState("تعذر تحميل الخريطة", "تأكد من الإنترنت ثم حاول مرة أخرى."); return null; }
   box.innerHTML = `<div></div><span class="center-pin">${PIN_SVG}</span><span class="map-hint">حرّك الخريطة ليقع الدبوس على المكان</span>${zoomCtl()}
-    <button class="map-fab" data-me style="bottom:12px;left:10px" aria-label="موقعي الحالي">${I.pin}</button>`;
+    <button class="map-fab" data-me style="bottom:34px;left:10px" aria-label="موقعي الحالي">${I.pin}</button>`;
   const m = makeMap(box.firstElementChild, start, zoom);
   bindZoom(box, m);
   m.on("movestart", () => box.classList.add("moving"));
@@ -861,7 +872,7 @@ function renderRestaurant() {
         <a class="row gap6" href="${wa(r.phone, "مرحباً، أريد الطلب من " + r.name + "\n")}" target="_blank" style="color:var(--green);font-weight:700;text-decoration:none">${I.wa}اطلب عبر واتساب</a>
         ${CONFIG.ADMIN_WHATSAPP ? `<a class="row gap6" href="${wa(CONFIG.ADMIN_WHATSAPP, "بلاغ عن مطعم " + r.name + ":\n")}" target="_blank" style="color:var(--muted);text-decoration:none">${I.flag}إبلاغ عن المطعم</a>` : ""}</div>
       ${!r.isOpen ? `<div class="note n-red">${I.info}المطعم مغلق الآن، يمكنك التصفح فقط.</div>` : ""}
-      ${activeOffers.map(o => `<div class="note n-orange">${I.info}<span><b>${esc(o.title)}</b>${o.endsAt ? ` · حتى ${tsDate(o.endsAt).toLocaleDateString("ar-SD")}` : ""}</span></div>`).join("")}
+      ${activeOffers.map(o => `<div class="note n-orange">${I.info}<span><b>${esc(o.title)}</b>${o.endsAt ? ` · حتى ${tsDate(o.endsAt).toLocaleDateString(LOC)}` : ""}</span></div>`).join("")}
       ${r.delivery && r.pickup ? `<div class="seg" id="r-type">
         <button data-type="delivery" class="${cart.type === "delivery" ? "on" : ""}">توصيل</button>
         <button data-type="pickup" class="${cart.type === "pickup" ? "on" : ""}">استلام من المطعم</button></div>`
@@ -1460,7 +1471,7 @@ function renderOwnerStats() {
   const days = [...Array(7)].map((_, i) => {
     const d = new Date(new Date().setHours(0, 0, 0, 0) - (6 - i) * DAY);
     const n = ownerOrders.filter(o => o.status === "delivered" && t(o) >= d.getTime() && t(o) < d.getTime() + DAY).length;
-    return [d.toLocaleDateString("ar-SD", { weekday: "short" }), n];
+    return [d.toLocaleDateString(LOC, { weekday: "short" }), n];
   });
   const maxD = Math.max(1, ...days.map(d => d[1]));
   const r = myRest;
@@ -1497,7 +1508,7 @@ async function renderOwnerMenu() {
     <div class="row between"><h2>العروض</h2><button class="link" data-new="offer" style="border:0;background:none;color:var(--accent);font-weight:700">+ عرض جديد</button></div>
     ${offers.length ? offers.map(o => `<div class="box row gap10">
       <div class="col gap6 grow"><b style="font-size:14px">${esc(o.title)}</b>
-        <span class="muted">${o.endsAt ? "ينتهي " + tsDate(o.endsAt).toLocaleDateString("ar-SD") : "بدون تاريخ انتهاء"}</span></div>
+        <span class="muted">${o.endsAt ? "ينتهي " + tsDate(o.endsAt).toLocaleDateString(LOC) : "بدون تاريخ انتهاء"}</span></div>
       <span class="switch"><input type="checkbox" data-offer-toggle="${esc(o.id)}" ${o.active ? "checked" : ""} aria-label="تفعيل العرض"><span></span></span>
       <button class="icon-btn" data-del-offer="${esc(o.id)}" aria-label="حذف العرض" style="color:var(--red)">${I.trash}</button></div>`).join("")
       : `<span class="muted">لا توجد عروض. أضف عرضاً مثل "توصيل مجاني فوق 10,000 ج".</span>`}
@@ -1704,7 +1715,7 @@ async function loadAdmin() {
     body.innerHTML = pays.length ? pays.map(p => {
       const r = rest.find(x => x.id === p.restaurantId);
       return `<div class="box col gap10" style="border:2px solid var(--accent)">
-        <div class="row between"><b>${esc(r?.name || "مطعم")}</b><span class="muted">${tsDate(p.createdAt)?.toLocaleString("ar-SD") || ""}</span></div>
+        <div class="row between"><b>${esc(r?.name || "مطعم")}</b><span class="muted">${tsDate(p.createdAt)?.toLocaleString(LOC) || ""}</span></div>
         <div class="row2" style="font-size:13px"><div class="col"><span class="muted">رقم العملية</span><b dir="ltr" style="text-align:right">${esc(p.txnId)}</b></div>
           <div class="col"><span class="muted">المبلغ</span><b>${money(p.amount)}</b></div></div>
         <div class="row gap10"><button class="btn btn-sm btn-green" data-pay-ok="${esc(p.id)}">تفعيل شهر</button>
