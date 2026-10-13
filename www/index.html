@@ -175,6 +175,27 @@
     font-size:14px;text-align:center;opacity:0;pointer-events:none;transition:.25s;transform:translateY(10px)}
   #toast.on{opacity:1;transform:none}
   a.link{color:var(--accent);font-weight:700;text-decoration:none}
+  .drawer{position:fixed;inset:0;z-index:70;display:none}
+  .drawer.on{display:block}
+  .drawer-bg{position:absolute;inset:0;background:rgba(28,25,23,.45)}
+  .drawer-body{position:absolute;top:0;bottom:0;right:0;width:min(84vw,320px);background:#fff;display:flex;flex-direction:column;
+    padding:calc(20px + env(safe-area-inset-top)) 0 calc(16px + env(safe-area-inset-bottom));animation:slide .2s ease-out;overflow:auto}
+  @keyframes slide{from{transform:translateX(40px);opacity:0}}
+  .drawer-head{padding:0 20px 18px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center}
+  .avatar{width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;flex-shrink:0}
+  .mrow{display:flex;align-items:center;gap:14px;width:100%;border:0;background:none;padding:14px 20px;font-size:15px;text-align:right;color:var(--ink);text-decoration:none}
+  .mrow:active{background:var(--fill)}
+  .mrow .chev{margin-inline-start:auto;color:var(--muted);transform:scaleX(-1)}
+  .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px}
+  .kpi b{font-size:22px}.kpi span{font-size:12px;color:var(--muted)}
+  .bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding-top:8px}
+  .bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;font-size:11px;color:var(--muted)}
+  .bars i{display:block;width:100%;border-radius:8px 8px 4px 4px;background:var(--accent);min-height:4px}
+  .hscroll{display:flex;gap:12px;overflow-x:auto;padding:0 20px 4px;scrollbar-width:none}
+  .hscroll::-webkit-scrollbar{display:none}
+  .top-card{flex:0 0 150px;border:0;background:none;padding:0;text-align:right;display:flex;flex-direction:column;gap:6px}
+  .top-card .cover{height:100px;border-radius:16px}
   .chips{display:flex;gap:8px;overflow-x:auto;padding:0 20px 4px;scrollbar-width:none}
   .chips::-webkit-scrollbar{display:none}
   .chip{flex-shrink:0;border:0;padding:9px 15px;border-radius:999px;background:var(--fill);font-size:14px;white-space:nowrap}
@@ -250,8 +271,9 @@
 <!-- ═════════ الزبون: الرئيسية ═════════ -->
 <section id="s-home" class="screen">
   <div class="col gap14" style="padding:16px 20px 12px">
-    <div class="row between">
-      <label class="col" style="gap:2px">
+    <div class="row between gap10">
+      <button class="icon-btn" data-drawer aria-label="القائمة"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+      <label class="col grow" style="gap:2px">
         <span class="muted" style="font-size:12px">أهلاً <span id="h-name"></span> · التوصيل إلى</span>
         <span class="row gap6" style="font-weight:700;font-size:16px;color:var(--ink)">
           <span style="color:var(--accent)"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
@@ -272,6 +294,7 @@
       <b style="font-size:19px">أكل مطاعمك لحدي البيت</b><span style="font-size:13px">ادفع عند الاستلام أو ببنكك</span></div>
     <svg aria-hidden="true" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h2l3 11.5M5.5 17.5 9 10h6l3.5 7.5M9 10 7.5 6H5"/></svg>
   </div>
+  <div id="h-top"></div>
   <div id="h-cats" class="chips" style="padding-top:16px;padding-bottom:16px"></div>
   <div class="pad row between" style="margin-bottom:6px">
     <div class="col"><h2 id="h-title">المطاعم</h2><span id="h-count" class="muted"></span></div>
@@ -323,6 +346,38 @@
   <div id="ad-body" class="list grow" style="padding-top:16px"></div>
 </section>
 
+<!-- ═════════ حسابي ═════════ -->
+<section id="s-account" class="screen" style="background:var(--bg2)">
+  <div class="header"><h1>حسابي</h1></div>
+  <div id="ac-body" class="col grow"></div>
+  <nav class="tabs" data-nav="customer"></nav>
+</section>
+
+<!-- ═════════ عن التطبيق ═════════ -->
+<section id="s-about" class="screen">
+  <div class="header"><button class="icon-btn" id="ab-back" aria-label="رجوع"></button><h1>عن التطبيق</h1></div>
+  <div class="col gap14 grow" style="padding:8px 20px 24px">
+    <div class="col" style="align-items:center;gap:10px;padding:16px 0">
+      <div class="logo" style="background:var(--accent);color:#fff;width:84px;height:84px;border-radius:24px"></div>
+      <b style="font-size:24px">أكل شنو؟</b><span class="muted" id="ab-ver"></span>
+    </div>
+    <p style="line-height:1.9;margin:0">أكل شنو؟ يجمع مطاعم السودان في مكان واحد: تصفح المنيو، اطلب للبيت أو استلم من المطعم، وتابع طلبك لحظة بلحظة. الدفع عند الاستلام أو ببنكك.</p>
+    <div class="box col gap10">
+      <b>كيف يعمل؟</b>
+      <div class="row gap10"><span class="badge b-orange">1</span><span>اختر مطعماً قريباً منك وأضف الأصناف للسلة</span></div>
+      <div class="row gap10"><span class="badge b-orange">2</span><span>حدد موقعك على الخريطة واكتب معلماً قريباً</span></div>
+      <div class="row gap10"><span class="badge b-orange">3</span><span>تابع الطلب حتى يصلك، ثم قيّم المطعم</span></div>
+    </div>
+    <div class="box col gap10">
+      <b>لأصحاب المطاعم</b>
+      <span class="muted" style="font-size:14px;line-height:1.8">سجّل مطعمك واستقبل الطلبات مباشرة باشتراك شهري ثابت بدون عمولة على الطلبات. أول شهرين مجاناً لأول المطاعم.</span>
+    </div>
+    <div class="col" id="ab-links"></div>
+    <span class="muted" style="text-align:center;font-size:12px">صُنع في السودان 🇸🇩</span>
+  </div>
+</section>
+
+<div id="drawer" class="drawer" role="dialog" aria-modal="true" aria-label="القائمة"><div class="drawer-bg"></div><div class="drawer-body"></div></div>
 <div id="sheet" class="sheet" role="dialog" aria-modal="true"><div class="sheet-bg"></div><div class="sheet-body"></div></div>
 <div id="toast" role="status"></div>
 
@@ -441,6 +496,14 @@ function distKm(a, b) {
 const hasLoc = r => typeof r?.lat === "number" && typeof r?.lng === "number";
 const distTag = r => myLoc && hasLoc(r) ? `<span>${(d => d < 1 ? Math.round(d * 1000) + " م" : d.toFixed(1) + " كم")(distKm(myLoc, [r.lat, r.lng]))}</span>` : "";
 
+I.chart = '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>';
+I.info2 = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>';
+I.star = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1Z"/></svg>';
+I.out = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>';
+I.chev = '<svg aria-hidden="true" class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
+I.shield = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>';
+const APP_VERSION = "1.0.0";
+
 const ST = { new: "جديد", accepted: "تم القبول", preparing: "قيد التحضير", ready: "جاهز للاستلام",
   out_for_delivery: "في الطريق", delivered: "تم التسليم", rejected: "مرفوض", cancelled: "ملغي" };
 const ST_BADGE = { new: "b-blue", accepted: "b-orange", preparing: "b-orange", ready: "b-orange",
@@ -481,8 +544,8 @@ const skeleton = (n, h) => Array(n).fill(`<div class="skel" style="height:${h}px
 
 // ═════════ أشرطة التنقل ═════════
 const NAVS = {
-  customer: [["home", I.home, "الرئيسية"], ["myorders", I.bag, "طلباتي"], ["logout", I.user, "خروج"]],
-  owner: [["orders", I.clip, "الطلبات"], ["menu", I.menu, "المنيو"], ["settings", I.gear, "الإعدادات"]]
+  customer: [["home", I.home, "الرئيسية"], ["myorders", I.bag, "طلباتي"], ["account", I.user, "حسابي"]],
+  owner: [["orders", I.clip, "الطلبات"], ["menu", I.menu, "المنيو"], ["stats", I.chart, "الإحصاءات"], ["settings", I.gear, "الإعدادات"]]
 };
 function renderNav(kind, active) {
   document.querySelectorAll(`nav[data-nav="${kind}"]`).forEach(n => {
@@ -495,7 +558,10 @@ document.addEventListener("click", e => {
   if (k === "logout") return doLogout();
   if (k === "home") return showHome();
   if (k === "myorders") return showMyOrders();
-  if (["orders", "menu", "settings"].includes(k)) return ownerTab(k);
+  if (k === "account") return showAccount();
+  if (k === "about") return showAbout();
+  if (k === "top") { showHome(); return setTimeout(() => $("#top-title")?.scrollIntoView({ behavior: "smooth" }), 400); }
+  if (["orders", "menu", "stats", "settings"].includes(k)) return ownerTab(k);
 });
 
 async function doLogout() {
@@ -599,6 +665,12 @@ function renderHome() {
     .sort((a, b) => (b.isOpen ? 1 : 0) - (a.isOpen ? 1 : 0)
       || (myLoc && hasLoc(a) && hasLoc(b) ? distKm(myLoc, [a.lat, a.lng]) - distKm(myLoc, [b.lat, b.lng]) : 0));
   homeItems = items;
+  const top = inCity.filter(r => r.ratingCount).sort((a, b) => avgOf(b) - avgOf(a) || b.ratingCount - a.ratingCount).slice(0, 8);
+  $("#h-top").innerHTML = top.length && !q ? `<div class="pad row between" style="margin-top:18px;margin-bottom:10px"><h2 id="top-title">الأعلى تقييماً</h2>${starIcon("#F59E0B", 18)}</div>
+    <div class="hscroll">${top.map(r => `<button class="top-card" data-rest="${esc(r.id)}">
+      <div class="cover" style="${coverBg(r.name)}"><span class="icon">${catIcon(r.category, 36)}</span></div>
+      <b style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.name)}</b>
+      <span style="font-size:13px">${ratingTag(r)}</span></button>`).join("")}</div>` : "";
   const open = items.filter(r => r.isOpen).length;
   $("#h-title").textContent = city ? `مطاعم ${city}` : "المطاعم";
   $("#h-count").textContent = items.length ? `${open} مفتوح الآن` : "";
@@ -672,6 +744,7 @@ $("#h-cats").addEventListener("click", e => { const c = e.target.closest("[data-
 $("#h-city").addEventListener("change", renderHome);
 $("#h-search").addEventListener("input", renderHome);
 $("#h-refresh").addEventListener("click", showHome);
+$("#h-top").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 $("#h-list").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 
 // ───── صفحة المطعم ─────
@@ -1056,6 +1129,110 @@ function showMyOrders() {
 }
 $("#mo-list").addEventListener("click", e => { const b = e.target.closest("[data-track]"); if (b) openTrack(b.dataset.track); });
 
+// ───── القائمة الجانبية ─────
+function openDrawer() {
+  const d = $("#drawer");
+  const row = (go, ic, t) => `<button class="mrow" data-go="${go}">${ic}<span>${t}</span>${I.chev}</button>`;
+  d.querySelector(".drawer-body").innerHTML = `
+    <div class="drawer-head"><div class="avatar">${initial(me?.name)}</div>
+      <div class="col"><b style="font-size:16px">${esc(me?.name)}</b><span class="muted" dir="ltr" style="text-align:right">${esc(me?.phone)}</span></div></div>
+    <div class="col" style="padding:8px 0">
+      ${row("home", I.home, "الرئيسية")}${row("top", I.star, "الأعلى تقييماً")}${row("myorders", I.bag, "طلباتي")}
+      ${row("account", I.user, "حسابي")}${row("about", I.info2, "عن التطبيق")}
+      ${CONFIG.ADMIN_WHATSAPP ? `<a class="mrow" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، أحتاج مساعدة في أكل شنو؟\n")}" target="_blank">${I.wa}<span>تواصل معنا</span>${I.chev}</a>` : ""}
+      ${isAdmin ? row("admin", I.shield, "لوحة الأدمن") : ""}
+    </div>
+    <div class="grow"></div>
+    <button class="mrow" data-go="logout" style="color:var(--red)">${I.out}<span>تسجيل الخروج</span></button>
+    <span class="muted" style="padding:0 20px;font-size:12px">أكل شنو؟ · الإصدار ${APP_VERSION}</span>`;
+  d.classList.add("on");
+}
+const closeDrawer = () => $("#drawer").classList.remove("on");
+$("#drawer .drawer-bg").addEventListener("click", closeDrawer);
+$("#drawer").addEventListener("click", e => { if (e.target.closest("[data-go], a")) closeDrawer(); });
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-drawer]")) openDrawer();
+  if (e.target.closest('[data-go="admin"]')) showAdmin();
+});
+
+// ───── حسابي ─────
+function showAccount() {
+  clearSubs();
+  renderNav("customer", "account");
+  show("account");
+  const body = $("#ac-body");
+  const render = orders => {
+    const delivered = orders.filter(o => o.status === "delivered");
+    const spent = delivered.reduce((a, o) => a + (o.total || 0), 0);
+    const addrs = me.addresses || [];
+    const row = (go, ic, t, extra = "") => `<button class="mrow" data-go="${go}" ${extra}>${ic}<span>${t}</span>${I.chev}</button>`;
+    body.innerHTML = `
+      <div class="col gap14" style="padding:6px 20px 20px">
+        <div class="box row gap14">
+          <div class="avatar">${initial(me.name)}</div>
+          <div class="col grow"><b style="font-size:17px">${esc(me.name)}</b><span class="muted" dir="ltr" style="text-align:right">${esc(me.phone)}</span></div>
+          <button class="icon-btn" id="ac-edit" aria-label="تعديل البيانات">${I.edit}</button>
+        </div>
+        <div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+          <div class="kpi"><b>${orders.length}</b><span>طلب</span></div>
+          <div class="kpi"><b>${delivered.length}</b><span>مستلَم</span></div>
+          <div class="kpi"><b style="font-size:16px">${money(spent)}</b><span>إجمالي المشتريات</span></div>
+        </div>
+        ${me.strikes ? `<div class="note n-red">${I.warn}<span>على حسابك ${me.strikes} إنذار بسبب طلبات لم تُستلم. ${me.strikes >= 2 ? "الدفع المسبق ببنكك إلزامي لطلباتك." : "إنذار آخر يجعل الدفع المسبق إلزامياً."}</span></div>` : ""}
+        <h2>عناويني</h2>
+        <div class="box col" style="padding:4px 14px">
+          ${addrs.length ? addrs.map((a, i) => `<div class="row gap10" style="padding:10px 0;${i ? "border-top:1px solid var(--fill)" : ""}">
+            <span style="color:var(--accent)">${I.pin}</span><div class="col grow"><b style="font-size:14px">${esc(a.label)}</b><span class="muted">${esc(a.landmark)}</span></div>
+            <button class="icon-btn" data-addr-del="${i}" aria-label="حذف العنوان" style="width:36px;height:36px;color:var(--red)">${I.trash}</button></div>`).join("")
+            : `<span class="muted" style="padding:12px 0">لا توجد عناوين محفوظة. احفظ عنوانك عند تأكيد الطلب.</span>`}
+        </div>
+        <div class="box col" style="padding:4px 0">
+          ${row("myorders", I.bag, "طلباتي")}${row("about", I.info2, "عن التطبيق")}
+          ${CONFIG.ADMIN_WHATSAPP ? `<a class="mrow" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، أحتاج مساعدة في أكل شنو؟\n")}" target="_blank">${I.wa}<span>تواصل معنا</span>${I.chev}</a>` : ""}
+          ${isAdmin ? row("admin", I.shield, "لوحة الأدمن") : ""}
+        </div>
+        <button class="btn btn-outline" data-go="logout" style="color:var(--red)">${I.out}تسجيل الخروج</button>
+      </div>`;
+  };
+  body.innerHTML = `<div class="list">${skeleton(3, 80)}</div>`;
+  unsubs.push(F.watchMyOrders(render, () => render([])));
+  body.onclick = e => {
+    if (e.target.closest("#ac-edit")) return editProfile();
+    const d = e.target.closest("[data-addr-del]");
+    if (d) {
+      const addrs = (me.addresses || []).filter((_, i) => i !== +d.dataset.addrDel);
+      return busy(d, async () => { await F.saveAddresses(addrs); me.addresses = addrs; showAccount(); });
+    }
+  };
+}
+
+function editProfile() {
+  const b = openSheet(`<h2>تعديل البيانات</h2>
+    <label class="field">الاسم<input id="pf-name" value="${esc(me.name)}"></label>
+    <label class="field">رقم الهاتف<span class="phone"><b>+249</b><input id="pf-phone" inputmode="tel" maxlength="9" value="${esc(String(me.phone || "").replace("+249", ""))}"></span></label>
+    <p id="pf-err" class="err"></p><button id="pf-save" class="btn btn-primary">حفظ</button>`);
+  b.querySelector("#pf-save").onclick = e => {
+    const name = b.querySelector("#pf-name").value.trim(), phone = b.querySelector("#pf-phone").value.trim();
+    if (name.length < 2) return b.querySelector("#pf-err").textContent = "اكتب اسمك.";
+    if (!validPhone(phone)) return b.querySelector("#pf-err").textContent = "رقم الهاتف غير صحيح.";
+    busy(e.target, async () => { await F.updateProfile({ name, phone: "+249" + phone }); me.name = name; me.phone = "+249" + phone; closeSheet(); toast("تم الحفظ"); showAccount(); });
+  };
+}
+
+// ───── عن التطبيق ─────
+let aboutBack = "home";
+function showAbout() {
+  aboutBack = me?.role === "owner" && !isAdmin ? "settings" : "account";
+  clearSubs();
+  show("about");
+  $("#ab-back").innerHTML = I.back;
+  document.querySelector("#s-about .logo").innerHTML = I.food;
+  $("#ab-ver").textContent = "الإصدار " + APP_VERSION;
+  $("#ab-links").innerHTML = CONFIG.ADMIN_WHATSAPP
+    ? `<a class="btn btn-green" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، بخصوص أكل شنو؟\n")}" target="_blank" style="text-decoration:none">${I.wa}تواصل معنا عبر واتساب</a>` : "";
+}
+$("#ab-back").addEventListener("click", () => aboutBack === "settings" ? showOwner().then(() => ownerTab("settings")) : showAccount());
+
 // ════════════════════════════════════════
 //                 المطعم
 // ════════════════════════════════════════
@@ -1075,6 +1252,7 @@ async function showOwner() {
     if (!first && after > before) { try { navigator.vibrate?.([200, 100, 200]); } catch {} toast("طلب جديد!"); }
     first = false;
     if (ownerTabNow === "orders") renderOwnerOrders();
+    if (ownerTabNow === "stats") renderOwnerStats();
   }, e => console.error(e)));
   ownerTab("orders");
 }
@@ -1110,6 +1288,7 @@ function ownerTab(k) {
   if (k === "orders") renderOwnerOrders();
   if (k === "menu") renderOwnerMenu();
   if (k === "settings") renderOwnerSettings();
+  if (k === "stats") renderOwnerStats();
 }
 
 // ───── الطلبات ─────
@@ -1190,6 +1369,48 @@ function openReport(o) {
     await F.reportNoShow(o.id, o.customerId, reason, b.querySelector("#rp-note").value.trim());
     closeSheet(); toast("تم إرسال البلاغ");
   });
+}
+
+// ───── الإحصاءات ─────
+let statsRange = "today";
+function renderOwnerStats() {
+  const DAY = 864e5, now = Date.now();
+  const startOf = { today: new Date(new Date().setHours(0, 0, 0, 0)).getTime(), week: now - 7 * DAY, month: now - 30 * DAY };
+  const t = o => (o.createdAt?.seconds ?? now / 1000) * 1000;
+  const inRange = ownerOrders.filter(o => t(o) >= startOf[statsRange]);
+  const done = inRange.filter(o => o.status === "delivered");
+  const lost = inRange.filter(o => ["rejected", "cancelled"].includes(o.status));
+  const sales = done.reduce((a, o) => a + (o.total || 0), 0);
+  const items = {};
+  done.forEach(o => o.items.forEach(i => { items[i.name] = (items[i.name] || 0) + i.qty; }));
+  const topItems = Object.entries(items).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const days = [...Array(7)].map((_, i) => {
+    const d = new Date(new Date().setHours(0, 0, 0, 0) - (6 - i) * DAY);
+    const n = ownerOrders.filter(o => o.status === "delivered" && t(o) >= d.getTime() && t(o) < d.getTime() + DAY).length;
+    return [d.toLocaleDateString("ar-SD", { weekday: "short" }), n];
+  });
+  const maxD = Math.max(1, ...days.map(d => d[1]));
+  const r = myRest;
+  $("#ow-body").innerHTML = `<div class="list">
+    <div class="seg" id="st-range">${[["today", "اليوم"], ["week", "7 أيام"], ["month", "30 يوماً"]].map(([k, l]) =>
+      `<button data-range="${k}" class="${statsRange === k ? "on" : ""}">${l}</button>`).join("")}</div>
+    <div class="kpis">
+      <div class="kpi"><b>${money(sales)}</b><span>المبيعات (المستلَمة)</span></div>
+      <div class="kpi"><b>${inRange.length}</b><span>كل الطلبات</span></div>
+      <div class="kpi"><b>${done.length}</b><span>تم تسليمها</span></div>
+      <div class="kpi"><b>${done.length ? money(Math.round(sales / done.length)) : "—"}</b><span>متوسط الطلب</span></div>
+      <div class="kpi"><b style="color:${lost.length ? "var(--red)" : "var(--ink)"}">${lost.length}</b><span>مرفوضة أو ملغاة</span></div>
+      <div class="kpi"><b class="row gap6">${r.ratingCount ? starIcon("#F59E0B", 18) + avgOf(r).toFixed(1) : "—"}</b><span>${r.ratingCount ? r.ratingCount + " تقييم" : "لا تقييمات بعد"}</span></div>
+    </div>
+    <section class="box col gap6"><b>الطلبات المستلَمة آخر 7 أيام</b>
+      <div class="bars">${days.map(([l, n]) => `<div><span style="color:var(--ink);font-weight:700">${n || ""}</span><i style="height:${(n / maxD) * 80}%;opacity:${n ? 1 : .25}"></i><span>${l}</span></div>`).join("")}</div>
+    </section>
+    <section class="box col gap10"><b>الأكثر طلباً</b>
+      ${topItems.length ? topItems.map(([n, q], i) => `<div class="row gap10"><span class="badge ${i ? "b-gray" : "b-orange"}">${i + 1}</span>
+        <span class="grow">${esc(n)}</span><b>${q}</b></div>`).join("") : `<span class="muted">لا توجد طلبات مستلَمة في هذه الفترة.</span>`}
+    </section>
+  </div>`;
+  $("#st-range").onclick = e => { const b = e.target.closest("[data-range]"); if (b) { statsRange = b.dataset.range; renderOwnerStats(); } };
 }
 
 // ───── المنيو والعروض ─────
@@ -1302,6 +1523,7 @@ async function renderOwnerSettings() {
       <button id="st-bankak-save" class="btn btn-sm btn-dark">حفظ</button>
     </section>
     ${CONFIG.ADMIN_WHATSAPP ? `<a class="btn btn-green" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، أنا صاحب " + r.name + " في أكل شنو؟\n")}" target="_blank" style="text-decoration:none;margin-top:8px">${I.wa}تواصل مع الإدارة عبر واتساب</a>` : ""}
+    <button class="btn btn-ghost" data-go="about" style="margin-top:8px">${I.info2}عن التطبيق</button>
     <button class="btn btn-outline" data-logout2 style="margin-top:8px">تسجيل الخروج</button>
   </div>`;
   let stLoc = hasLoc(r) ? [r.lat, r.lng] : null;

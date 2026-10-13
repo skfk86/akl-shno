@@ -153,6 +153,7 @@ export async function myActiveOrders() {
   return list(await getDocs(q)).filter(o => ["new", "accepted", "preparing", "ready", "out_for_delivery"].includes(o.status));
 }
 
+export const updateProfile = ({ name, phone }) => updateDoc(doc(db, "users", uid()), { name, phone });
 export const saveAddresses = addresses => updateDoc(doc(db, "users", uid()), { addresses });
 
 // ═════════ التقييم ═════════
