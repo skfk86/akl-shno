@@ -7,46 +7,85 @@
 <title>أكل شنو؟</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root{
     --accent:#C2410C; --accent-dark:#9A3412; --accent-soft:#FFF7ED;
-    --ink:#1C1917; --muted:#57534E; --line:#E7E5E4; --fill:#F5F5F4; --bg:#FFFFFF;
-    --green:#15803D; --green-soft:#DCFCE7; --red:#B91C1C;
+    --ink:#1C1917; --muted:#57534E; --line:#E7E5E4; --fill:#F5F5F4; --bg:#FFFFFF; --bg2:#FAFAF9;
+    --green:#15803D; --green-soft:#DCFCE7; --red:#B91C1C; --red-soft:#FEF2F2;
+    --blue:#1D4ED8; --blue-soft:#DBEAFE; --dark:#1C1917; --dark2:#292524;
     --r:16px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
     font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;font-size:15px}
-  button,input,select{font-family:inherit;font-size:inherit;color:inherit}
+  button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
   button{cursor:pointer}
   .screen{display:none;min-height:100dvh;flex-direction:column;
     padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
   .screen.on{display:flex}
-  .pad{padding:0 24px}
+  .pad{padding:0 20px}
   .grow{flex:1}
-  h1{margin:0;font-size:24px;font-weight:700}
-  h2{margin:0;font-size:18px;font-weight:700}
-  .muted{color:var(--muted);font-size:14px}
+  .col{display:flex;flex-direction:column}
+  .row{display:flex;align-items:center}
+  .between{justify-content:space-between}
+  .gap6{gap:6px}.gap10{gap:10px}.gap14{gap:14px}
+  h1{margin:0;font-size:22px;font-weight:700}
+  h2{margin:0;font-size:17px;font-weight:700}
+  .muted{color:var(--muted);font-size:13px}
+  .err{color:var(--red);font-size:13px;min-height:18px;margin:0}
   .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
-    height:56px;border:0;border-radius:var(--r);font-size:16px;font-weight:700}
+    height:54px;border:0;border-radius:var(--r);font-size:16px;font-weight:700}
+  .btn-sm{height:44px;font-size:14px;border-radius:14px}
   .btn-primary{background:var(--accent);color:#fff}
   .btn-primary:active{background:var(--accent-dark)}
+  .btn-dark{background:var(--dark);color:#fff}
+  .btn-green{background:var(--green);color:#fff}
+  .btn-ghost{background:var(--fill)}
+  .btn-danger{background:var(--fill);color:var(--red)}
   .btn-outline{background:#fff;border:1px solid #D6D3D1}
-  .btn:disabled{opacity:.6}
+  .btn:disabled{opacity:.5}
   .icon-btn{width:44px;height:44px;border:0;border-radius:14px;background:var(--fill);
-    display:flex;align-items:center;justify-content:center}
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ink);text-decoration:none}
   .field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500}
-  .field input,.field select,.phone{height:52px;padding:0 14px;border:0;border-radius:14px;
+  .field input,.field select,.field textarea,.phone{min-height:50px;padding:0 14px;border:0;border-radius:14px;
     background:var(--fill);font-size:15px;font-weight:400;outline:none;width:100%}
-  .field input:focus,.field select:focus{box-shadow:0 0 0 2px var(--accent)}
+  .field textarea{padding:12px 14px;min-height:80px;resize:none}
+  .field input:focus,.field select:focus,.field textarea:focus{box-shadow:0 0 0 2px var(--accent)}
   .phone{display:flex;align-items:center;gap:8px;direction:ltr}
   .phone b{color:var(--muted)}
-  .phone input{flex:1;background:none;border:0;outline:none;height:100%;font-size:15px}
+  .phone input{flex:1;background:none;border:0;outline:none;height:48px;font-size:15px}
   .row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-  .badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;
-    padding:5px 12px;border-radius:999px}
-  .badge-green{color:var(--green);background:var(--green-soft)}
-  .err{color:var(--red);font-size:13px;min-height:18px}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;
+    padding:4px 10px;border-radius:999px;white-space:nowrap}
+  .b-green{color:var(--green);background:var(--green-soft)}
+  .b-blue{color:var(--blue);background:var(--blue-soft)}
+  .b-orange{color:var(--accent-dark);background:var(--accent-soft)}
+  .b-red{color:var(--red);background:var(--red-soft)}
+  .b-gray{color:var(--muted);background:var(--fill)}
+  .note{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:14px;font-size:13px;line-height:1.7}
+  .n-orange{background:var(--accent-soft);color:var(--accent-dark)}
+  .n-blue{background:#EFF6FF;color:#1E3A8A}
+  .n-red{background:var(--red-soft);color:#991B1B}
+  .box{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px}
+  .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;padding:4px;border-radius:14px;background:var(--fill);font-size:13px}
+  .seg button{border:0;background:none;padding:10px 4px;border-radius:10px;color:var(--muted)}
+  .seg button.on{background:#fff;color:var(--ink);font-weight:700}
+  .switch{position:relative;width:48px;height:28px;flex-shrink:0}
+  .switch input{opacity:0;width:100%;height:100%;margin:0;position:absolute;cursor:pointer;z-index:1}
+  .switch span{position:absolute;inset:0;border-radius:999px;background:#D6D3D1;transition:.2s}
+  .switch span::after{content:"";position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
+  .switch input:checked+span{background:var(--green)}
+  .switch input:checked+span::after{right:23px}
+  .header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:#fff;position:sticky;top:0;z-index:5}
+  .bar{position:sticky;bottom:0;padding:12px 20px calc(16px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line)}
+  nav.tabs{position:sticky;bottom:0;height:70px;border-top:1px solid var(--line);background:#fff;
+    display:flex;justify-content:space-around;align-items:center;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+  nav.tabs button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;
+    font-size:11px;color:var(--muted);min-width:64px;min-height:44px}
+  nav.tabs button.on{color:var(--accent);font-weight:700}
+  .list{padding:8px 20px 20px;display:flex;flex-direction:column;gap:14px}
 
   /* الترحيب */
   .hero{flex:1;background:var(--accent);color:#fff;border-radius:0 0 36px 36px;
@@ -57,199 +96,308 @@
     border:1px solid var(--line);background:#fff;text-align:right}
   .role.primary{border:2px solid var(--accent)}
   .role .ic{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .role span{display:flex;flex-direction:column;gap:2px}
 
-  /* الرئيسية */
-  .top{padding:16px 20px 12px;display:flex;flex-direction:column;gap:14px}
-  .search{display:flex;align-items:center;gap:10px;height:48px;padding:0 14px;border-radius:14px;background:var(--fill)}
-  .search input{flex:1;border:0;background:none;outline:none;font-size:15px}
-  .list{padding:4px 20px 20px;display:flex;flex-direction:column;gap:16px}
-  .card{display:flex;flex-direction:column;gap:8px;border:0;background:none;padding:0;text-align:right}
-  .cover{height:140px;border-radius:18px;background:var(--line);position:relative;overflow:hidden}
-  .cover img{width:100%;height:100%;object-fit:cover}
-  .cover .open{position:absolute;top:10px;right:10px;background:#fff;color:var(--green);
-    font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px}
-  .meta{display:flex;gap:14px;font-size:13px;color:var(--muted)}
-  .skel{background:linear-gradient(90deg,var(--fill),#ECEAE8,var(--fill));background-size:200% 100%;
-    animation:sh 1.2s infinite;border-radius:12px}
-  @keyframes sh{to{background-position:-200% 0}}
-  .empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:48px 24px;color:var(--muted)}
-  .empty .ic{width:72px;height:72px;border-radius:24px;background:var(--accent-soft);color:var(--accent);
+  /* البطاقات */
+  .card{display:flex;flex-direction:column;gap:7px;border:0;background:none;padding:0;text-align:right;width:100%}
+  .cover{height:140px;border-radius:18px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;
+    font-size:44px;font-weight:700;color:rgba(255,255,255,.9)}
+  .cover .tag{position:absolute;top:10px;right:10px;background:#fff;font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px}
+  .meta{display:flex;gap:12px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+  .item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--fill)}
+  .item .thumb{width:84px;height:84px;border-radius:16px;position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-size:28px;font-weight:700;color:rgba(255,255,255,.9)}
+  .add{position:absolute;bottom:-6px;left:-6px;width:36px;height:36px;border:0;border-radius:12px;background:var(--accent);color:#fff;
     display:flex;align-items:center;justify-content:center}
-  nav.tabs{position:sticky;bottom:0;height:72px;border-top:1px solid var(--line);background:#fff;
-    display:flex;justify-content:space-around;align-items:center}
-  nav.tabs button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;
-    font-size:11px;color:var(--muted);min-width:64px;min-height:44px}
-  nav.tabs button.on{color:var(--accent);font-weight:700}
+  .add:disabled{background:#A8A29E}
+  .qty{display:flex;align-items:center;gap:2px;background:var(--fill);border-radius:12px;padding:3px}
+  .qty button{width:34px;height:34px;border:0;background:none;display:flex;align-items:center;justify-content:center}
+  .qty b{min-width:18px;text-align:center}
+  .radio{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;border:1px solid var(--line);font-size:14px}
+  .radio:has(input:checked){border:2px solid var(--accent);font-weight:500}
+  .radio:has(input:disabled){opacity:.5}
+  .radio input{accent-color:var(--accent);width:18px;height:18px;margin:0}
+  #map{height:190px;border-radius:14px;overflow:hidden;direction:ltr;z-index:1}
+  .steps{list-style:none;margin:0;padding:0}
+  .steps li{display:flex;gap:14px;min-height:60px}
+  .dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
+  .vline{width:2px;flex:1}
+  .ocard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .ocard.hot{border:2px solid var(--accent)}
+  .dark-head{background:var(--dark);color:#fff;padding:16px 20px;display:flex;flex-direction:column;gap:14px}
+  .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .stats div{background:var(--dark2);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:2px}
+  .stats b{font-size:19px}.stats span{font-size:11px;color:#D6D3D1}
+  .dark-head .seg{background:var(--dark2)}
+  .dark-head .seg button{color:#D6D3D1}
+  .dark-head .seg button.on{background:#fff;color:var(--ink)}
 
+  /* عام */
+  .skel{background:linear-gradient(90deg,var(--fill),#ECEAE8,var(--fill));background-size:200% 100%;animation:sh 1.2s infinite;border-radius:14px}
+  @keyframes sh{to{background-position:-200% 0}}
+  .empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:44px 24px;color:var(--muted)}
+  .empty .ic{width:72px;height:72px;border-radius:24px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center}
   .spinner{width:36px;height:36px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:sp .8s linear infinite}
   @keyframes sp{to{transform:rotate(1turn)}}
   .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
+  .sheet{position:fixed;inset:0;z-index:50;display:none}
+  .sheet.on{display:block}
+  .sheet-bg{position:absolute;inset:0;background:rgba(28,25,23,.45)}
+  .sheet-body{position:absolute;left:0;right:0;bottom:0;max-height:88dvh;overflow:auto;background:#fff;border-radius:24px 24px 0 0;
+    padding:10px 20px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px;animation:up .2s ease-out}
+  .sheet-body::before{content:"";width:40px;height:4px;border-radius:2px;background:var(--line);align-self:center}
+  @keyframes up{from{transform:translateY(40px);opacity:0}}
+  #toast{position:fixed;bottom:96px;left:20px;right:20px;z-index:60;background:var(--dark);color:#fff;padding:13px 16px;border-radius:14px;
+    font-size:14px;text-align:center;opacity:0;pointer-events:none;transition:.25s;transform:translateY(10px)}
+  #toast.on{opacity:1;transform:none}
+  a.link{color:var(--accent);font-weight:700;text-decoration:none}
 </style>
 </head>
 <body>
 
-<!-- تحميل -->
 <section id="s-loading" class="screen on"><div class="center"><div class="spinner"></div></div></section>
 
-<!-- الترحيب -->
+<!-- ═════════ الترحيب ═════════ -->
 <section id="s-welcome" class="screen">
   <div class="hero">
-    <div class="logo">
-      <svg aria-hidden="true" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
-    </div>
+    <div class="logo"><svg aria-hidden="true" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>
     <span style="font-size:34px;font-weight:700">أكل شنو؟</span>
     <span style="font-size:15px;text-align:center;line-height:1.7">أكل مطاعمك المفضلة<br>لحدي باب البيت</span>
   </div>
-  <div class="pad" style="padding-top:28px;padding-bottom:32px;display:flex;flex-direction:column;gap:14px">
-    <h2 style="text-align:center;margin-bottom:4px">كيف تريد استخدام التطبيق؟</h2>
+  <div class="pad col gap14" style="padding-top:28px;padding-bottom:32px">
+    <h2 style="text-align:center">كيف تريد استخدام التطبيق؟</h2>
     <button class="role primary" data-role="customer">
-      <div class="ic" style="background:var(--accent-soft);color:var(--accent)">
-        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
-      </div>
-      <span><b style="font-size:16px">أريد أن أطلب أكل</b><small class="muted">تصفح المطاعم واطلب للبيت</small></span>
+      <div class="ic" style="background:var(--accent-soft);color:var(--accent)"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></div>
+      <span class="col"><b style="font-size:16px">أريد أن أطلب أكل</b><small class="muted">تصفح المطاعم واطلب للبيت</small></span>
     </button>
     <button class="role" data-role="owner">
-      <div class="ic" style="background:var(--fill)">
-        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-1.5-5h-15Z"/><path d="M4 9v11h16V9M9 20v-6h6v6"/></svg>
-      </div>
-      <span><b style="font-size:16px">أملك مطعماً</b><small style="color:var(--green);font-weight:500">أول شهرين مجاناً</small></span>
+      <div class="ic" style="background:var(--fill)"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-1.5-5h-15Z"/><path d="M4 9v11h16V9M9 20v-6h6v6"/></svg></div>
+      <span class="col"><b style="font-size:16px">أملك مطعماً</b><small style="color:var(--green);font-weight:500">أول شهرين مجاناً</small></span>
     </button>
     <p id="welcome-err" class="err" role="alert"></p>
   </div>
 </section>
 
-<!-- بيانات الزبون -->
+<!-- ═════════ بيانات الزبون ═════════ -->
 <section id="s-customer" class="screen">
-  <div class="pad" style="padding-top:24px;display:flex;flex-direction:column;gap:20px;flex:1">
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <h1>أهلاً بك</h1>
-      <span class="muted">أكمل بياناتك لتبدأ الطلب</span>
-    </div>
-    <label class="field">الاسم
-      <input id="c-name" autocomplete="name" required>
-    </label>
+  <div class="pad col gap14 grow" style="padding-top:24px">
+    <div class="col gap6"><h1>أهلاً بك</h1><span class="muted">أكمل بياناتك لتبدأ الطلب</span></div>
+    <label class="field">الاسم<input id="c-name" autocomplete="name"></label>
     <label class="field">رقم الهاتف
       <span class="phone"><b>+249</b><input id="c-phone" inputmode="tel" placeholder="9X XXX XXXX" maxlength="9"></span>
       <small class="muted" style="font-weight:400">قد يتصل بك المطعم لتأكيد طلبك الأول</small>
     </label>
     <p id="c-err" class="err" role="alert"></p>
   </div>
-  <div class="pad" style="padding-top:12px;padding-bottom:28px">
-    <button id="c-save" class="btn btn-primary">ابدأ الطلب</button>
-  </div>
+  <div class="pad" style="padding-bottom:28px"><button id="c-save" class="btn btn-primary">ابدأ الطلب</button></div>
 </section>
 
-<!-- تسجيل مطعم -->
-<section id="s-owner" class="screen">
-  <div class="pad" style="padding-top:24px;display:flex;flex-direction:column;gap:16px;flex:1">
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <h1>سجّل مطعمك</h1>
-      <span class="badge badge-green" style="align-self:flex-start">شهران مجاناً لأول المطاعم</span>
-    </div>
-    <label class="field">اسم المطعم
-      <input id="o-name" placeholder="مثلاً: مطعم النيلين">
-    </label>
+<!-- ═════════ تسجيل مطعم ═════════ -->
+<section id="s-ownerreg" class="screen">
+  <div class="pad col gap14 grow" style="padding-top:24px">
+    <div class="col gap6"><h1>سجّل مطعمك</h1><span class="badge b-green" style="align-self:flex-start">شهران مجاناً لأول المطاعم</span></div>
+    <label class="field">اسم المطعم<input id="o-name" placeholder="مثلاً: مطعم النيلين"></label>
     <label class="field">نوع الأكل
-      <select id="o-cat">
-        <option value="">اختر التصنيف</option>
-        <option>مشويات</option><option>فول وطعمية</option><option>شاورما</option>
-        <option>وجبات سودانية</option><option>بيتزا وبرجر</option><option>حلويات ومشروبات</option>
-      </select>
+      <select id="o-cat"><option value="">اختر التصنيف</option><option>مشويات</option><option>فول وطعمية</option><option>شاورما</option><option>وجبات سودانية</option><option>بيتزا وبرجر</option><option>حلويات ومشروبات</option></select>
     </label>
     <div class="row2">
-      <label class="field">المدينة
-        <select id="o-city">
-          <option value="">اختر</option>
-          <option>أمدرمان</option><option>الخرطوم</option><option>بحري</option>
-        </select>
-      </label>
-      <label class="field">الحي
-        <input id="o-district" placeholder="مثلاً: الثورة">
-      </label>
+      <label class="field">المدينة<select id="o-city"><option value="">اختر</option><option>أمدرمان</option><option>الخرطوم</option><option>بحري</option></select></label>
+      <label class="field">الحي<input id="o-district" placeholder="مثلاً: الثورة"></label>
     </div>
-    <label class="field">هاتف المطعم
-      <span class="phone"><b>+249</b><input id="o-phone" inputmode="tel" placeholder="9X XXX XXXX" maxlength="9"></span>
-    </label>
+    <label class="field">هاتف المطعم<span class="phone"><b>+249</b><input id="o-phone" inputmode="tel" placeholder="9X XXX XXXX" maxlength="9"></span></label>
     <p id="o-err" class="err" role="alert"></p>
   </div>
-  <div class="pad" style="padding-top:12px;padding-bottom:28px">
-    <button id="o-save" class="btn btn-primary">إرسال الطلب</button>
-  </div>
+  <div class="pad" style="padding-bottom:28px"><button id="o-save" class="btn btn-primary">تسجيل المطعم</button></div>
 </section>
 
-<!-- المطعم بانتظار التفعيل -->
-<section id="s-pending" class="screen">
-  <div class="center">
-    <div class="empty" style="padding:0">
-      <div class="ic">
-        <svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-      </div>
-    </div>
-    <h1>مطعمك قيد المراجعة</h1>
-    <p class="muted" style="line-height:1.8;margin:0">سنتواصل معك على هاتف المطعم لتفعيل الفترة المجانية.<br>بعد التفعيل يظهر مطعمك للزبائن مباشرة.</p>
-    <button class="btn btn-outline" data-logout style="max-width:240px;margin-top:12px">تسجيل الخروج</button>
-  </div>
-</section>
-
-<!-- الرئيسية (الزبون) -->
+<!-- ═════════ الزبون: الرئيسية ═════════ -->
 <section id="s-home" class="screen">
-  <div class="top">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="display:flex;flex-direction:column;gap:2px">
-        <span class="muted" style="font-size:12px">أهلاً</span>
-        <b id="h-name" style="font-size:17px"></b>
-      </div>
+  <div class="col gap14" style="padding:16px 20px 10px">
+    <div class="row between">
+      <div class="col"><span class="muted" style="font-size:12px">أهلاً</span><b id="h-name" style="font-size:17px"></b></div>
       <select id="h-city" aria-label="المدينة" style="height:44px;border:0;border-radius:14px;background:var(--fill);padding:0 12px;font-weight:700">
         <option value="">كل المدن</option><option>أمدرمان</option><option>الخرطوم</option><option>بحري</option>
       </select>
     </div>
-    <label class="search">
+    <label class="row gap10" style="height:48px;padding:0 14px;border-radius:14px;background:var(--fill)">
       <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#57534E" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="h-search" placeholder="ابحث عن مطعم" aria-label="بحث">
+      <input id="h-search" placeholder="ابحث عن مطعم" aria-label="بحث" style="flex:1;border:0;background:none;outline:none;font-size:15px">
     </label>
   </div>
-  <div style="padding:0 20px"><h2>المطاعم</h2></div>
+  <div class="pad row between"><h2>المطاعم</h2><button id="h-refresh" class="link" style="border:0;background:none;color:var(--accent);font-weight:700;font-size:13px">تحديث</button></div>
   <div id="h-list" class="list grow"></div>
-  <nav class="tabs">
-    <button class="on"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z"/></svg>الرئيسية</button>
-    <button><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>طلباتي</button>
-    <button data-logout><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>خروج</button>
-  </nav>
+  <nav class="tabs" data-nav="customer"></nav>
 </section>
 
-<script type="module">
-import {
-  signInGoogle, logout, watchAuth, getProfile,
-  createProfile, createRestaurant, listOpenRestaurants, auth
-} from "./firebase.js";
+<!-- ═════════ الزبون: طلباتي ═════════ -->
+<section id="s-myorders" class="screen">
+  <div class="header"><h1>طلباتي</h1></div>
+  <div id="mo-list" class="list grow"></div>
+  <nav class="tabs" data-nav="customer"></nav>
+</section>
 
+<!-- ═════════ الزبون: صفحة المطعم ═════════ -->
+<section id="s-rest" class="screen"><div id="r-body" class="col grow"></div></section>
+
+<!-- ═════════ الزبون: السلة ═════════ -->
+<section id="s-cart" class="screen" style="background:var(--bg2)"><div id="cart-body" class="col grow"></div></section>
+
+<!-- ═════════ الزبون: التتبع ═════════ -->
+<section id="s-track" class="screen"><div id="t-body" class="col grow"></div></section>
+
+<!-- ═════════ المطعم ═════════ -->
+<section id="s-owner" class="screen" style="background:var(--bg2)">
+  <div id="ow-head"></div>
+  <div id="ow-body" class="col grow"></div>
+  <nav class="tabs" data-nav="owner"></nav>
+</section>
+
+<!-- ═════════ الأدمن ═════════ -->
+<section id="s-admin" class="screen" style="background:var(--bg2)">
+  <div class="dark-head">
+    <div class="row between">
+      <div class="col"><span style="font-size:12px;color:#D6D3D1">لوحة الأدمن</span><h1>أكل شنو؟</h1></div>
+      <div class="row gap10">
+        <button id="ad-as-customer" class="btn btn-sm" style="width:auto;padding:0 14px;background:var(--dark2);color:#fff">وضع الزبون</button>
+        <button data-logout class="icon-btn" aria-label="خروج" style="background:var(--dark2);color:#fff"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
+      </div>
+    </div>
+    <div id="ad-stats" class="stats"></div>
+    <div class="seg" id="ad-seg">
+      <button data-t="rest" class="on">المطاعم</button><button data-t="pay">التحويلات</button><button data-t="rep">البلاغات</button>
+    </div>
+  </div>
+  <div id="ad-body" class="list grow" style="padding-top:16px"></div>
+</section>
+
+<div id="sheet" class="sheet" role="dialog" aria-modal="true"><div class="sheet-bg"></div><div class="sheet-body"></div></div>
+<div id="toast" role="status"></div>
+
+<script type="module">
+import * as F from "./firebase.js";
+
+// ═════════ إعدادات تعدّلها أنت ═════════
+const CONFIG = {
+  SUB_PRICE: 0,          // سعر الاشتراك الشهري بالجنيه (عدّله)
+  ADMIN_BANKAK: "",      // رقم حسابك في بنكك لاستلام الاشتراكات (عدّله)
+  FREE_SEATS: 20,        // عدد المطاعم المؤهلة للشهرين المجانيين
+  NEW_LIMIT: 20000,      // الحد الأقصى لأول طلبين للزبون الجديد (مطابق للقواعد)
+  DEFAULT_LOC: [15.6445, 32.4777] // أمدرمان
+};
+
+// ═════════ أدوات ═════════
 const $ = s => document.querySelector(s);
-const show = id => {
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n => Number(n || 0).toLocaleString("en") + " ج";
+const validPhone = p => /^[19]\d{8}$/.test(p.replace(/\s/g, ""));
+const tsDate = t => t?.toDate ? t.toDate() : null;
+const daysLeft = t => { const d = tsDate(t); return d ? Math.ceil((d - Date.now()) / 864e5) : null; };
+const timeStr = t => { const d = tsDate(t); return d ? d.toLocaleTimeString("ar-SD", { hour: "numeric", minute: "2-digit" }) : ""; };
+const COLORS = ["#C2410C", "#15803D", "#1D4ED8", "#7C3AED", "#B45309", "#0F766E", "#BE185D"];
+const colorOf = s => COLORS[[...String(s)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+const initial = s => esc(String(s || "؟").trim().charAt(0));
+
+const I = {
+  back: '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+  plus: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  minus: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg>',
+  check: '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  phone: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg>',
+  pin: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+  edit: '<svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  trash: '<svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>',
+  info: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>',
+  warn: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/></svg>',
+  food: '<svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>',
+  home: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z"/></svg>',
+  bag: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>',
+  user: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  clip: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>',
+  menu: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>',
+  gear: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>'
+};
+
+const ST = { new: "جديد", accepted: "تم القبول", preparing: "قيد التحضير", ready: "جاهز للاستلام",
+  out_for_delivery: "في الطريق", delivered: "تم التسليم", rejected: "مرفوض", cancelled: "ملغي" };
+const ST_BADGE = { new: "b-blue", accepted: "b-orange", preparing: "b-orange", ready: "b-orange",
+  out_for_delivery: "b-orange", delivered: "b-green", rejected: "b-red", cancelled: "b-gray" };
+const REASONS = { no_answer: "الزبون لا يرد على الهاتف", refused: "رفض استلام الطلب عند الباب", fake_address: "العنوان غير موجود أو وهمي" };
+
+let me = null, isAdmin = false;
+let unsubs = [];
+const clearSubs = () => { unsubs.forEach(u => { try { u(); } catch {} }); unsubs = []; };
+
+function show(id) {
   document.querySelectorAll(".screen").forEach(e => e.classList.remove("on"));
   $("#s-" + id).classList.add("on");
+  window.scrollTo(0, 0);
+}
+
+let toastT;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2600);
+}
+
+function openSheet(html) {
+  const s = $("#sheet"); s.querySelector(".sheet-body").innerHTML = html; s.classList.add("on");
+  return s.querySelector(".sheet-body");
+}
+const closeSheet = () => $("#sheet").classList.remove("on");
+$("#sheet .sheet-bg").addEventListener("click", closeSheet);
+
+async function busy(btn, fn) {
+  btn.disabled = true;
+  try { await fn(); } catch (e) { console.error(e); toast("حدث خطأ. تأكد من الإنترنت وحاول مرة أخرى."); }
+  finally { btn.disabled = false; }
+}
+
+const emptyState = (title, sub) => `<div class="empty"><div class="ic">${I.food}</div><b style="color:var(--ink);font-size:16px">${title}</b><span>${sub}</span></div>`;
+const skeleton = (n, h) => Array(n).fill(`<div class="skel" style="height:${h}px"></div>`).join("");
+
+// ═════════ أشرطة التنقل ═════════
+const NAVS = {
+  customer: [["home", I.home, "الرئيسية"], ["myorders", I.bag, "طلباتي"], ["logout", I.user, "خروج"]],
+  owner: [["orders", I.clip, "الطلبات"], ["menu", I.menu, "المنيو"], ["settings", I.gear, "الإعدادات"]]
 };
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const validPhone = p => /^[19]\d{8}$/.test(p.replace(/\s/g, ""));
+function renderNav(kind, active) {
+  document.querySelectorAll(`nav[data-nav="${kind}"]`).forEach(n => {
+    n.innerHTML = NAVS[kind].map(([k, ic, t]) => `<button data-go="${k}" class="${k === active ? "on" : ""}">${ic}${t}</button>`).join("");
+  });
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-go]"); if (!b) return;
+  const k = b.dataset.go;
+  if (k === "logout") return doLogout();
+  if (k === "home") return showHome();
+  if (k === "myorders") return showMyOrders();
+  if (["orders", "menu", "settings"].includes(k)) return ownerTab(k);
+});
 
-let chosenRole = localStorage.getItem("role") || null;
-let restaurants = [];
+async function doLogout() {
+  clearSubs(); cart = null; me = null; isAdmin = false;
+  localStorage.removeItem("role");
+  await F.logout();
+}
+document.querySelectorAll("[data-logout]").forEach(b => b.addEventListener("click", doLogout));
 
-// ───── التوجيه حسب حالة الدخول ─────
-watchAuth(async user => {
+// ═════════ التوجيه ═════════
+let chosenRole = localStorage.getItem("role");
+
+F.watchAuth(async user => {
+  clearSubs();
   if (!user) return show("welcome");
   show("loading");
   try {
-    const p = await getProfile();
-    if (!p) {
-      if (chosenRole === "owner") return show("owner");
+    me = await F.getProfile();
+    isAdmin = await F.isAdminUser();
+    if (!me) {
+      if (chosenRole === "owner") return show("ownerreg");
       $("#c-name").value = user.displayName || "";
       return show("customer");
     }
-    if (p.role === "owner") return show("pending");
-    $("#h-name").textContent = p.name;
-    show("home");
-    loadHome();
+    if (isAdmin) return showAdmin();
+    if (me.role === "owner") return showOwner();
+    showHome();
   } catch (e) {
     console.error(e);
     show("welcome");
@@ -257,104 +405,764 @@ watchAuth(async user => {
   }
 });
 
-// ───── الترحيب ─────
 document.querySelectorAll("[data-role]").forEach(b => b.addEventListener("click", async () => {
   chosenRole = b.dataset.role;
   localStorage.setItem("role", chosenRole);
   $("#welcome-err").textContent = "";
-  try {
-    await signInGoogle();
-  } catch (e) {
+  try { await F.signInGoogle(); }
+  catch (e) {
     $("#welcome-err").textContent = e.message === "NATIVE_ONLY"
       ? "تسجيل الدخول يعمل داخل التطبيق على الهاتف فقط."
       : "لم يكتمل تسجيل الدخول. حاول مرة أخرى.";
   }
 }));
 
-document.querySelectorAll("[data-logout]").forEach(b => b.addEventListener("click", async () => {
-  localStorage.removeItem("role");
-  chosenRole = null;
-  await logout();
-}));
-
-// ───── بيانات الزبون ─────
-$("#c-save").addEventListener("click", async e => {
-  const name = $("#c-name").value.trim();
-  const phone = $("#c-phone").value.trim();
+$("#c-save").addEventListener("click", e => {
+  const name = $("#c-name").value.trim(), phone = $("#c-phone").value.trim();
   if (name.length < 2) return $("#c-err").textContent = "اكتب اسمك.";
-  if (!validPhone(phone)) return $("#c-err").textContent = "رقم الهاتف غير صحيح. 9 أرقام بعد +249.";
-  e.target.disabled = true;
-  try {
-    await createProfile({ role: "customer", name, phone: "+249" + phone });
-    $("#h-name").textContent = name;
-    show("home");
-    loadHome();
-  } catch (err) {
-    console.error(err);
-    $("#c-err").textContent = "تعذر الحفظ. حاول مرة أخرى.";
-  } finally { e.target.disabled = false; }
+  if (!validPhone(phone)) return $("#c-err").textContent = "رقم الهاتف غير صحيح: 9 أرقام بعد +249.";
+  busy(e.target, async () => {
+    await F.createProfile({ role: "customer", name, phone: "+249" + phone });
+    me = await F.getProfile();
+    showHome();
+  });
 });
 
-// ───── تسجيل مطعم ─────
-$("#o-save").addEventListener("click", async e => {
+$("#o-save").addEventListener("click", e => {
   const v = id => $(id).value.trim();
   const data = { name: v("#o-name"), category: v("#o-cat"), city: v("#o-city"), district: v("#o-district"), phone: v("#o-phone") };
   if (data.name.length < 2) return $("#o-err").textContent = "اكتب اسم المطعم.";
   if (!data.category || !data.city || !data.district) return $("#o-err").textContent = "أكمل التصنيف والمدينة والحي.";
   if (!validPhone(data.phone)) return $("#o-err").textContent = "رقم الهاتف غير صحيح.";
   data.phone = "+249" + data.phone;
-  e.target.disabled = true;
-  try {
-    await createProfile({ role: "owner", name: auth.currentUser.displayName || data.name, phone: data.phone });
-    await createRestaurant(data);
-    show("pending");
-  } catch (err) {
-    console.error(err);
-    $("#o-err").textContent = "تعذر الحفظ. حاول مرة أخرى.";
-  } finally { e.target.disabled = false; }
+  busy(e.target, async () => {
+    await F.createProfile({ role: "owner", name: F.auth.currentUser.displayName || data.name, phone: data.phone });
+    await F.createRestaurant(data);
+    me = await F.getProfile();
+    showOwner();
+  });
 });
 
-// ───── الرئيسية ─────
-async function loadHome() {
+// ════════════════════════════════════════
+//                 الزبون
+// ════════════════════════════════════════
+let restaurants = [];
+
+async function showHome() {
+  clearSubs();
+  renderNav("customer", "home");
+  $("#h-name").textContent = me?.name || "";
+  show("home");
   const list = $("#h-list");
-  list.innerHTML = Array(3).fill('<div class="skel" style="height:190px"></div>').join("");
-  try {
-    restaurants = await listOpenRestaurants();
-    renderHome();
-  } catch (e) {
-    console.error(e);
-    list.innerHTML = emptyState("تعذر تحميل المطاعم", "تأكد من الإنترنت ثم اسحب للتحديث.");
-  }
+  list.innerHTML = skeleton(3, 190);
+  try { restaurants = await F.listOpenRestaurants(); renderHome(); }
+  catch (e) { console.error(e); list.innerHTML = emptyState("تعذر تحميل المطاعم", "تأكد من الإنترنت ثم اضغط تحديث."); }
 }
 
 function renderHome() {
-  const city = $("#h-city").value;
-  const q = $("#h-search").value.trim();
-  const items = restaurants.filter(r => (!city || r.city === city) && (!q || r.name.includes(q)));
-  const list = $("#h-list");
-  if (!items.length) {
-    list.innerHTML = emptyState("لا توجد مطاعم هنا بعد", "نضيف مطاعم جديدة باستمرار. جرّب مدينة أخرى.");
-    return;
-  }
-  list.innerHTML = items.map(r => `
-    <button class="card" data-id="${esc(r.id)}">
-      <div class="cover">
-        ${r.image ? `<img src="${esc(r.image)}" alt="" loading="lazy">` : ""}
-        ${r.isOpen ? '<span class="open">مفتوح الآن</span>' : ""}
+  const city = $("#h-city").value, q = $("#h-search").value.trim();
+  const items = restaurants
+    .filter(r => (!city || r.city === city) && (!q || r.name.includes(q)))
+    .sort((a, b) => (b.isOpen ? 1 : 0) - (a.isOpen ? 1 : 0));
+  $("#h-list").innerHTML = items.length ? items.map(r => `
+    <button class="card" data-rest="${esc(r.id)}">
+      <div class="cover" style="background:${colorOf(r.name)}">${initial(r.name)}
+        <span class="tag" style="color:${r.isOpen ? "var(--green)" : "var(--muted)"}">${r.isOpen ? "مفتوح الآن" : "مغلق"}</span>
       </div>
       <b style="font-size:16px">${esc(r.name)}</b>
-      <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>
-    </button>`).join("");
+      <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span>
+        ${r.delivery ? "<span>توصيل</span>" : ""}${r.pickup ? "<span>استلام</span>" : ""}</div>
+    </button>`).join("")
+    : emptyState("لا توجد مطاعم هنا بعد", "نضيف مطاعم جديدة باستمرار. جرّب مدينة أخرى.");
 }
-
-function emptyState(title, sub) {
-  return `<div class="empty">
-    <div class="ic"><svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>
-    <b style="color:var(--ink);font-size:16px">${title}</b><span>${sub}</span></div>`;
-}
-
 $("#h-city").addEventListener("change", renderHome);
 $("#h-search").addEventListener("input", renderHome);
+$("#h-refresh").addEventListener("click", showHome);
+$("#h-list").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
+
+// ───── صفحة المطعم ─────
+let cart = null; // { r, zones, items: {id: {id,name,price,qty}}, type }
+let curRest = null;
+
+async function openRestaurant(id) {
+  clearSubs();
+  show("rest");
+  const body = $("#r-body");
+  body.innerHTML = `<div style="padding:20px" class="col gap14">${skeleton(1, 180)}${skeleton(4, 80)}</div>`;
+  try {
+    const [r, menu, offers, zones] = await Promise.all([
+      F.getRestaurant(id), F.listSub(id, "menu"), F.listSub(id, "offers"), F.listSub(id, "zones")
+    ]);
+    if (!r) { toast("هذا المطعم غير متاح حالياً."); return showHome(); }
+    curRest = { r, menu, offers, zones };
+    if (!cart || cart.r.id !== id) cart = { r, zones, items: {}, type: r.delivery ? "delivery" : "pickup" };
+    else { cart.r = r; cart.zones = zones; }
+    renderRestaurant();
+  } catch (e) {
+    console.error(e);
+    body.innerHTML = `<div class="header"><button class="icon-btn" data-go="home" aria-label="رجوع">${I.back}</button></div>` + emptyState("تعذر فتح المطعم", "تأكد من الإنترنت وحاول مرة أخرى.");
+  }
+}
+
+function cartCount() { return cart ? Object.values(cart.items).reduce((a, i) => a + i.qty, 0) : 0; }
+function cartSubtotal() { return cart ? Object.values(cart.items).reduce((a, i) => a + i.qty * i.price, 0) : 0; }
+
+function renderRestaurant() {
+  const { r, menu, offers } = curRest;
+  const now = Date.now();
+  const activeOffers = offers.filter(o => o.active && (!o.endsAt || tsDate(o.endsAt)?.getTime() > now));
+  const items = menu.sort((a, b) => (b.available ? 1 : 0) - (a.available ? 1 : 0));
+  const n = cartCount();
+  $("#r-body").innerHTML = `
+    <div class="cover" style="height:180px;border-radius:0;background:${colorOf(r.name)};font-size:60px">${initial(r.name)}
+      <button class="icon-btn" data-go="home" aria-label="رجوع" style="position:absolute;top:16px;right:16px;background:#fff">${I.back}</button>
+    </div>
+    <div class="col gap10" style="padding:16px 20px 12px">
+      <div class="row between"><h1>${esc(r.name)}</h1>
+        <span class="badge ${r.isOpen ? "b-green" : "b-gray"}">${r.isOpen ? "مفتوح الآن" : "مغلق"}</span></div>
+      <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>
+      ${!r.isOpen ? `<div class="note n-red">${I.info}المطعم مغلق الآن، يمكنك التصفح فقط.</div>` : ""}
+      ${activeOffers.map(o => `<div class="note n-orange">${I.info}<span><b>${esc(o.title)}</b>${o.endsAt ? ` · حتى ${tsDate(o.endsAt).toLocaleDateString("ar-SD")}` : ""}</span></div>`).join("")}
+      ${r.delivery && r.pickup ? `<div class="seg" id="r-type">
+        <button data-type="delivery" class="${cart.type === "delivery" ? "on" : ""}">توصيل</button>
+        <button data-type="pickup" class="${cart.type === "pickup" ? "on" : ""}">استلام من المطعم</button></div>`
+        : `<span class="badge b-gray" style="align-self:flex-start">${r.delivery ? "توصيل فقط" : "استلام من المطعم فقط"}</span>`}
+    </div>
+    <div style="padding:0 20px;border-top:1px solid var(--line)" class="grow">
+      ${items.length ? items.map(m => `
+        <div class="item">
+          <div class="col gap6 grow">
+            <b>${esc(m.name)}</b>
+            ${m.desc ? `<span class="muted" style="line-height:1.6">${esc(m.desc)}</span>` : ""}
+            <b style="margin-top:2px">${money(m.price)}</b>
+            ${!m.available ? '<span class="badge b-red" style="align-self:flex-start">غير متوفر اليوم</span>' : ""}
+          </div>
+          <div class="thumb" style="background:${colorOf(m.name)}">${initial(m.name)}
+            ${cart.items[m.id] ? `<span class="badge b-green" style="position:absolute;top:-6px;right:-6px">${cart.items[m.id].qty}</span>` : ""}
+            <button class="add" data-add="${esc(m.id)}" aria-label="أضف ${esc(m.name)}" ${!r.isOpen || !m.available ? "disabled" : ""}>${I.plus}</button>
+          </div>
+        </div>`).join("") : emptyState("المنيو فارغ", "لم يضف المطعم أصنافه بعد.")}
+    </div>
+    ${n ? `<div class="bar"><button id="r-cart" class="btn btn-dark" style="justify-content:space-between;padding:0 18px">
+      <span class="row gap10"><span style="background:var(--accent);border-radius:8px;padding:1px 9px">${n}</span>عرض السلة</span>
+      <span>${money(cartSubtotal())}</span></button></div>` : ""}`;
+}
+
+$("#r-body").addEventListener("click", e => {
+  const a = e.target.closest("[data-add]");
+  if (a) {
+    const m = curRest.menu.find(x => x.id === a.dataset.add);
+    const it = cart.items[m.id] || (cart.items[m.id] = { id: m.id, name: m.name, price: Number(m.price), qty: 0 });
+    it.qty++;
+    try { navigator.vibrate?.(15); } catch {}
+    return renderRestaurant();
+  }
+  const t = e.target.closest("[data-type]");
+  if (t) { cart.type = t.dataset.type; return renderRestaurant(); }
+  if (e.target.closest("#r-cart")) openCart();
+});
+
+// ───── السلة ─────
+let map = null, marker = null;
+const draft = { zone: "", landmark: "", pay: "cash", txn: "", loc: null };
+
+function openCart() {
+  show("cart");
+  renderCart();
+}
+
+function cartTotals() {
+  const sub = cartSubtotal();
+  const z = cart.type === "delivery" ? cart.zones.find(x => x.id === draft.zone) : null;
+  const fee = z ? Number(z.fee || 0) : 0;
+  return { sub, z, fee, total: sub + fee };
+}
+
+function renderCart() {
+  if (map) { map.remove(); map = null; marker = null; }
+  const r = cart.r, items = Object.values(cart.items).filter(i => i.qty > 0);
+  if (!items.length) { return openRestaurant(r.id); }
+  const { sub, z, fee, total } = cartTotals();
+  const forcePrepaid = me.strikes >= 2;
+  if (forcePrepaid) draft.pay = "bankak";
+  const canBankak = !!r.bankak;
+  $("#cart-body").innerHTML = `
+    <div class="header"><button class="icon-btn" id="cart-back" aria-label="رجوع">${I.back}</button><h1>تأكيد الطلب</h1></div>
+    <div class="col gap14 grow" style="padding:14px 20px">
+      <section class="box col gap10">
+        <b>${esc(r.name)}</b>
+        ${items.map(i => `<div class="row between">
+          <div class="col"><span style="font-weight:500">${esc(i.name)}</span><span class="muted">${money(i.price)}</span></div>
+          <div class="qty"><button data-inc="${esc(i.id)}" aria-label="زيادة">${I.plus}</button><b>${i.qty}</b><button data-dec="${esc(i.id)}" aria-label="إنقاص">${I.minus}</button></div>
+        </div>`).join("")}
+      </section>
+
+      ${cart.type === "delivery" ? `
+      <section class="box col gap10">
+        <b>عنوان التوصيل</b>
+        <label class="field">المنطقة
+          <select id="cart-zone"><option value="">اختر منطقتك</option>
+            ${cart.zones.map(x => `<option value="${esc(x.id)}" ${draft.zone === x.id ? "selected" : ""}>${esc(x.name)} — ${Number(x.fee) ? money(x.fee) : "توصيل مجاني"}</option>`).join("")}
+          </select>
+        </label>
+        ${!cart.zones.length ? `<div class="note n-red">${I.info}المطعم لم يحدد مناطق التوصيل بعد. اختر الاستلام من المطعم.</div>` : ""}
+        ${z?.min && sub < Number(z.min) ? `<div class="note n-orange">${I.info}الحد الأدنى لهذه المنطقة ${money(z.min)}</div>` : ""}
+        <div class="row between"><span class="muted">حرّك الدبوس إلى باب البيت</span>
+          <button id="cart-locate" class="row gap6" style="border:0;background:none;color:var(--accent);font-weight:700;font-size:13px">${I.pin}موقعي الحالي</button></div>
+        <div id="map"></div>
+        <label class="field">وصف المكان (معلم قريب)
+          <input id="cart-landmark" value="${esc(draft.landmark)}" placeholder="مثلاً: جنب مسجد الحارة، الباب الأخضر">
+        </label>
+      </section>` : `
+      <section class="box col gap6"><b>استلام من المطعم</b><span class="muted">${esc(r.district)}، ${esc(r.city)} · ${esc(r.phone)}</span></section>`}
+
+      <section class="box col gap10">
+        <b>طريقة الدفع</b>
+        ${forcePrepaid ? `<div class="note n-red">${I.warn}بسبب طلبات سابقة لم تُستلم، الدفع المسبق عبر بنكك إلزامي لحسابك${!canBankak ? "، وهذا المطعم لا يقبل بنكك. اختر مطعماً آخر." : "."}</div>` : ""}
+        <label class="radio"><input type="radio" name="pay" value="cash" ${draft.pay === "cash" ? "checked" : ""} ${forcePrepaid ? "disabled" : ""}>الدفع عند الاستلام</label>
+        <label class="radio"><input type="radio" name="pay" value="bankak" ${draft.pay === "bankak" ? "checked" : ""} ${!canBankak ? "disabled" : ""}>تحويل بنكك ${!canBankak ? "(غير متاح لهذا المطعم)" : ""}</label>
+        ${draft.pay === "bankak" && canBankak ? `
+          <div class="note n-blue">${I.info}<span>حوّل <b>${money(total)}</b> إلى حساب المطعم في بنكك: <b dir="ltr">${esc(r.bankak)}</b> ثم اكتب رقم العملية.</span></div>
+          <label class="field">رقم العملية<input id="cart-txn" value="${esc(draft.txn)}" inputmode="numeric" dir="ltr"></label>` : ""}
+      </section>
+
+      <div class="col gap6" style="padding:0 4px;font-size:14px">
+        <div class="row between muted" style="font-size:14px"><span>المجموع</span><span>${money(sub)}</span></div>
+        ${cart.type === "delivery" ? `<div class="row between" style="${z && !fee ? "color:var(--green);font-weight:500" : "color:var(--muted)"}"><span>التوصيل</span><span>${z ? (fee ? money(fee) : "مجاني") : "—"}</span></div>` : ""}
+        <div class="row between" style="font-weight:700;font-size:16px"><span>الإجمالي</span><span>${money(total)}</span></div>
+      </div>
+      <p id="cart-err" class="err" role="alert"></p>
+    </div>
+    <div class="bar"><button id="cart-send" class="btn btn-primary" style="justify-content:space-between;padding:0 18px"><span>تأكيد الطلب</span><span>${money(total)}</span></button></div>`;
+
+  if (cart.type === "delivery" && window.L) {
+    const start = draft.loc || CONFIG.DEFAULT_LOC;
+    map = L.map("map", { zoomControl: false, attributionControl: true }).setView(start, draft.loc ? 17 : 13);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    marker = L.marker(start, { draggable: true }).addTo(map);
+    marker.on("dragend", () => { const p = marker.getLatLng(); draft.loc = [p.lat, p.lng]; });
+    map.on("click", ev => { marker.setLatLng(ev.latlng); draft.loc = [ev.latlng.lat, ev.latlng.lng]; });
+    if (!draft.loc) locate(false);
+  }
+}
+
+function locate(loud) {
+  if (!navigator.geolocation) return loud && toast("تحديد الموقع غير مدعوم في هذا الجهاز.");
+  navigator.geolocation.getCurrentPosition(p => {
+    draft.loc = [p.coords.latitude, p.coords.longitude];
+    if (map && marker) { marker.setLatLng(draft.loc); map.setView(draft.loc, 17); }
+  }, () => loud && toast("لم نتمكن من تحديد موقعك. فعّل الموقع أو حرّك الدبوس يدوياً."), { enableHighAccuracy: true, timeout: 10000 });
+}
+
+$("#cart-body").addEventListener("click", e => {
+  const inc = e.target.closest("[data-inc]"), dec = e.target.closest("[data-dec]");
+  if (inc) { cart.items[inc.dataset.inc].qty++; return renderCart(); }
+  if (dec) { const it = cart.items[dec.dataset.dec]; it.qty--; if (it.qty <= 0) delete cart.items[it.id]; return renderCart(); }
+  if (e.target.closest("#cart-back")) return openRestaurant(cart.r.id);
+  if (e.target.closest("#cart-locate")) return locate(true);
+  if (e.target.closest("#cart-send")) return sendOrder(e.target.closest("#cart-send"));
+});
+$("#cart-body").addEventListener("change", e => {
+  if (e.target.id === "cart-zone") { draft.zone = e.target.value; renderCart(); }
+  if (e.target.name === "pay") { draft.pay = e.target.value; renderCart(); }
+});
+$("#cart-body").addEventListener("input", e => {
+  if (e.target.id === "cart-landmark") draft.landmark = e.target.value;
+  if (e.target.id === "cart-txn") draft.txn = e.target.value.trim();
+});
+
+function sendOrder(btn) {
+  const err = m => $("#cart-err").textContent = m;
+  const { sub, z, fee, total } = cartTotals();
+  if (!cart.r.isOpen) return err("المطعم مغلق الآن.");
+  if (cart.type === "delivery") {
+    if (!z) return err("اختر منطقة التوصيل.");
+    if (z.min && sub < Number(z.min)) return err(`الحد الأدنى لهذه المنطقة ${money(z.min)}.`);
+    if (!draft.loc) return err("حدد موقعك على الخريطة.");
+    if (draft.landmark.trim().length < 3) return err("اكتب وصفاً للمكان أو معلماً قريباً.");
+  }
+  if (me.delivered < 2 && total > CONFIG.NEW_LIMIT) return err(`للحسابات الجديدة: الحد الأقصى ${money(CONFIG.NEW_LIMIT)} لأول طلبين.`);
+  if (draft.pay === "bankak" && !draft.txn) return err("اكتب رقم عملية التحويل.");
+  if (me.strikes >= 3) return err("حسابك موقوف بسبب تكرار عدم استلام الطلبات.");
+  busy(btn, async () => {
+    const id = await F.placeOrder({
+      restaurantId: cart.r.id, restaurantName: cart.r.name, restaurantPhone: cart.r.phone,
+      items: Object.values(cart.items).map(({ id, name, price, qty }) => ({ id, name, price, qty })),
+      subtotal: sub, deliveryFee: fee, total,
+      type: cart.type, payMethod: draft.pay, bankakTxn: draft.pay === "bankak" ? draft.txn : "",
+      zone: z?.name || "", landmark: cart.type === "delivery" ? draft.landmark.trim() : "",
+      location: cart.type === "delivery" ? { lat: draft.loc[0], lng: draft.loc[1] } : null
+    });
+    cart = null; draft.txn = "";
+    toast("تم إرسال طلبك");
+    openTrack(id);
+  });
+}
+
+// ───── التتبع ─────
+const STEPS_DELIVERY = ["new", "accepted", "preparing", "out_for_delivery", "delivered"];
+const STEPS_PICKUP = ["new", "accepted", "preparing", "ready", "delivered"];
+const STEP_LABEL = { new: "تم إرسال الطلب", accepted: "المطعم قبل الطلب", preparing: "قيد التحضير",
+  ready: "جاهز للاستلام", out_for_delivery: "في الطريق إليك", delivered: "تم التسليم" };
+
+function openTrack(id) {
+  clearSubs();
+  show("track");
+  $("#t-body").innerHTML = `<div class="center"><div class="spinner"></div></div>`;
+  unsubs.push(F.watchOrder(id, o => renderTrack(o)));
+}
+
+async function renderTrack(o) {
+  const steps = o.type === "pickup" ? STEPS_PICKUP : STEPS_DELIVERY;
+  const idx = steps.indexOf(o.status);
+  const ended = ["rejected", "cancelled"].includes(o.status);
+  const headline = ended ? ST[o.status] : (STEP_LABEL[o.status] || ST[o.status]);
+  $("#t-body").innerHTML = `
+    <div class="header"><button class="icon-btn" data-go="myorders" aria-label="رجوع">${I.back}</button>
+      <div class="col"><h1 style="font-size:19px">طلب #${esc(o.id.slice(-5).toUpperCase())}</h1><span class="muted">${esc(o.restaurantName)}</span></div></div>
+    <div style="margin:4px 20px 0;padding:20px;border-radius:22px;background:${ended ? "var(--fill)" : "var(--accent)"};color:${ended ? "var(--ink)" : "#fff"}" class="col gap6">
+      <span style="font-size:13px">حالة الطلب</span><span style="font-size:26px;font-weight:700">${headline}</span>
+      <span style="font-size:14px">${o.type === "pickup" ? "استلام من المطعم" : "توصيل إلى " + esc(o.zone)}</span>
+    </div>
+    ${ended ? "" : `<ol class="steps" style="padding:24px 20px 6px">${steps.map((s, i) => {
+      const done = i < idx || o.status === "delivered", now = i === idx && o.status !== "delivered";
+      const color = done ? "var(--green)" : now ? "var(--accent)" : "#D6D3D1";
+      return `<li><div class="col" style="align-items:center"><span class="dot" style="background:${color}">${done ? I.check : ""}</span>
+        ${i < steps.length - 1 ? `<span class="vline" style="background:${done ? "var(--green)" : "var(--line)"}"></span>` : ""}</div>
+        <div class="col" style="padding-top:4px"><span style="font-weight:${now ? 700 : 500};color:${i > idx ? "var(--muted)" : "var(--ink)"}">${STEP_LABEL[s]}</span>
+        ${s === "new" ? `<span class="muted">${timeStr(o.createdAt)}</span>` : ""}</div></li>`;
+    }).join("")}</ol>`}
+    <div id="t-report" style="padding:0 20px"></div>
+    <div class="col gap10" style="padding:12px 20px">
+      <div class="box col gap6">
+        ${o.items.map(i => `<div class="row between" style="font-size:14px"><span>${i.qty}× ${esc(i.name)}</span><span>${money(i.qty * i.price)}</span></div>`).join("")}
+        <div class="row between" style="font-weight:700;border-top:1px solid var(--line);padding-top:8px;margin-top:4px"><span>الإجمالي</span><span>${money(o.total)} · ${o.payMethod === "cash" ? "كاش" : "بنكك"}</span></div>
+      </div>
+    </div>
+    <div class="grow"></div>
+    <div class="bar row gap10">
+      <a class="btn btn-green" href="tel:${esc(o.restaurantPhone)}" style="text-decoration:none">${I.phone}اتصل بالمطعم</a>
+      ${o.status === "new" ? `<button id="t-cancel" class="btn btn-danger" style="width:130px">إلغاء</button>` : ""}
+    </div>`;
+  const c = $("#t-cancel");
+  if (c) c.onclick = () => busy(c, () => F.setOrderStatus(o.id, "cancelled"));
+  if (o.reported) {
+    const rep = await F.getReport(o.id).catch(() => null);
+    if (!rep) return;
+    const box = $("#t-report");
+    if (rep.status === "open") {
+      box.innerHTML = `<div class="box col gap10" style="border-color:var(--red)">
+        <div class="note n-red">${I.warn}<span>أبلغ المطعم أنك لم تستلم الطلب: <b>${REASONS[rep.reason] || ""}</b>. أُضيف إنذار إلى حسابك. إن كان البلاغ غير صحيح، اكتب اعتراضك.</span></div>
+        <label class="field">اعتراضك<textarea id="t-dispute" maxlength="300" placeholder="مثلاً: لم يتصل بي المندوب"></textarea></label>
+        <button id="t-dispute-send" class="btn btn-sm btn-dark">إرسال الاعتراض</button></div>`;
+      $("#t-dispute-send").onclick = e => {
+        const t = $("#t-dispute").value.trim();
+        if (t.length < 5) return toast("اكتب سبب اعتراضك.");
+        busy(e.target, async () => { await F.disputeReport(o.id, t); toast("تم إرسال اعتراضك للمراجعة"); renderTrack(o); });
+      };
+    } else {
+      const msg = { disputed: "اعتراضك قيد المراجعة.", upheld: "تمت مراجعة البلاغ وتثبيت الإنذار.", cancelled: "تم إلغاء البلاغ وحذف الإنذار." }[rep.status];
+      box.innerHTML = `<div class="note n-blue">${I.info}${msg}</div>`;
+    }
+  }
+}
+
+// ───── طلباتي ─────
+function showMyOrders() {
+  clearSubs();
+  renderNav("customer", "myorders");
+  show("myorders");
+  $("#mo-list").innerHTML = skeleton(3, 90);
+  unsubs.push(F.watchMyOrders(list => {
+    $("#mo-list").innerHTML = list.length ? list.map(o => `
+      <button class="box row between" data-track="${esc(o.id)}" style="text-align:right;width:100%">
+        <div class="col gap6"><b>${esc(o.restaurantName)}</b><span class="muted">${o.items.reduce((a, i) => a + i.qty, 0)} أصناف · ${money(o.total)}</span></div>
+        <span class="badge ${ST_BADGE[o.status]}">${ST[o.status]}</span>
+      </button>`).join("") : emptyState("لا توجد طلبات بعد", "اطلب من مطعمك المفضل وتابع طلبك من هنا.");
+  }, () => { $("#mo-list").innerHTML = emptyState("تعذر تحميل الطلبات", "تأكد من الإنترنت."); }));
+}
+$("#mo-list").addEventListener("click", e => { const b = e.target.closest("[data-track]"); if (b) openTrack(b.dataset.track); });
+
+// ════════════════════════════════════════
+//                 المطعم
+// ════════════════════════════════════════
+let myRest = null, ownerOrders = [], ownerSeg = "new", ownerTabNow = "orders";
+
+async function showOwner() {
+  clearSubs();
+  show("owner");
+  $("#ow-body").innerHTML = `<div class="center"><div class="spinner"></div></div>`;
+  myRest = await F.getMyRestaurant();
+  if (!myRest) { show("ownerreg"); return; }
+  let first = true;
+  unsubs.push(F.watchRestaurantOrders(list => {
+    const before = ownerOrders.filter(o => o.status === "new").length;
+    ownerOrders = list;
+    const after = list.filter(o => o.status === "new").length;
+    if (!first && after > before) { try { navigator.vibrate?.([200, 100, 200]); } catch {} toast("طلب جديد!"); }
+    first = false;
+    if (ownerTabNow === "orders") renderOwnerOrders();
+  }, e => console.error(e)));
+  ownerTab("orders");
+}
+
+function renderOwnerHead() {
+  const r = myRest, d = daysLeft(r.subActiveUntil);
+  let sub;
+  if (r.subActiveUntil == null) sub = `<div class="note n-blue">${I.info}<span>مطعمك قيد المراجعة. سنتصل بك لتفعيل فترتك المجانية. جهّز المنيو ومناطق التوصيل الآن.</span></div>`;
+  else if (d <= 0) sub = `<div class="note n-red">${I.warn}<span style="flex:1">انتهى اشتراكك ومطعمك مخفي عن الزبائن.</span><button class="link" data-renew style="border:0;background:none;color:var(--red);font-weight:700">تجديد</button></div>`;
+  else sub = `<div class="note n-orange">${I.info}<span style="flex:1">${r.freeTrial && d > 30 ? "الفترة المجانية" : "الاشتراك"}: باقي ${d} يوماً</span><button data-renew style="border:0;background:none;color:var(--accent-dark);font-weight:700">تجديد</button></div>`;
+  $("#ow-head").innerHTML = `<div class="col gap14" style="padding:16px 20px 14px;background:#fff">
+    <div class="row between">
+      <div class="col"><span class="muted" style="font-size:12px">لوحة المطعم</span><h1 style="font-size:20px">${esc(r.name)}</h1></div>
+      <label class="row gap10" style="font-size:13px;font-weight:700;color:${r.isOpen ? "var(--green)" : "var(--muted)"}">${r.isOpen ? "مفتوح" : "مغلق"}
+        <span class="switch"><input type="checkbox" id="ow-open" ${r.isOpen ? "checked" : ""} aria-label="فتح أو إغلاق المطعم"><span></span></span></label>
+    </div>${sub}</div>`;
+}
+
+$("#ow-head").addEventListener("change", async e => {
+  if (e.target.id !== "ow-open") return;
+  const v = e.target.checked;
+  try { await F.updateMyRestaurant({ isOpen: v }); myRest.isOpen = v; renderOwnerHead(); toast(v ? "مطعمك مفتوح للطلبات" : "تم إغلاق المطعم"); }
+  catch { e.target.checked = !v; toast("تعذر التحديث."); }
+});
+$("#ow-head").addEventListener("click", e => { if (e.target.closest("[data-renew]")) openRenew(); });
+
+function ownerTab(k) {
+  ownerTabNow = k;
+  $("#ow-body").onclick = null; $("#ow-body").onchange = null;
+  renderNav("owner", k);
+  renderOwnerHead();
+  show("owner");
+  if (k === "orders") renderOwnerOrders();
+  if (k === "menu") renderOwnerMenu();
+  if (k === "settings") renderOwnerSettings();
+}
+
+// ───── الطلبات ─────
+const SEGS = { new: ["new"], active: ["accepted", "preparing", "ready", "out_for_delivery"], done: ["delivered", "rejected", "cancelled"] };
+
+function renderOwnerOrders() {
+  const cnt = k => ownerOrders.filter(o => SEGS[k].includes(o.status)).length;
+  const list = ownerOrders.filter(o => SEGS[ownerSeg].includes(o.status)).slice(0, ownerSeg === "done" ? 30 : 100);
+  $("#ow-body").innerHTML = `<div style="padding:14px 20px 0"><div class="seg" id="ow-seg">
+      <button data-seg="new" class="${ownerSeg === "new" ? "on" : ""}">جديدة (${cnt("new")})</button>
+      <button data-seg="active" class="${ownerSeg === "active" ? "on" : ""}">قيد التنفيذ (${cnt("active")})</button>
+      <button data-seg="done" class="${ownerSeg === "done" ? "on" : ""}">منتهية</button></div></div>
+    <div class="list">${list.length ? list.map(orderCard).join("") : emptyState("لا توجد طلبات هنا", ownerSeg === "new" ? "ستظهر الطلبات الجديدة هنا فوراً." : "")}</div>`;
+}
+
+function orderCard(o) {
+  const isNew = (o.customerDelivered || 0) === 0;
+  const actions = {
+    new: `<button class="btn btn-sm btn-primary" data-act="accept">قبول</button>
+          <button class="btn btn-sm btn-danger" style="width:80px" data-act="reject">رفض</button>`,
+    accepted: `<button class="btn btn-sm btn-primary" data-act="prepare">بدء التحضير</button>`,
+    preparing: o.type === "delivery" ? `<button class="btn btn-sm btn-primary" data-act="out">خرج للتوصيل</button>`
+                                     : `<button class="btn btn-sm btn-primary" data-act="ready">جاهز للاستلام</button>`,
+    ready: `<button class="btn btn-sm btn-green" data-act="delivered">تم التسليم</button>`,
+    out_for_delivery: `<button class="btn btn-sm btn-green" data-act="delivered">تم التسليم</button>
+          <button class="btn btn-sm btn-danger" style="width:110px" data-act="report" ${o.reported ? "disabled" : ""}>لم يستلم</button>`
+  }[o.status] || "";
+  return `<article class="ocard ${o.status === "new" ? "hot" : ""}" data-oid="${esc(o.id)}">
+    <div class="row between"><b>طلب #${esc(o.id.slice(-5).toUpperCase())}</b>
+      <span class="row gap6"><span class="muted">${timeStr(o.createdAt)}</span><span class="badge ${ST_BADGE[o.status]}">${ST[o.status]}</span></span></div>
+    <div class="row gap6" style="flex-wrap:wrap"><span style="font-weight:500">${esc(o.customerName)}</span>
+      ${isNew ? '<span class="badge b-blue">زبون جديد</span>' : `<span class="badge b-green">${I.check}${o.customerDelivered} طلباً مستلَماً</span>`}
+      ${o.customerStrikes ? `<span class="badge b-red">${o.customerStrikes} إنذار</span>` : ""}</div>
+    <div class="muted" style="line-height:1.8;font-size:13px">${o.items.map(i => `${i.qty}× ${esc(i.name)}`).join(" · ")}<br>
+      ${o.type === "delivery" ? `توصيل: ${esc(o.zone)} — ${esc(o.landmark)}` : "استلام من المطعم"}</div>
+    ${o.status === "new" && isNew ? `<div class="note n-blue">${I.info}زبون جديد: يُنصح بالاتصال للتأكيد قبل التحضير</div>` : ""}
+    ${o.payMethod === "bankak" ? `<div class="note n-orange">${I.info}<span>دفع بنكك · رقم العملية: <b dir="ltr">${esc(o.bankakTxn)}</b> — تحقق منه قبل التحضير</span></div>` : ""}
+    <div class="row between" style="font-weight:700"><span>الإجمالي</span><span>${money(o.total)} · ${o.payMethod === "cash" ? "كاش" : "بنكك"}</span></div>
+    <div class="row gap10">${actions}
+      <a class="icon-btn" href="tel:${esc(o.customerPhone)}" aria-label="اتصال بالزبون" style="background:var(--green-soft);color:var(--green)">${I.phone}</a>
+      ${o.location ? `<a class="icon-btn" href="https://maps.google.com/?q=${o.location.lat},${o.location.lng}" target="_blank" aria-label="فتح الموقع في الخرائط" style="background:var(--blue-soft);color:var(--blue)">${I.pin}</a>` : ""}
+    </div></article>`;
+}
+
+$("#ow-body").addEventListener("click", e => {
+  const seg = e.target.closest("[data-seg]");
+  if (seg) { ownerSeg = seg.dataset.seg; return renderOwnerOrders(); }
+  const act = e.target.closest("[data-act]");
+  if (!act) return;
+  const o = ownerOrders.find(x => x.id === act.closest("[data-oid]").dataset.oid);
+  const a = act.dataset.act;
+  if (a === "report") return openReport(o);
+  busy(act, async () => {
+    if (a === "accept") await F.setOrderStatus(o.id, "accepted");
+    if (a === "reject") await F.setOrderStatus(o.id, "rejected");
+    if (a === "prepare") await F.setOrderStatus(o.id, "preparing");
+    if (a === "ready") await F.setOrderStatus(o.id, "ready");
+    if (a === "out") await F.markOutForDelivery(o.id);
+    if (a === "delivered") await F.markDelivered(o.id, o.customerId);
+  });
+});
+
+function openReport(o) {
+  const b = openSheet(`<h2>الزبون لم يستلم الطلب</h2>
+    <div class="box col gap6" style="font-size:13px">
+      <div class="row between"><span class="muted">الطلب</span><b>#${esc(o.id.slice(-5).toUpperCase())} · ${money(o.total)}</b></div>
+      <div class="row between"><span class="muted">الزبون</span><span>${esc(o.customerName)}</span></div>
+      <div class="row between"><span class="muted">في الطريق منذ</span><span style="color:var(--green)">${timeStr(o.outAt)}</span></div>
+    </div>
+    <fieldset style="border:0;margin:0;padding:0" class="col gap10"><legend style="font-weight:700;margin-bottom:8px">ماذا حدث؟</legend>
+      ${Object.entries(REASONS).map(([k, v], i) => `<label class="radio"><input type="radio" name="reason" value="${k}" ${i === 0 ? "checked" : ""}>${v}</label>`).join("")}
+    </fieldset>
+    <label class="field">تفاصيل إضافية (اختياري)<textarea id="rp-note" maxlength="300" placeholder="مثلاً: المندوب انتظر 15 دقيقة واتصل 3 مرات"></textarea></label>
+    <div class="note n-red">${I.warn}سيحصل الزبون على إنذار ويحق له الاعتراض. البلاغات الكاذبة المتكررة تؤدي لإيقاف حساب المطعم.</div>
+    <button id="rp-send" class="btn" style="background:var(--red);color:#fff">إرسال البلاغ</button>`);
+  b.querySelector("#rp-send").onclick = e => busy(e.target, async () => {
+    const reason = b.querySelector('input[name="reason"]:checked').value;
+    await F.reportNoShow(o.id, o.customerId, reason, b.querySelector("#rp-note").value.trim());
+    closeSheet(); toast("تم إرسال البلاغ");
+  });
+}
+
+// ───── المنيو والعروض ─────
+async function renderOwnerMenu() {
+  const body = $("#ow-body");
+  body.innerHTML = `<div class="list">${skeleton(4, 76)}</div>`;
+  const [menu, offers] = await Promise.all([F.listSub(myRest.id, "menu"), F.listSub(myRest.id, "offers")]);
+  if (ownerTabNow !== "menu") return;
+  body.innerHTML = `<div class="list">
+    <div class="row between"><h2>العروض</h2><button class="link" data-new="offer" style="border:0;background:none;color:var(--accent);font-weight:700">+ عرض جديد</button></div>
+    ${offers.length ? offers.map(o => `<div class="box row gap10">
+      <div class="col gap6 grow"><b style="font-size:14px">${esc(o.title)}</b>
+        <span class="muted">${o.endsAt ? "ينتهي " + tsDate(o.endsAt).toLocaleDateString("ar-SD") : "بدون تاريخ انتهاء"}</span></div>
+      <span class="switch"><input type="checkbox" data-offer-toggle="${esc(o.id)}" ${o.active ? "checked" : ""} aria-label="تفعيل العرض"><span></span></span>
+      <button class="icon-btn" data-del-offer="${esc(o.id)}" aria-label="حذف العرض" style="color:var(--red)">${I.trash}</button></div>`).join("")
+      : `<span class="muted">لا توجد عروض. أضف عرضاً مثل "توصيل مجاني فوق 10,000 ج".</span>`}
+    <div class="row between" style="margin-top:8px"><h2>الأصناف</h2><button class="btn btn-sm btn-primary" data-new="item" style="width:auto;padding:0 14px">${I.plus}صنف جديد</button></div>
+    ${menu.length ? menu.map(m => `<div class="box row gap10" style="padding:10px">
+      <div class="thumb" style="width:54px;height:54px;border-radius:12px;background:${colorOf(m.name)};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:20px;flex-shrink:0">${initial(m.name)}</div>
+      <div class="col grow"><b style="font-size:14px">${esc(m.name)}</b>
+        <span style="font-size:13px;color:${m.available ? "var(--muted)" : "var(--red)"}">${money(m.price)} · ${m.available ? "متوفر" : "غير متوفر"}</span></div>
+      <button class="icon-btn" data-edit="${esc(m.id)}" aria-label="تعديل">${I.edit}</button></div>`).join("")
+      : emptyState("المنيو فارغ", "أضف أصنافك ليتمكن الزبائن من الطلب.")}
+  </div>`;
+  body.onclick = e => {
+    const n = e.target.closest("[data-new]"), ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del-offer]");
+    if (n?.dataset.new === "item") return itemSheet(null);
+    if (n?.dataset.new === "offer") return offerSheet();
+    if (ed) return itemSheet(menu.find(m => m.id === ed.dataset.edit));
+    if (del) return busy(del, async () => { await F.deleteSub("offers", del.dataset.delOffer); renderOwnerMenu(); });
+  };
+  body.onchange = e => {
+    const t = e.target.closest("[data-offer-toggle]");
+    if (t) F.updateSub("offers", t.dataset.offerToggle, { active: t.checked }).catch(() => toast("تعذر التحديث."));
+  };
+}
+
+function itemSheet(m) {
+  const b = openSheet(`<h2>${m ? "تعديل الصنف" : "صنف جديد"}</h2>
+    <label class="field">اسم الصنف<input id="it-name" value="${esc(m?.name)}" placeholder="مثلاً: صحن كبدة مشوية"></label>
+    <label class="field">الوصف (اختياري)<input id="it-desc" value="${esc(m?.desc)}" placeholder="مثلاً: مع سلطة دكوة وعيش"></label>
+    <label class="field">السعر بالجنيه<input id="it-price" type="number" inputmode="numeric" min="0" value="${m?.price ?? ""}"></label>
+    <label class="row between box" style="padding:12px 14px"><span style="font-weight:500">متوفر اليوم</span>
+      <span class="switch"><input type="checkbox" id="it-av" ${m ? (m.available ? "checked" : "") : "checked"}><span></span></span></label>
+    <p id="it-err" class="err"></p>
+    <div class="row gap10"><button id="it-save" class="btn btn-primary">حفظ</button>
+      ${m ? `<button id="it-del" class="btn btn-danger" style="width:110px">حذف</button>` : ""}</div>`);
+  b.querySelector("#it-save").onclick = e => {
+    const data = { name: b.querySelector("#it-name").value.trim(), desc: b.querySelector("#it-desc").value.trim(),
+      price: Number(b.querySelector("#it-price").value), available: b.querySelector("#it-av").checked };
+    if (data.name.length < 2) return b.querySelector("#it-err").textContent = "اكتب اسم الصنف.";
+    if (!(data.price > 0)) return b.querySelector("#it-err").textContent = "اكتب سعراً صحيحاً.";
+    busy(e.target, async () => { m ? await F.updateSub("menu", m.id, data) : await F.addSub("menu", data); closeSheet(); renderOwnerMenu(); });
+  };
+  const d = b.querySelector("#it-del");
+  if (d) d.onclick = e => busy(e.target, async () => { await F.deleteSub("menu", m.id); closeSheet(); renderOwnerMenu(); });
+}
+
+function offerSheet() {
+  const b = openSheet(`<h2>عرض جديد</h2>
+    <label class="field">نص العرض<input id="of-title" maxlength="80" placeholder="مثلاً: توصيل مجاني داخل أمدرمان فوق 10,000 ج"></label>
+    <label class="field">ينتهي في (اختياري)<input id="of-end" type="date"></label>
+    <div class="note n-blue">${I.info}<span>لجعل التوصيل مجانياً فعلاً، اجعل رسوم المنطقة 0 من الإعدادات.</span></div>
+    <p id="of-err" class="err"></p>
+    <button id="of-save" class="btn btn-primary">حفظ العرض</button>`);
+  b.querySelector("#of-save").onclick = e => {
+    const title = b.querySelector("#of-title").value.trim(), end = b.querySelector("#of-end").value;
+    if (title.length < 4) return b.querySelector("#of-err").textContent = "اكتب نص العرض.";
+    busy(e.target, async () => {
+      await F.addSub("offers", { title, active: true, endsAt: end ? new Date(end + "T23:59:00") : null });
+      closeSheet(); renderOwnerMenu();
+    });
+  };
+}
+
+// ───── الإعدادات ─────
+async function renderOwnerSettings() {
+  const body = $("#ow-body");
+  body.innerHTML = `<div class="list">${skeleton(3, 70)}</div>`;
+  const zones = await F.listSub(myRest.id, "zones");
+  if (ownerTabNow !== "settings") return;
+  const r = myRest;
+  const sw = (key, label, sub) => `<div class="row between" style="padding:10px 0">
+    <div class="col"><b style="font-size:15px">${label}</b><span class="muted">${sub}</span></div>
+    <span class="switch"><input type="checkbox" data-flag="${key}" ${r[key] ? "checked" : ""} aria-label="${label}"><span></span></span></div>`;
+  body.innerHTML = `<div class="list">
+    <section class="box" style="padding:4px 14px">${sw("delivery", "التوصيل", "بمندوب المطعم")}<div style="border-top:1px solid var(--fill)"></div>${sw("pickup", "الاستلام من المطعم", "الزبون يحضر بنفسه")}</section>
+    <div class="row between"><h2>مناطق التوصيل</h2><button data-zone-new style="border:0;background:none;color:var(--accent);font-weight:700">+ منطقة</button></div>
+    ${zones.length ? zones.map(z => `<div class="box col gap6">
+      <div class="row between"><b>${esc(z.name)}</b>
+        <span class="row gap10"><b style="color:${Number(z.fee) ? "var(--ink)" : "var(--green)"}">${Number(z.fee) ? money(z.fee) : "مجاني"}</b>
+        <button class="icon-btn" data-zone-del="${esc(z.id)}" aria-label="حذف المنطقة" style="width:36px;height:36px;color:var(--red)">${I.trash}</button></span></div>
+      <div class="meta"><span>الحد الأدنى: ${z.min ? money(z.min) : "لا يوجد"}</span><span>الوقت: ${esc(z.time || "—")}</span></div></div>`).join("")
+      : `<div class="note n-orange">${I.info}أضف منطقة واحدة على الأقل ليستطيع الزبائن طلب التوصيل.</div>`}
+    <h2 style="margin-top:6px">استلام تحويلات الزبائن</h2>
+    <section class="box col gap10">
+      <label class="field">رقم حسابك في بنكك (اختياري)<input id="st-bankak" dir="ltr" inputmode="numeric" value="${esc(r.bankak)}"></label>
+      <span class="muted">يظهر للزبون إذا اختار الدفع المسبق. الزبائن ذوو الإنذارات المتكررة لا يمكنهم الطلب إلا به.</span>
+      <button id="st-bankak-save" class="btn btn-sm btn-dark">حفظ</button>
+    </section>
+    <button class="btn btn-outline" data-logout2 style="margin-top:8px">تسجيل الخروج</button>
+  </div>`;
+  body.onclick = e => {
+    if (e.target.closest("[data-zone-new]")) return zoneSheet();
+    const zd = e.target.closest("[data-zone-del]");
+    if (zd) return busy(zd, async () => { await F.deleteSub("zones", zd.dataset.zoneDel); renderOwnerSettings(); });
+    if (e.target.closest("#st-bankak-save")) {
+      const v = $("#st-bankak").value.trim();
+      return busy(e.target, async () => { await F.updateMyRestaurant({ bankak: v }); myRest.bankak = v; toast("تم الحفظ"); });
+    }
+    if (e.target.closest("[data-logout2]")) return doLogout();
+  };
+  body.onchange = async e => {
+    const f = e.target.closest("[data-flag]"); if (!f) return;
+    const k = f.dataset.flag, v = f.checked;
+    if (!v && !(k === "delivery" ? r.pickup : r.delivery)) { f.checked = true; return toast("يجب تفعيل التوصيل أو الاستلام على الأقل."); }
+    try { await F.updateMyRestaurant({ [k]: v }); myRest[k] = v; }
+    catch { f.checked = !v; toast("تعذر التحديث."); }
+  };
+}
+
+function zoneSheet() {
+  const b = openSheet(`<h2>منطقة توصيل جديدة</h2>
+    <label class="field">اسم المنطقة<input id="z-name" placeholder="مثلاً: أمدرمان — الثورة"></label>
+    <div class="row2">
+      <label class="field">رسوم التوصيل<input id="z-fee" type="number" inputmode="numeric" min="0" placeholder="0 = مجاني"></label>
+      <label class="field">الحد الأدنى للطلب<input id="z-min" type="number" inputmode="numeric" min="0" placeholder="اختياري"></label>
+    </div>
+    <label class="field">الوقت المتوقع<input id="z-time" placeholder="مثلاً: 30–40 دقيقة"></label>
+    <p id="z-err" class="err"></p>
+    <button id="z-save" class="btn btn-primary">حفظ المنطقة</button>`);
+  b.querySelector("#z-save").onclick = e => {
+    const name = b.querySelector("#z-name").value.trim();
+    if (name.length < 2) return b.querySelector("#z-err").textContent = "اكتب اسم المنطقة.";
+    busy(e.target, async () => {
+      await F.addSub("zones", { name, fee: Number(b.querySelector("#z-fee").value) || 0,
+        min: Number(b.querySelector("#z-min").value) || 0, time: b.querySelector("#z-time").value.trim() });
+      closeSheet(); renderOwnerSettings();
+    });
+  };
+}
+
+// ───── تجديد الاشتراك ─────
+function openRenew() {
+  const b = openSheet(`<h2>تجديد الاشتراك عبر بنكك</h2>
+    <div class="note n-blue">${I.info}<span>حوّل ${CONFIG.SUB_PRICE ? "<b>" + money(CONFIG.SUB_PRICE) + "</b>" : "قيمة الاشتراك"} إلى حساب بنكك: <b dir="ltr">${esc(CONFIG.ADMIN_BANKAK || "—")}</b>، ثم أرسل رقم العملية. نفعّل الاشتراك بعد التحقق.</span></div>
+    <label class="field">رقم العملية<input id="pay-txn" dir="ltr" inputmode="numeric" maxlength="40"></label>
+    <label class="field">المبلغ المحوّل<input id="pay-amt" type="number" inputmode="numeric" value="${CONFIG.SUB_PRICE || ""}"></label>
+    <p id="pay-err" class="err"></p>
+    <button id="pay-send" class="btn btn-primary">إرسال للمراجعة</button>`);
+  b.querySelector("#pay-send").onclick = e => {
+    const txnId = b.querySelector("#pay-txn").value.trim(), amount = Number(b.querySelector("#pay-amt").value);
+    if (txnId.length < 4) return b.querySelector("#pay-err").textContent = "اكتب رقم العملية.";
+    if (!(amount > 0)) return b.querySelector("#pay-err").textContent = "اكتب المبلغ.";
+    busy(e.target, async () => { await F.submitPayment({ txnId, amount }); closeSheet(); toast("تم الإرسال. سنفعّل اشتراكك بعد التحقق."); });
+  };
+}
+
+// ════════════════════════════════════════
+//                 الأدمن
+// ════════════════════════════════════════
+let adTab = "rest", adRest = [];
+
+async function showAdmin() {
+  clearSubs();
+  show("admin");
+  $("#ad-body").innerHTML = skeleton(3, 110);
+  try { await loadAdmin(); } catch (e) { console.error(e); $("#ad-body").innerHTML = emptyState("تعذر التحميل", "تأكد من الإنترنت."); }
+}
+
+async function loadAdmin() {
+  const [rest, pays, reps] = await Promise.all([F.adminListRestaurants(), F.adminListPayments(), F.adminListDisputes()]);
+  adRest = rest;
+  const active = rest.filter(r => daysLeft(r.subActiveUntil) > 0).length;
+  const seatsLeft = CONFIG.FREE_SEATS - rest.filter(r => r.freeTrial).length;
+  $("#ad-stats").innerHTML = `<div><b>${active}</b><span>مطعم نشط</span></div>
+    <div><b>${seatsLeft} / ${CONFIG.FREE_SEATS}</b><span>مقاعد مجانية متبقية</span></div>
+    <div><b style="color:#FDBA74">${pays.length + reps.length}</b><span>بانتظار المراجعة</span></div>`;
+  const body = $("#ad-body");
+  if (adTab === "rest") {
+    const sorted = rest.sort((a, b) => (a.subActiveUntil ? 1 : 0) - (b.subActiveUntil ? 1 : 0));
+    body.innerHTML = sorted.length ? sorted.map(r => {
+      const d = daysLeft(r.subActiveUntil);
+      return `<div class="box col gap10">
+        <div class="row between"><b>${esc(r.name)}</b>
+          <span class="badge ${r.subActiveUntil == null ? "b-blue" : d > 0 ? "b-green" : "b-red"}">${r.subActiveUntil == null ? "بانتظار التفعيل" : d > 0 ? `باقي ${d} يوماً` : "منتهي"}</span></div>
+        <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span><a class="link" href="tel:${esc(r.phone)}" dir="ltr">${esc(r.phone)}</a></div>
+        ${r.subActiveUntil == null ? `<button class="btn btn-sm btn-green" data-trial="${esc(r.id)}" ${seatsLeft <= 0 ? "disabled" : ""}>${seatsLeft > 0 ? "تفعيل الشهرين المجانيين" : "انتهت المقاعد المجانية"}</button>` : ""}
+      </div>`; }).join("") : emptyState("لا توجد مطاعم بعد", "");
+  }
+  if (adTab === "pay") {
+    body.innerHTML = pays.length ? pays.map(p => {
+      const r = rest.find(x => x.id === p.restaurantId);
+      return `<div class="box col gap10" style="border:2px solid var(--accent)">
+        <div class="row between"><b>${esc(r?.name || "مطعم")}</b><span class="muted">${tsDate(p.createdAt)?.toLocaleString("ar-SD") || ""}</span></div>
+        <div class="row2" style="font-size:13px"><div class="col"><span class="muted">رقم العملية</span><b dir="ltr" style="text-align:right">${esc(p.txnId)}</b></div>
+          <div class="col"><span class="muted">المبلغ</span><b>${money(p.amount)}</b></div></div>
+        <div class="row gap10"><button class="btn btn-sm btn-green" data-pay-ok="${esc(p.id)}">تفعيل شهر</button>
+          <button class="btn btn-sm btn-danger" style="width:90px" data-pay-no="${esc(p.id)}">رفض</button></div></div>`; }).join("")
+      : emptyState("لا توجد تحويلات", "ستظهر تحويلات الاشتراك هنا للمراجعة.");
+    body.dataset.pays = JSON.stringify(pays.map(p => p.id));
+    body._pays = pays;
+  }
+  if (adTab === "rep") {
+    body.innerHTML = reps.length ? reps.map(r => {
+      const rr = rest.find(x => x.id === r.restaurantId);
+      return `<div class="box col gap10" style="border:2px solid var(--accent)">
+        <div class="row between"><b>طلب #${esc(r.id.slice(-5).toUpperCase())}</b><span class="badge b-orange">اعتراض من الزبون</span></div>
+        <div class="muted">المطعم: ${esc(rr?.name || "")} · السبب: ${REASONS[r.reason] || ""}</div>
+        ${r.note ? `<div class="note" style="background:var(--fill)"><span><b>المطعم:</b> ${esc(r.note)}</span></div>` : ""}
+        <div class="note n-blue"><span><b>الزبون:</b> ${esc(r.dispute)}</span></div>
+        <div class="row gap10"><button class="btn btn-sm btn-primary" data-rep-up="${esc(r.id)}">تثبيت الإنذار</button>
+          <button class="btn btn-sm btn-ghost" data-rep-cancel="${esc(r.id)}">إلغاء البلاغ</button></div></div>`; }).join("")
+      : emptyState("لا توجد اعتراضات", "البلاغات التي يعترض عليها الزبائن تظهر هنا.");
+    body._reps = reps;
+  }
+}
+
+$("#ad-seg").addEventListener("click", e => {
+  const b = e.target.closest("[data-t]"); if (!b) return;
+  adTab = b.dataset.t;
+  document.querySelectorAll("#ad-seg button").forEach(x => x.classList.toggle("on", x === b));
+  showAdmin();
+});
+$("#ad-as-customer").addEventListener("click", () => {
+  if (me.role === "owner") return showOwner();
+  showHome();
+});
+$("#ad-body").addEventListener("click", e => {
+  const body = $("#ad-body");
+  const t = e.target.closest("[data-trial]");
+  if (t) return busy(t, async () => { await F.adminActivateTrial(adRest.find(r => r.id === t.dataset.trial)); toast("تم التفعيل لمدة شهرين"); loadAdmin(); });
+  const ok = e.target.closest("[data-pay-ok]"), no = e.target.closest("[data-pay-no]");
+  if (ok || no) {
+    const p = body._pays.find(x => x.id === (ok || no).dataset[ok ? "payOk" : "payNo"]);
+    return busy(ok || no, async () => {
+      if (ok) await F.adminApprovePayment(p, adRest.find(r => r.id === p.restaurantId)); else await F.adminRejectPayment(p);
+      toast(ok ? "تم تفعيل الاشتراك شهراً" : "تم الرفض"); loadAdmin();
+    });
+  }
+  const up = e.target.closest("[data-rep-up]"), cn = e.target.closest("[data-rep-cancel]");
+  if (up || cn) {
+    const r = body._reps.find(x => x.id === (up || cn).dataset[up ? "repUp" : "repCancel"]);
+    return busy(up || cn, async () => { await F.adminResolveReport(r, !!up); toast(up ? "تم تثبيت الإنذار" : "تم إلغاء البلاغ والإنذار"); loadAdmin(); });
+  }
+});
 </script>
 </body>
 </html>

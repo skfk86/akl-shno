@@ -1,4 +1,4 @@
-// أكل شنو؟ — تهيئة Firebase والعمليات الحساسة
+// أكل شنو؟ — تهيئة Firebase وكل عمليات البيانات
 // كل عملية هنا مكتوبة بالشكل الذي تقبله firestore.rules بالضبط.
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
@@ -6,8 +6,9 @@ import {
   getAuth, GoogleAuthProvider, signInWithCredential, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
 import {
-  getFirestore, doc, collection, getDoc, getDocs, query, where, orderBy,
-  writeBatch, setDoc, updateDoc, increment, serverTimestamp, Timestamp
+  getFirestore, doc, collection, getDoc, getDocs, query, where,
+  writeBatch, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot,
+  increment, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -23,7 +24,11 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// ───────── الحساب ─────────
+const uid = () => auth.currentUser.uid;
+const DAY = 24 * 60 * 60 * 1000;
+const list = snap => snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+// ═════════ الحساب ═════════
 // دخول Google الأصلي عبر @capacitor-firebase/authentication،
 // ثم تمرير الـ idToken إلى JS SDK حتى تعمل قواعد Firestore.
 export async function signInGoogle() {
@@ -35,57 +40,74 @@ export async function signInGoogle() {
 }
 
 export async function logout() {
-  await window.Capacitor?.Plugins?.FirebaseAuthentication?.signOut();
+  try { await window.Capacitor?.Plugins?.FirebaseAuthentication?.signOut(); } catch {}
   await signOut(auth);
 }
 
 export function watchAuth(cb) { return onAuthStateChanged(auth, cb); }
 
 export async function getProfile() {
-  const s = await getDoc(doc(db, "users", auth.currentUser.uid));
+  const s = await getDoc(doc(db, "users", uid()));
   return s.exists() ? s.data() : null;
 }
 
-export async function createRestaurant({ name, category, city, district, phone }) {
-  const uid = auth.currentUser.uid;
-  await setDoc(doc(db, "restaurants", uid), {
-    ownerId: uid, name, category, city, district, phone,
-    isOpen: false, delivery: true, pickup: true,
-    subActiveUntil: null, freeTrial: false,
-    createdAt: serverTimestamp()
-  });
+export async function isAdminUser() {
+  try { return (await getDoc(doc(db, "admins", uid()))).exists(); }
+  catch { return false; }
 }
 
 export async function createProfile({ role, name, phone }) {
-  const uid = auth.currentUser.uid;
-  await setDoc(doc(db, "users", uid), {
+  await setDoc(doc(db, "users", uid()), {
     role, name, phone, addresses: [],
     strikes: 0, delivered: 0,
     createdAt: serverTimestamp()
   });
 }
 
-// ───────── المطاعم الظاهرة للزبون ─────────
+// ═════════ المطاعم ═════════
+export async function createRestaurant({ name, category, city, district, phone }) {
+  await setDoc(doc(db, "restaurants", uid()), {
+    ownerId: uid(), name, category, city, district, phone,
+    isOpen: false, delivery: true, pickup: true, bankak: "",
+    subActiveUntil: null, freeTrial: false,
+    createdAt: serverTimestamp()
+  });
+}
+
 // الشرط where إلزامي، وإلا ترفض القواعد الاستعلام.
 // تصفية المدينة تتم في التطبيق لتجنب الحاجة لفهرس مركّب في البداية.
 export async function listOpenRestaurants(city) {
-  const q = query(
-    collection(db, "restaurants"),
-    where("subActiveUntil", ">", Timestamp.now())
-  );
-  const all = (await getDocs(q)).docs.map(d => ({ id: d.id, ...d.data() }));
+  const q = query(collection(db, "restaurants"), where("subActiveUntil", ">", Timestamp.now()));
+  const all = list(await getDocs(q));
   return city ? all.filter(r => r.city === city) : all;
 }
 
-// ───────── إنشاء طلب ─────────
+export async function getRestaurant(id) {
+  const s = await getDoc(doc(db, "restaurants", id));
+  return s.exists() ? { id: s.id, ...s.data() } : null;
+}
+
+export const getMyRestaurant = () => getRestaurant(uid());
+export const updateMyRestaurant = data => updateDoc(doc(db, "restaurants", uid()), data);
+
+// المنيو والعروض ومناطق التوصيل: sub = 'menu' | 'offers' | 'zones'
+export async function listSub(rid, sub) {
+  return list(await getDocs(collection(db, "restaurants", rid, sub)));
+}
+export const addSub = (sub, data) => addDoc(collection(db, "restaurants", uid(), sub), data);
+export const updateSub = (sub, id, data) => updateDoc(doc(db, "restaurants", uid(), sub, id), data);
+export const deleteSub = (sub, id) => deleteDoc(doc(db, "restaurants", uid(), sub, id));
+
+// ═════════ الطلبات ═════════
 export async function placeOrder(order) {
-  const uid = auth.currentUser.uid;
-  const me = (await getDoc(doc(db, "users", uid))).data();
+  const me = await getProfile();
   const ref = doc(collection(db, "orders"));
   await setDoc(ref, {
-    ...order,                       // restaurantId, items, total, type, payMethod, location, landmark, zone
-    customerId: uid,
-    customerStrikes: me.strikes,    // يراها المطعم
+    ...order,
+    customerId: uid(),
+    customerName: me.name,
+    customerPhone: me.phone,
+    customerStrikes: me.strikes,    // يراها المطعم، والقواعد تتحقق من صحتها
     customerDelivered: me.delivered,
     status: "new",
     reported: false,
@@ -94,57 +116,107 @@ export async function placeOrder(order) {
   return ref.id;
 }
 
-// ───────── المطعم: في الطريق ─────────
-export function markOutForDelivery(orderId) {
-  return updateDoc(doc(db, "orders", orderId), {
-    status: "out_for_delivery",
-    outAt: serverTimestamp()
-  });
+const byNewest = arr => arr.sort((a, b) => (b.createdAt?.seconds ?? 9e9) - (a.createdAt?.seconds ?? 9e9));
+
+export function watchMyOrders(cb) {
+  const q = query(collection(db, "orders"), where("customerId", "==", uid()));
+  return onSnapshot(q, s => cb(byNewest(list(s))));
 }
 
-// ───────── المطعم: تم التسليم (+1 لسجل الزبون) ─────────
+export function watchRestaurantOrders(cb) {
+  const q = query(collection(db, "orders"), where("restaurantId", "==", uid()));
+  return onSnapshot(q, s => cb(byNewest(list(s))));
+}
+
+export function watchOrder(id, cb) {
+  return onSnapshot(doc(db, "orders", id), s => cb({ id: s.id, ...s.data() }));
+}
+
+export const setOrderStatus = (id, status) => updateDoc(doc(db, "orders", id), { status });
+
+export function markOutForDelivery(orderId) {
+  return updateDoc(doc(db, "orders", orderId), { status: "out_for_delivery", outAt: serverTimestamp() });
+}
+
+// تم التسليم (+1 لسجل الزبون)
 export async function markDelivered(orderId, customerId) {
   const b = writeBatch(db);
   b.update(doc(db, "orders", orderId), { status: "delivered" });
-  b.update(doc(db, "users", customerId), {
-    delivered: increment(1),
-    lastDeliveredOrder: orderId
-  });
+  b.update(doc(db, "users", customerId), { delivered: increment(1), lastDeliveredOrder: orderId });
   await b.commit();
 }
 
-// ───────── المطعم: بلاغ عدم استلام (+1 إنذار) ─────────
-// الثلاث كتابات معاً أو لا شيء.
+// ═════════ البلاغات ═════════
+// بلاغ عدم استلام (+1 إنذار): الثلاث كتابات معاً أو لا شيء.
 export async function reportNoShow(orderId, customerId, reason, note = "") {
   const b = writeBatch(db);
   b.set(doc(db, "reports", orderId), {
-    restaurantId: auth.currentUser.uid,
-    customerId, reason, note,
-    status: "open",
-    createdAt: serverTimestamp()
+    restaurantId: uid(), customerId, reason, note,
+    status: "open", createdAt: serverTimestamp()
   });
   b.update(doc(db, "orders", orderId), { reported: true });
-  b.update(doc(db, "users", customerId), {
-    strikes: increment(1),
-    lastReportId: orderId
+  b.update(doc(db, "users", customerId), { strikes: increment(1), lastReportId: orderId });
+  await b.commit();
+}
+
+export async function getReport(orderId) {
+  const s = await getDoc(doc(db, "reports", orderId));
+  return s.exists() ? { id: s.id, ...s.data() } : null;
+}
+
+export function disputeReport(orderId, text) {
+  return updateDoc(doc(db, "reports", orderId), { status: "disputed", dispute: text.slice(0, 300) });
+}
+
+// ═════════ الاشتراك ═════════
+export function submitPayment({ txnId, amount }) {
+  return addDoc(collection(db, "payments"), {
+    restaurantId: uid(), txnId, amount,
+    status: "pending", createdAt: serverTimestamp()
+  });
+}
+
+// ═════════ الأدمن ═════════
+export async function adminListRestaurants() {
+  return list(await getDocs(collection(db, "restaurants")));
+}
+
+// يمدّ الاشتراك من تاريخ انتهائه الحالي إن كان سارياً، وإلا من اليوم
+function extend(current, days) {
+  const base = current && current.toMillis() > Date.now() ? current.toMillis() : Date.now();
+  return Timestamp.fromMillis(base + days * DAY);
+}
+
+export function adminActivateTrial(r, days = 60) {
+  return updateDoc(doc(db, "restaurants", r.id), {
+    subActiveUntil: extend(r.subActiveUntil, days), freeTrial: true
+  });
+}
+
+export async function adminListPayments() {
+  return list(await getDocs(query(collection(db, "payments"), where("status", "==", "pending"))));
+}
+
+export async function adminApprovePayment(p, restaurant, days = 30) {
+  const b = writeBatch(db);
+  b.update(doc(db, "payments", p.id), { status: "approved" });
+  b.update(doc(db, "restaurants", p.restaurantId), {
+    subActiveUntil: extend(restaurant?.subActiveUntil, days)
   });
   await b.commit();
 }
 
-// ───────── الزبون: اعتراض على بلاغ ─────────
-export function disputeReport(orderId, text) {
-  return updateDoc(doc(db, "reports", orderId), {
-    status: "disputed",
-    dispute: text.slice(0, 300)
-  });
+export const adminRejectPayment = p => updateDoc(doc(db, "payments", p.id), { status: "rejected" });
+
+export async function adminListDisputes() {
+  return list(await getDocs(query(collection(db, "reports"), where("status", "==", "disputed"))));
 }
 
-// ───────── المطعم: إرسال تحويل بنكك ─────────
-export function submitPayment({ txnId, amount, receiptUrl }) {
-  return setDoc(doc(collection(db, "payments")), {
-    restaurantId: auth.currentUser.uid,
-    txnId, amount, receiptUrl,
-    status: "pending",
-    createdAt: serverTimestamp()
-  });
+// تثبيت الإنذار، أو إلغاؤه مع خصم الإنذار من الزبون
+export async function adminResolveReport(r, uphold) {
+  if (uphold) return updateDoc(doc(db, "reports", r.id), { status: "upheld" });
+  const b = writeBatch(db);
+  b.update(doc(db, "reports", r.id), { status: "cancelled" });
+  b.update(doc(db, "users", r.customerId), { strikes: increment(-1) });
+  await b.commit();
 }

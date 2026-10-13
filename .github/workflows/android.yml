@@ -18,6 +18,10 @@ jobs:
         run: |
           if [ -z "$GS" ]; then echo "::warning::GOOGLE_SERVICES_JSON secret missing"; else echo "$GS" > android/app/google-services.json; fi
       - run: printf "\next.rgcfaIncludeGoogle = true\n" >> android/variables.gradle
+      - name: Location permissions
+        run: |
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#&\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />#' android/app/src/main/AndroidManifest.xml
+          grep -c ACCESS_FINE_LOCATION android/app/src/main/AndroidManifest.xml
       - run: npx cap sync android
       - name: Build
         env:
