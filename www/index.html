@@ -18,6 +18,9 @@
     --r:16px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}
+  svg{flex-shrink:0}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
     font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;font-size:15px}
   button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
@@ -36,8 +39,9 @@
   .muted{color:var(--muted);font-size:13px}
   .err{color:var(--red);font-size:13px;min-height:18px;margin:0}
   .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
-    height:54px;border:0;border-radius:var(--r);font-size:16px;font-weight:700}
-  .btn-sm{height:44px;font-size:14px;border-radius:14px}
+    height:54px;border:0;border-radius:var(--r);font-size:16px;font-weight:700;transition:transform .12s,background .15s}
+  .btn:active:not(:disabled){transform:scale(.98)}
+  .btn-sm{height:44px;font-size:14px;border-radius:14px;white-space:nowrap}
   .btn-primary{background:var(--accent);color:#fff}
   .btn-primary:active{background:var(--accent-dark)}
   .btn-dark{background:var(--dark);color:#fff}
@@ -68,10 +72,11 @@
   .n-orange{background:var(--accent-soft);color:var(--accent-dark)}
   .n-blue{background:#EFF6FF;color:#1E3A8A}
   .n-red{background:var(--red-soft);color:#991B1B}
-  .box{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px}
+  .box{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 1px 2px rgba(28,25,23,.04)}
   .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;padding:4px;border-radius:14px;background:var(--fill);font-size:13px}
   .seg button{border:0;background:none;padding:10px 4px;border-radius:10px;color:var(--muted)}
-  .seg button.on{background:#fff;color:var(--ink);font-weight:700}
+  .seg button{transition:background .15s,color .15s}
+  .seg button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(28,25,23,.1)}
   .switch{position:relative;width:48px;height:28px;flex-shrink:0}
   .switch input{opacity:0;width:100%;height:100%;margin:0;position:absolute;cursor:pointer;z-index:1}
   .switch span{position:absolute;inset:0;border-radius:999px;background:#D6D3D1;transition:.2s}
@@ -84,22 +89,33 @@
     display:flex;justify-content:space-around;align-items:center;padding-bottom:env(safe-area-inset-bottom);z-index:5}
   nav.tabs button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;
     font-size:11px;color:var(--muted);min-width:64px;min-height:44px}
+  nav.tabs button{position:relative}
   nav.tabs button.on{color:var(--accent);font-weight:700}
+  nav.tabs button.on::before{content:"";position:absolute;top:-13px;width:28px;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
+  .search{height:48px;padding:0 14px;border-radius:14px;background:var(--fill);transition:box-shadow .15s}
+  .search:focus-within{box-shadow:0 0 0 2px var(--accent)}
   .list{padding:8px 20px 20px;display:flex;flex-direction:column;gap:14px}
 
+  /* خلفية العلامة: تدرج برتقالي مع نقاط مثل أغلفة المطاعم */
+  .brand-bg{background:radial-gradient(circle at 20% 20%, rgba(255,255,255,.14) 0 2px, transparent 3px) 0 0/22px 22px,
+    linear-gradient(140deg,#EA580C,var(--accent) 55%,var(--accent-dark))}
+
   /* الترحيب */
-  .hero{flex:1;background:var(--accent);color:#fff;border-radius:0 0 36px 36px;
+  .hero{flex:1;color:#fff;border-radius:0 0 36px 36px;max-height:62dvh;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
   .logo{width:96px;height:96px;border-radius:28px;background:#fff;color:var(--accent);
-    display:flex;align-items:center;justify-content:center}
+    display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(67,20,7,.3)}
+  .role{transition:transform .12s,border-color .15s}
+  .role:active{transform:scale(.98)}
   .role{display:flex;align-items:center;gap:14px;width:100%;padding:16px;border-radius:18px;
     border:1px solid var(--line);background:#fff;text-align:right}
   .role.primary{border:2px solid var(--accent)}
   .role .ic{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
   /* البطاقات */
+  .card:active,.mini:active,.top-card:active{opacity:.85}
   .card{display:flex;flex-direction:column;gap:7px;border:0;background:none;padding:0;text-align:right;width:100%}
-  .cover{height:140px;border-radius:18px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;
+  .cover{height:140px;border-radius:18px;box-shadow:0 2px 8px rgba(28,25,23,.08);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;
     font-size:44px;font-weight:700;color:rgba(255,255,255,.9)}
   .cover .tag{position:absolute;top:10px;right:10px;background:#fff;font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px}
   .meta{display:flex;gap:12px;font-size:13px;color:var(--muted);flex-wrap:wrap}
@@ -152,7 +168,7 @@
   .steps li{display:flex;gap:14px;min-height:60px}
   .dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
   .vline{width:2px;flex:1}
-  .ocard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .ocard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 3px rgba(28,25,23,.05)}
   .ocard.hot{border:2px solid var(--accent)}
   .dark-head{background:var(--dark);color:#fff;padding:16px 20px;display:flex;flex-direction:column;gap:14px}
   .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -193,7 +209,7 @@
   .mrow:active{background:var(--fill)}
   .mrow .chev{margin-inline-start:auto;color:var(--muted);transform:scaleX(-1)}
   .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-  .kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px;box-shadow:0 1px 2px rgba(28,25,23,.04)}
   .kpi b{font-size:22px}.kpi span{font-size:12px;color:var(--muted)}
   .bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding-top:8px}
   .bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;font-size:11px;color:var(--muted)}
@@ -206,7 +222,7 @@
   .chips::-webkit-scrollbar{display:none}
   .chip{flex-shrink:0;border:0;padding:9px 15px;border-radius:999px;background:var(--fill);font-size:14px;white-space:nowrap}
   .chip.on{background:var(--ink);color:#fff;font-weight:500}
-  .promo{margin:0 20px;border-radius:20px;background:var(--accent);color:#fff;padding:18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .promo{margin:0 20px;border-radius:20px;color:#fff;box-shadow:0 6px 18px rgba(194,65,12,.25);padding:18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
   .cover .icon{color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 6px rgba(0,0,0,.15))}
   .cover .tag2{position:absolute;bottom:10px;left:10px;background:var(--ink);color:#fff;font-size:12px;font-weight:500;padding:5px 10px;border-radius:999px}
   .mini{display:flex;gap:12px;align-items:center;border:0;background:none;padding:0;text-align:right;width:100%}
@@ -223,12 +239,12 @@
 
 <!-- ═════════ الترحيب ═════════ -->
 <section id="s-welcome" class="screen">
-  <div class="hero">
+  <div class="hero brand-bg">
     <div class="logo"><svg aria-hidden="true" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>
     <span style="font-size:34px;font-weight:700">أكل شنو؟</span>
     <span style="font-size:15px;text-align:center;line-height:1.7">أكل مطاعمك المفضلة<br>لحدي باب البيت</span>
   </div>
-  <div class="pad col gap14" style="padding-top:28px;padding-bottom:32px">
+  <div class="pad col gap14" style="padding-top:28px;padding-bottom:32px;margin-top:auto">
     <h2 style="text-align:center">كيف تريد استخدام التطبيق؟</h2>
     <button class="role primary" data-role="customer">
       <div class="ic" style="background:var(--accent-soft);color:var(--accent)"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></div>
@@ -290,15 +306,15 @@
       </label>
       <button id="h-refresh" class="icon-btn" aria-label="تحديث"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
     </div>
-    <label class="row gap10" style="height:48px;padding:0 14px;border-radius:14px;background:var(--fill)">
+    <label class="search row gap10">
       <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#57534E" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
       <input id="h-search" placeholder="ابحث عن مطعم" aria-label="بحث" style="flex:1;border:0;background:none;outline:none;font-size:15px">
     </label>
   </div>
-  <div class="promo">
+  <div class="promo brand-bg">
     <div class="col" style="gap:3px"><span style="font-size:12px;font-weight:500;opacity:.9">أكل شنو؟</span>
       <b style="font-size:19px">أكل مطاعمك لحدي البيت</b><span style="font-size:13px">ادفع عند الاستلام أو ببنكك</span></div>
-    <svg aria-hidden="true" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h2l3 11.5M5.5 17.5 9 10h6l3.5 7.5M9 10 7.5 6H5"/></svg>
+    <span style="width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h2l3 11.5M5.5 17.5 9 10h6l3.5 7.5M9 10 7.5 6H5"/></svg></span>
   </div>
   <div id="h-top"></div>
   <div id="h-cats" class="chips" style="padding-top:16px;padding-bottom:16px"></div>
@@ -364,7 +380,7 @@
   <div class="header"><button class="icon-btn" id="ab-back" aria-label="رجوع"></button><h1>عن التطبيق</h1></div>
   <div class="col gap14 grow" style="padding:8px 20px 24px">
     <div class="col" style="align-items:center;gap:10px;padding:16px 0">
-      <div class="logo" style="background:var(--accent);color:#fff;width:84px;height:84px;border-radius:24px"></div>
+      <div class="logo brand-bg" style="color:#fff;width:84px;height:84px;border-radius:24px"></div>
       <b style="font-size:24px">أكل شنو؟</b><span class="muted" id="ab-ver"></span>
     </div>
     <p style="line-height:1.9;margin:0">أكل شنو؟ يجمع مطاعم السودان في مكان واحد: تصفح المنيو، اطلب للبيت أو استلم من المطعم، وتابع طلبك لحظة بلحظة. الدفع عند الاستلام أو ببنكك.</p>
@@ -409,12 +425,13 @@ const CONFIG = {
 // ═════════ أدوات ═════════
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const LOC = "ar-SD-u-nu-latn"; // أرقام لاتينية في التاريخ والوقت لتطابق الأسعار
 const money = n => Number(n || 0).toLocaleString("en") + " ج";
 const wa = (phone, text = "") => `https://wa.me/${String(phone).replace(/\D/g, "")}${text ? "?text=" + encodeURIComponent(text) : ""}`;
 const validPhone = p => /^[19]\d{8}$/.test(p.replace(/\s/g, ""));
 const tsDate = t => t?.toDate ? t.toDate() : null;
 const daysLeft = t => { const d = tsDate(t); return d ? Math.ceil((d - Date.now()) / 864e5) : null; };
-const timeStr = t => { const d = tsDate(t); return d ? d.toLocaleTimeString("ar-SD", { hour: "numeric", minute: "2-digit" }) : ""; };
+const timeStr = t => { const d = tsDate(t); return d ? d.toLocaleTimeString(LOC, { hour: "numeric", minute: "2-digit" }) : ""; };
 const COLORS = ["#C2410C", "#15803D", "#1D4ED8", "#7C3AED", "#B45309", "#0F766E", "#BE185D"];
 const colorOf = s => COLORS[[...String(s)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
 const initial = s => esc(String(s || "؟").trim().charAt(0));
@@ -481,7 +498,7 @@ function pickerMap(boxId, start, zoom, onPick) {
   const box = $("#" + boxId);
   if (!window.L) { box.innerHTML = emptyState("تعذر تحميل الخريطة", "تأكد من الإنترنت ثم حاول مرة أخرى."); return null; }
   box.innerHTML = `<div></div><span class="center-pin">${PIN_SVG}</span><span class="map-hint">حرّك الخريطة ليقع الدبوس على المكان</span>${zoomCtl()}
-    <button class="map-fab" data-me style="bottom:12px;left:10px" aria-label="موقعي الحالي">${I.pin}</button>`;
+    <button class="map-fab" data-me style="bottom:34px;left:10px" aria-label="موقعي الحالي">${I.pin}</button>`;
   const m = makeMap(box.firstElementChild, start, zoom);
   bindZoom(box, m);
   m.on("movestart", () => box.classList.add("moving"));
@@ -730,7 +747,7 @@ function renderHome() {
       || (myLoc && hasLoc(a) && hasLoc(b) ? distKm(myLoc, [a.lat, a.lng]) - distKm(myLoc, [b.lat, b.lng]) : 0));
   homeItems = items;
   const top = inCity.filter(r => r.ratingCount).sort((a, b) => avgOf(b) - avgOf(a) || b.ratingCount - a.ratingCount).slice(0, 8);
-  $("#h-top").innerHTML = top.length && !q ? `<div class="pad row between" style="margin-top:18px;margin-bottom:10px"><h2 id="top-title">الأعلى تقييماً</h2>${starIcon("#F59E0B", 18)}</div>
+  $("#h-top").innerHTML = top.length && !q ? `<div class="pad row gap6" style="margin-top:18px;margin-bottom:10px">${starIcon("#F59E0B", 20)}<h2 id="top-title">الأعلى تقييماً</h2></div>
     <div class="hscroll">${top.map(r => `<button class="top-card" data-rest="${esc(r.id)}">
       <div class="cover" style="${coverBg(r.name)}"><span class="icon">${catIcon(r.category, 36)}</span></div>
       <b style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.name)}</b>
@@ -849,11 +866,11 @@ function renderRestaurant() {
     .sort((a, b) => (b.available ? 1 : 0) - (a.available ? 1 : 0));
   const n = cartCount();
   $("#r-body").innerHTML = `
-    <div class="cover" style="height:190px;border-radius:0;${coverBg(r.name)}"><span class="icon">${catIcon(r.category, 72)}</span>
+    <div class="cover" style="height:210px;border-radius:0;box-shadow:none;${coverBg(r.name)}"><span class="icon" style="margin-bottom:24px">${catIcon(r.category, 72)}</span>
       <button class="icon-btn" data-go="home" aria-label="رجوع" style="position:absolute;top:16px;right:16px;background:#fff">${I.back}</button>
     </div>
-    <div class="col gap10" style="padding:16px 20px 12px">
-      <div class="row between"><h1>${esc(r.name)}</h1>
+    <div class="col gap10" style="padding:20px 20px 12px;margin-top:-24px;border-radius:24px 24px 0 0;background:#fff;position:relative">
+      <div class="row between gap10"><h1>${esc(r.name)}</h1>
         <span class="badge ${r.isOpen ? "b-green" : "b-gray"}">${r.isOpen ? "مفتوح الآن" : "مغلق"}</span></div>
       <div class="meta" style="align-items:center">${ratingTag(r)}${verifiedTag(r)}<span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>
       ${r.hours ? `<span class="muted">ساعات العمل: ${esc(r.hours)}</span>` : ""}
@@ -861,7 +878,7 @@ function renderRestaurant() {
         <a class="row gap6" href="${wa(r.phone, "مرحباً، أريد الطلب من " + r.name + "\n")}" target="_blank" style="color:var(--green);font-weight:700;text-decoration:none">${I.wa}اطلب عبر واتساب</a>
         ${CONFIG.ADMIN_WHATSAPP ? `<a class="row gap6" href="${wa(CONFIG.ADMIN_WHATSAPP, "بلاغ عن مطعم " + r.name + ":\n")}" target="_blank" style="color:var(--muted);text-decoration:none">${I.flag}إبلاغ عن المطعم</a>` : ""}</div>
       ${!r.isOpen ? `<div class="note n-red">${I.info}المطعم مغلق الآن، يمكنك التصفح فقط.</div>` : ""}
-      ${activeOffers.map(o => `<div class="note n-orange">${I.info}<span><b>${esc(o.title)}</b>${o.endsAt ? ` · حتى ${tsDate(o.endsAt).toLocaleDateString("ar-SD")}` : ""}</span></div>`).join("")}
+      ${activeOffers.map(o => `<div class="note n-orange">${I.info}<span><b>${esc(o.title)}</b>${o.endsAt ? ` · حتى ${tsDate(o.endsAt).toLocaleDateString(LOC)}` : ""}</span></div>`).join("")}
       ${r.delivery && r.pickup ? `<div class="seg" id="r-type">
         <button data-type="delivery" class="${cart.type === "delivery" ? "on" : ""}">توصيل</button>
         <button data-type="pickup" class="${cart.type === "pickup" ? "on" : ""}">استلام من المطعم</button></div>`
@@ -1106,7 +1123,7 @@ async function renderTrack(o) {
   $("#t-body").innerHTML = `
     <div class="header"><button class="icon-btn" data-go="myorders" aria-label="رجوع">${I.back}</button>
       <div class="col"><h1 style="font-size:19px">طلب #${esc(o.id.slice(-5).toUpperCase())}</h1><span class="muted">${esc(o.restaurantName)}</span></div></div>
-    <div style="margin:4px 20px 0;padding:20px;border-radius:22px;background:${ended ? "var(--fill)" : "var(--accent)"};color:${ended ? "var(--ink)" : "#fff"}" class="col gap6">
+    <div style="margin:4px 20px 0;padding:20px;border-radius:22px;${ended ? "background:var(--fill)" : "box-shadow:0 6px 18px rgba(194,65,12,.25)"};color:${ended ? "var(--ink)" : "#fff"}" class="col gap6 ${ended ? "" : "brand-bg"}">
       <span style="font-size:13px">حالة الطلب</span><span style="font-size:26px;font-weight:700">${headline}</span>
       <span style="font-size:14px">${o.type === "pickup" ? "استلام من المطعم" : "توصيل إلى " + esc(o.zone)}</span>
     </div>
@@ -1460,7 +1477,7 @@ function renderOwnerStats() {
   const days = [...Array(7)].map((_, i) => {
     const d = new Date(new Date().setHours(0, 0, 0, 0) - (6 - i) * DAY);
     const n = ownerOrders.filter(o => o.status === "delivered" && t(o) >= d.getTime() && t(o) < d.getTime() + DAY).length;
-    return [d.toLocaleDateString("ar-SD", { weekday: "short" }), n];
+    return [d.toLocaleDateString(LOC, { weekday: "short" }), n];
   });
   const maxD = Math.max(1, ...days.map(d => d[1]));
   const r = myRest;
@@ -1497,7 +1514,7 @@ async function renderOwnerMenu() {
     <div class="row between"><h2>العروض</h2><button class="link" data-new="offer" style="border:0;background:none;color:var(--accent);font-weight:700">+ عرض جديد</button></div>
     ${offers.length ? offers.map(o => `<div class="box row gap10">
       <div class="col gap6 grow"><b style="font-size:14px">${esc(o.title)}</b>
-        <span class="muted">${o.endsAt ? "ينتهي " + tsDate(o.endsAt).toLocaleDateString("ar-SD") : "بدون تاريخ انتهاء"}</span></div>
+        <span class="muted">${o.endsAt ? "ينتهي " + tsDate(o.endsAt).toLocaleDateString(LOC) : "بدون تاريخ انتهاء"}</span></div>
       <span class="switch"><input type="checkbox" data-offer-toggle="${esc(o.id)}" ${o.active ? "checked" : ""} aria-label="تفعيل العرض"><span></span></span>
       <button class="icon-btn" data-del-offer="${esc(o.id)}" aria-label="حذف العرض" style="color:var(--red)">${I.trash}</button></div>`).join("")
       : `<span class="muted">لا توجد عروض. أضف عرضاً مثل "توصيل مجاني فوق 10,000 ج".</span>`}
@@ -1704,7 +1721,7 @@ async function loadAdmin() {
     body.innerHTML = pays.length ? pays.map(p => {
       const r = rest.find(x => x.id === p.restaurantId);
       return `<div class="box col gap10" style="border:2px solid var(--accent)">
-        <div class="row between"><b>${esc(r?.name || "مطعم")}</b><span class="muted">${tsDate(p.createdAt)?.toLocaleString("ar-SD") || ""}</span></div>
+        <div class="row between"><b>${esc(r?.name || "مطعم")}</b><span class="muted">${tsDate(p.createdAt)?.toLocaleString(LOC) || ""}</span></div>
         <div class="row2" style="font-size:13px"><div class="col"><span class="muted">رقم العملية</span><b dir="ltr" style="text-align:right">${esc(p.txnId)}</b></div>
           <div class="col"><span class="muted">المبلغ</span><b>${money(p.amount)}</b></div></div>
         <div class="row gap10"><button class="btn btn-sm btn-green" data-pay-ok="${esc(p.id)}">تفعيل شهر</button>
