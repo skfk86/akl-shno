@@ -303,7 +303,8 @@ import * as F from "./firebase.js";
 // ═════════ إعدادات تعدّلها أنت ═════════
 const CONFIG = {
   SUB_PRICE: 0,          // سعر الاشتراك الشهري بالجنيه (عدّله)
-  ADMIN_BANKAK: "",      // رقم حسابك في بنكك لاستلام الاشتراكات (عدّله)
+  ADMIN_BANKAK: "4636998", // رقم حسابك في بنكك لاستلام الاشتراكات
+  ADMIN_WHATSAPP: "",    // رقم واتساب الإدارة بالصيغة الدولية بدون + مثل 2499XXXXXXXX
   FREE_SEATS: 20,        // عدد المطاعم المؤهلة للشهرين المجانيين
   NEW_LIMIT: 50000,      // الحد الأقصى للدفع عند الاستلام في أول طلبين (مطابق للقواعد)
   DEFAULT_LOC: [15.6445, 32.4777] // أمدرمان
@@ -313,6 +314,7 @@ const CONFIG = {
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = n => Number(n || 0).toLocaleString("en") + " ج";
+const wa = (phone, text = "") => `https://wa.me/${String(phone).replace(/\D/g, "")}${text ? "?text=" + encodeURIComponent(text) : ""}`;
 const validPhone = p => /^[19]\d{8}$/.test(p.replace(/\s/g, ""));
 const tsDate = t => t?.toDate ? t.toDate() : null;
 const daysLeft = t => { const d = tsDate(t); return d ? Math.ceil((d - Date.now()) / 864e5) : null; };
@@ -351,6 +353,9 @@ const I = {
   menu: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>',
   gear: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>'
 };
+
+I.wa = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.7-5A8.5 8.5 0 1 1 8 19.3Z"/><path d="M9 10c0 3 2 5 5 5l1.5-1.5-2-1-1 1c-1 0-2.5-1.5-2.5-2.5l1-1-1-2Z"/></svg>';
+I.flag = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4a1 1 0 0 1 1-1h13l-2 5 2 5H5"/></svg>';
 
 const ST = { new: "جديد", accepted: "تم القبول", preparing: "قيد التحضير", ready: "جاهز للاستلام",
   out_for_delivery: "في الطريق", delivered: "تم التسليم", rejected: "مرفوض", cancelled: "ملغي" };
@@ -576,7 +581,8 @@ function renderRestaurant() {
     <div class="col gap10" style="padding:16px 20px 12px">
       <div class="row between"><h1>${esc(r.name)}</h1>
         <span class="badge ${r.isOpen ? "b-green" : "b-gray"}">${r.isOpen ? "مفتوح الآن" : "مغلق"}</span></div>
-      <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>
+      <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span>
+        ${CONFIG.ADMIN_WHATSAPP ? `<a class="row gap6" href="${wa(CONFIG.ADMIN_WHATSAPP, "بلاغ عن مطعم " + r.name + ":\n")}" target="_blank" style="color:var(--muted);text-decoration:none">${I.flag}إبلاغ عن المطعم</a>` : ""}</div>
       ${!r.isOpen ? `<div class="note n-red">${I.info}المطعم مغلق الآن، يمكنك التصفح فقط.</div>` : ""}
       ${activeOffers.map(o => `<div class="note n-orange">${I.info}<span><b>${esc(o.title)}</b>${o.endsAt ? ` · حتى ${tsDate(o.endsAt).toLocaleDateString("ar-SD")}` : ""}</span></div>`).join("")}
       ${r.delivery && r.pickup ? `<div class="seg" id="r-type">
@@ -1081,6 +1087,7 @@ async function renderOwnerSettings() {
       <span class="muted">يظهر للزبون إذا اختار الدفع المسبق. الزبائن ذوو الإنذارات المتكررة لا يمكنهم الطلب إلا به.</span>
       <button id="st-bankak-save" class="btn btn-sm btn-dark">حفظ</button>
     </section>
+    ${CONFIG.ADMIN_WHATSAPP ? `<a class="btn btn-green" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، أنا صاحب " + r.name + " في أكل شنو؟\n")}" target="_blank" style="text-decoration:none;margin-top:8px">${I.wa}تواصل مع الإدارة عبر واتساب</a>` : ""}
     <button class="btn btn-outline" data-logout2 style="margin-top:8px">تسجيل الخروج</button>
   </div>`;
   body.onclick = e => {
@@ -1166,9 +1173,13 @@ async function loadAdmin() {
       const d = daysLeft(r.subActiveUntil);
       return `<div class="box col gap10">
         <div class="row between"><b>${esc(r.name)}</b>
-          <span class="badge ${r.subActiveUntil == null ? "b-blue" : d > 0 ? "b-green" : "b-red"}">${r.subActiveUntil == null ? "بانتظار التفعيل" : d > 0 ? `باقي ${d} يوماً` : "منتهي"}</span></div>
+          <span class="badge ${r.subActiveUntil == null ? "b-blue" : r.listed === false ? "b-red" : d > 0 ? "b-green" : "b-red"}">${r.subActiveUntil == null ? "بانتظار التفعيل" : r.listed === false ? "موقوف" : d > 0 ? `باقي ${d} يوماً` : "منتهي"}</span></div>
         <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span><a class="link" href="tel:${esc(r.phone)}" dir="ltr">${esc(r.phone)}</a></div>
-        ${r.subActiveUntil == null ? `<button class="btn btn-sm btn-green" data-trial="${esc(r.id)}" ${seatsLeft <= 0 ? "disabled" : ""}>${seatsLeft > 0 ? "تفعيل الشهرين المجانيين" : "انتهت المقاعد المجانية"}</button>` : ""}
+        <div class="row gap10">
+          ${r.subActiveUntil == null ? `<button class="btn btn-sm btn-green" data-trial="${esc(r.id)}" ${seatsLeft <= 0 ? "disabled" : ""}>${seatsLeft > 0 ? "تفعيل الشهرين المجانيين" : "انتهت المقاعد المجانية"}</button>`
+            : `<button class="btn btn-sm ${r.listed === false ? "btn-green" : "btn-danger"}" data-list="${esc(r.id)}" data-v="${r.listed === false ? 1 : 0}">${r.listed === false ? "إعادة إظهار المطعم" : "إيقاف المطعم"}</button>`}
+          <a class="icon-btn" href="${wa(r.phone, "مرحباً من إدارة أكل شنو؟ بخصوص " + r.name + "\n")}" target="_blank" aria-label="واتساب" style="background:var(--green-soft);color:var(--green)">${I.wa}</a>
+        </div>
       </div>`; }).join("") : emptyState("لا توجد مطاعم بعد", "");
   }
   if (adTab === "pay") {
@@ -1213,6 +1224,12 @@ $("#ad-body").addEventListener("click", e => {
   const body = $("#ad-body");
   const t = e.target.closest("[data-trial]");
   if (t) return busy(t, async () => { await F.adminActivateTrial(adRest.find(r => r.id === t.dataset.trial)); toast("تم التفعيل لمدة شهرين"); loadAdmin(); });
+  const ls = e.target.closest("[data-list]");
+  if (ls) {
+    const v = ls.dataset.v === "1";
+    if (!v && !confirm("إيقاف المطعم يخفيه عن الزبائن ويمنع طلبات جديدة. متابعة؟")) return;
+    return busy(ls, async () => { await F.adminSetListed(ls.dataset.list, v); toast(v ? "عاد المطعم للظهور" : "تم إيقاف المطعم"); loadAdmin(); });
+  }
   const ok = e.target.closest("[data-pay-ok]"), no = e.target.closest("[data-pay-no]");
   if (ok || no) {
     const p = body._pays.find(x => x.id === (ok || no).dataset[ok ? "payOk" : "payNo"]);

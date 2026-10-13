@@ -194,6 +194,9 @@ export function adminActivateTrial(r, days = 60) {
   });
 }
 
+// الإيقاف يخفي المطعم من القائمة؛ ويمنع الطلبات الجديدة أيضاً عبر شرط listed في القواعد.
+export const adminSetListed = (rid, listed) => updateDoc(doc(db, "restaurants", rid), { listed });
+
 export async function adminListPayments() {
   return list(await getDocs(query(collection(db, "payments"), where("status", "==", "pending"))));
 }

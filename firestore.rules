@@ -17,7 +17,7 @@ service cloud.firestore {
     function restDoc(id) { return get(/databases/$(db)/documents/restaurants/$(id)).data; }
     function activeRest(id) {
       let r = restDoc(id);
-      return r.subActiveUntil != null && r.subActiveUntil > request.time;
+      return r.subActiveUntil != null && r.subActiveUntil > request.time && r.get('listed', false) == true;
     }
     function changedOnly(keys) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
