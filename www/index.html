@@ -357,6 +357,14 @@ const I = {
 I.wa = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.7-5A8.5 8.5 0 1 1 8 19.3Z"/><path d="M9 10c0 3 2 5 5 5l1.5-1.5-2-1-1 1c-1 0-2.5-1.5-2.5-2.5l1-1-1-2Z"/></svg>';
 I.flag = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4a1 1 0 0 1 1-1h13l-2 5 2 5H5"/></svg>';
 
+const avgOf = r => r?.ratingCount ? r.ratingSum / r.ratingCount : 0;
+const trusted = r => !!r?.verified || (r?.ratingCount >= 10 && avgOf(r) >= 4.5);
+const starIcon = (fill = "#F59E0B", size = 15) => `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${fill}" stroke-width="1.5" stroke-linejoin="round"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1Z"/></svg>`;
+const ratingTag = r => r?.ratingCount
+  ? `<span class="row" style="gap:4px;color:var(--ink);font-weight:500">${starIcon()}${avgOf(r).toFixed(1)} <span class="muted">(${r.ratingCount})</span></span>`
+  : `<span class="badge b-blue">جديد</span>`;
+const verifiedTag = r => r?.verified ? `<span class="badge b-green">${I.check}موثّق</span>` : "";
+
 const ST = { new: "جديد", accepted: "تم القبول", preparing: "قيد التحضير", ready: "جاهز للاستلام",
   out_for_delivery: "في الطريق", delivered: "تم التسليم", rejected: "مرفوض", cancelled: "ملغي" };
 const ST_BADGE = { new: "b-blue", accepted: "b-orange", preparing: "b-orange", ready: "b-orange",
@@ -515,7 +523,7 @@ function renderHome() {
   const open = items.filter(r => r.isOpen).length;
   $("#h-title").textContent = city ? `مطاعم ${city}` : "المطاعم";
   $("#h-count").textContent = items.length ? `${open} مفتوح الآن` : "";
-  const meta = r => `<div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>`;
+  const meta = r => `<div class="meta" style="align-items:center">${ratingTag(r)}${verifiedTag(r)}<span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>`;
   const svc = r => [r.delivery && "توصيل", r.pickup && "استلام"].filter(Boolean).join(" · ");
   $("#h-list").innerHTML = items.length ? items.map((r, i) => i < 3 || r.isOpen ? `
     <button class="card" data-rest="${esc(r.id)}">
@@ -548,11 +556,12 @@ async function openRestaurant(id) {
   const body = $("#r-body");
   body.innerHTML = `<div style="padding:20px" class="col gap14">${skeleton(1, 180)}${skeleton(4, 80)}</div>`;
   try {
-    const [r, menu, offers, zones] = await Promise.all([
-      F.getRestaurant(id), F.listSub(id, "menu"), F.listSub(id, "offers"), F.listSub(id, "zones")
+    const [r, menu, offers, zones, ratings] = await Promise.all([
+      F.getRestaurant(id), F.listSub(id, "menu"), F.listSub(id, "offers"), F.listSub(id, "zones"),
+      F.listRatings(id).catch(() => [])
     ]);
     if (!r) { toast("هذا المطعم غير متاح حالياً."); return showHome(); }
-    curRest = { r, menu, offers, zones };
+    curRest = { r, menu, offers, zones, ratings };
     if (!cart || cart.r.id !== id) cart = { r, zones, items: {}, type: r.delivery ? "delivery" : "pickup" };
     else { cart.r = r; cart.zones = zones; }
     renderRestaurant();
@@ -581,7 +590,10 @@ function renderRestaurant() {
     <div class="col gap10" style="padding:16px 20px 12px">
       <div class="row between"><h1>${esc(r.name)}</h1>
         <span class="badge ${r.isOpen ? "b-green" : "b-gray"}">${r.isOpen ? "مفتوح الآن" : "مغلق"}</span></div>
-      <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span>
+      <div class="meta" style="align-items:center">${ratingTag(r)}${verifiedTag(r)}<span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>
+      ${r.hours ? `<span class="muted">ساعات العمل: ${esc(r.hours)}</span>` : ""}
+      <div class="meta">
+        <a class="row gap6" href="${wa(r.phone, "مرحباً، أريد الطلب من " + r.name + "\n")}" target="_blank" style="color:var(--green);font-weight:700;text-decoration:none">${I.wa}اطلب عبر واتساب</a>
         ${CONFIG.ADMIN_WHATSAPP ? `<a class="row gap6" href="${wa(CONFIG.ADMIN_WHATSAPP, "بلاغ عن مطعم " + r.name + ":\n")}" target="_blank" style="color:var(--muted);text-decoration:none">${I.flag}إبلاغ عن المطعم</a>` : ""}</div>
       ${!r.isOpen ? `<div class="note n-red">${I.info}المطعم مغلق الآن، يمكنك التصفح فقط.</div>` : ""}
       ${activeOffers.map(o => `<div class="note n-orange">${I.info}<span><b>${esc(o.title)}</b>${o.endsAt ? ` · حتى ${tsDate(o.endsAt).toLocaleDateString("ar-SD")}` : ""}</span></div>`).join("")}
@@ -605,10 +617,32 @@ function renderRestaurant() {
             <button class="add" data-add="${esc(m.id)}" aria-label="أضف ${esc(m.name)}" ${!r.isOpen || !m.available ? "disabled" : ""}>${I.plus}</button>
           </div>
         </div>`).join("") : emptyState("المنيو فارغ", "لم يضف المطعم أصنافه بعد.")}
+      ${reviewsBlock(curRest)}
     </div>
     ${n ? `<div class="bar"><button id="r-cart" class="btn btn-dark" style="justify-content:space-between;padding:0 18px">
       <span class="row gap10"><span style="background:var(--accent);border-radius:8px;padding:1px 9px">${n}</span>عرض السلة</span>
       <span>${money(cartSubtotal())}</span></button></div>` : ""}`;
+}
+
+function reviewsBlock({ r, ratings }) {
+  const withText = (ratings || []).filter(x => x.comment).slice(0, 5);
+  if (!r.ratingCount) return "";
+  const dist = [5, 4, 3, 2, 1].map(n => [n, (ratings || []).filter(x => x.stars === n).length]);
+  const max = Math.max(1, ...dist.map(d => d[1]));
+  return `<section class="col gap14" style="padding:22px 0 24px">
+    <h2>التقييمات</h2>
+    <div class="row gap14 box">
+      <div class="col" style="align-items:center;min-width:76px"><b style="font-size:32px">${avgOf(r).toFixed(1)}</b>
+        <span class="row">${[1,2,3,4,5].map(i => starIcon(i <= Math.round(avgOf(r)) ? "#F59E0B" : "#E7E5E4", 13)).join("")}</span>
+        <span class="muted" style="font-size:12px">${r.ratingCount} تقييم</span></div>
+      <div class="col grow" style="gap:4px">${dist.map(([n, c]) => `<div class="row gap6" style="font-size:12px"><span style="width:10px">${n}</span>
+        <span style="flex:1;height:6px;border-radius:3px;background:var(--fill);overflow:hidden"><span style="display:block;height:100%;width:${(c / max) * 100}%;background:#F59E0B"></span></span></div>`).join("")}</div>
+    </div>
+    ${withText.map(x => `<div class="col gap6" style="border-bottom:1px solid var(--fill);padding-bottom:12px">
+      <div class="row between"><b style="font-size:14px">${esc(x.customerName || "زبون")}</b>
+        <span class="row">${[1,2,3,4,5].map(i => starIcon(i <= x.stars ? "#F59E0B" : "#E7E5E4", 12)).join("")}</span></div>
+      <span style="font-size:14px;line-height:1.7">${esc(x.comment)}</span></div>`).join("")}
+  </section>`;
 }
 
 $("#r-body").addEventListener("click", e => {
@@ -629,7 +663,7 @@ $("#r-body").addEventListener("click", e => {
 
 // ───── السلة ─────
 let map = null, marker = null;
-const draft = { zone: "", landmark: "", pay: "cash", txn: "", loc: null };
+const draft = { zone: "", landmark: "", pay: "cash", txn: "", loc: null, save: false, saveLabel: "البيت" };
 
 function openCart() {
   show("cart");
@@ -667,17 +701,22 @@ function renderCart() {
         <b>عنوان التوصيل</b>
         <label class="field">المنطقة
           <select id="cart-zone"><option value="">اختر منطقتك</option>
-            ${cart.zones.map(x => `<option value="${esc(x.id)}" ${draft.zone === x.id ? "selected" : ""}>${esc(x.name)} — ${Number(x.fee) ? money(x.fee) : "توصيل مجاني"}</option>`).join("")}
+            ${cart.zones.map(x => `<option value="${esc(x.id)}" ${draft.zone === x.id ? "selected" : ""}>${esc(x.name)} — ${Number(x.fee) ? money(x.fee) : "توصيل مجاني"}${x.time ? " · " + esc(x.time) : ""}</option>`).join("")}
           </select>
         </label>
         ${!cart.zones.length ? `<div class="note n-red">${I.info}المطعم لم يحدد مناطق التوصيل بعد. اختر الاستلام من المطعم.</div>` : ""}
         ${z?.min && sub < Number(z.min) ? `<div class="note n-orange">${I.info}الحد الأدنى لهذه المنطقة ${money(z.min)}</div>` : ""}
+        ${(me.addresses || []).length ? `<div class="chips" style="padding:0">${me.addresses.map((a, i) =>
+          `<button class="chip" data-addr="${i}">${I.pin} ${esc(a.label)}</button>`).join("")}</div>` : ""}
         <div class="row between"><span class="muted">حرّك الدبوس إلى باب البيت</span>
           <button id="cart-locate" class="row gap6" style="border:0;background:none;color:var(--accent);font-weight:700;font-size:13px">${I.pin}موقعي الحالي</button></div>
         <div id="map"></div>
         <label class="field">وصف المكان (معلم قريب)
           <input id="cart-landmark" value="${esc(draft.landmark)}" placeholder="مثلاً: جنب مسجد الحارة، الباب الأخضر">
         </label>
+        <label class="row gap10" style="font-size:14px"><input type="checkbox" id="cart-save" ${draft.save ? "checked" : ""} style="width:18px;height:18px;accent-color:var(--accent)">احفظ العنوان باسم
+          <select id="cart-save-label" style="border:0;background:var(--fill);border-radius:10px;padding:6px 10px">
+            ${["البيت", "الشغل", "أهلي"].map(l => `<option ${draft.saveLabel === l ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       </section>` : `
       <section class="box col gap6"><b>استلام من المطعم</b><span class="muted">${esc(r.district)}، ${esc(r.city)} · ${esc(r.phone)}</span></section>`}
 
@@ -688,6 +727,7 @@ function renderCart() {
         <label class="radio"><input type="radio" name="pay" value="bankak" ${draft.pay === "bankak" ? "checked" : ""} ${!canBankak ? "disabled" : ""}>تحويل بنكك ${!canBankak ? "(غير متاح لهذا المطعم)" : ""}</label>
         ${me.delivered < 2 && draft.pay === "cash" && total > CONFIG.NEW_LIMIT ? `<div class="note n-orange">${I.info}<span>لأول طلبين في حسابك، الدفع عند الاستلام متاح حتى <b>${money(CONFIG.NEW_LIMIT)}</b>. ${canBankak ? "ادفع ببنكك أو قلّل الطلب." : "قلّل الطلب قليلاً."}</span></div>` : ""}
         ${draft.pay === "bankak" && canBankak ? `
+          ${trusted(r) ? "" : `<div class="note n-red">${I.warn}<span><b>تنبيه:</b> لا تحوّل المال مسبقاً إلا لمطعم <b>موثّق</b> أو تقييمه عالٍ، أو بعد أن تستلم طلبك. ${!forcePrepaid ? "الدفع عند الاستلام هو الخيار الأكثر أماناً مع المطاعم الجديدة." : ""}</span></div>`}
           <div class="note n-blue">${I.info}<span>حوّل <b>${money(total)}</b> إلى حساب المطعم في بنكك: <b dir="ltr">${esc(r.bankak)}</b> ثم اكتب رقم العملية.</span></div>
           <label class="field">رقم العملية<input id="cart-txn" value="${esc(draft.txn)}" inputmode="numeric" dir="ltr"></label>` : ""}
       </section>
@@ -726,11 +766,15 @@ $("#cart-body").addEventListener("click", e => {
   if (dec) { const it = cart.items[dec.dataset.dec]; it.qty--; if (it.qty <= 0) delete cart.items[it.id]; return renderCart(); }
   if (e.target.closest("#cart-back")) return openRestaurant(cart.r.id);
   if (e.target.closest("#cart-locate")) return locate(true);
+  const ad = e.target.closest("[data-addr]");
+  if (ad) { const a = me.addresses[+ad.dataset.addr]; draft.loc = [a.lat, a.lng]; draft.landmark = a.landmark; return renderCart(); }
   if (e.target.closest("#cart-send")) return sendOrder(e.target.closest("#cart-send"));
 });
 $("#cart-body").addEventListener("change", e => {
   if (e.target.id === "cart-zone") { draft.zone = e.target.value; renderCart(); }
   if (e.target.name === "pay") { draft.pay = e.target.value; renderCart(); }
+  if (e.target.id === "cart-save") draft.save = e.target.checked;
+  if (e.target.id === "cart-save-label") draft.saveLabel = e.target.value;
 });
 $("#cart-body").addEventListener("input", e => {
   if (e.target.id === "cart-landmark") draft.landmark = e.target.value;
@@ -751,6 +795,15 @@ function sendOrder(btn) {
   if (draft.pay === "bankak" && !draft.txn) return err("اكتب رقم عملية التحويل.");
   if (me.strikes >= 3) return err("حسابك موقوف بسبب تكرار عدم استلام الطلبات.");
   busy(btn, async () => {
+    if (me.delivered < 2 && (await F.myActiveOrders()).length) {
+      return err("لديك طلب قيد التنفيذ. للحسابات الجديدة: طلب واحد في نفس الوقت.");
+    }
+    if (cart.type === "delivery" && draft.save) {
+      const addrs = (me.addresses || []).filter(a => a.label !== draft.saveLabel);
+      addrs.unshift({ label: draft.saveLabel, lat: draft.loc[0], lng: draft.loc[1], landmark: draft.landmark.trim() });
+      me.addresses = addrs.slice(0, 5);
+      F.saveAddresses(me.addresses).catch(console.error);
+    }
     const id = await F.placeOrder({
       restaurantId: cart.r.id, restaurantName: cart.r.name, restaurantPhone: cart.r.phone,
       items: Object.values(cart.items).map(({ id, name, price, qty }) => ({ id, name, price, qty })),
@@ -759,7 +812,7 @@ function sendOrder(btn) {
       zone: z?.name || "", landmark: cart.type === "delivery" ? draft.landmark.trim() : "",
       location: cart.type === "delivery" ? { lat: draft.loc[0], lng: draft.loc[1] } : null
     });
-    cart = null; draft.txn = "";
+    cart = null; draft.txn = ""; draft.save = false;
     toast("تم إرسال طلبك");
     openTrack(id);
   });
@@ -812,6 +865,31 @@ async function renderTrack(o) {
     </div>`;
   const c = $("#t-cancel");
   if (c) c.onclick = () => busy(c, () => F.setOrderStatus(o.id, "cancelled"));
+  if (o.status === "delivered" && !o.reported) {
+    const box = $("#t-report");
+    const done = await F.getRating(o.id).catch(() => null);
+    if (done) {
+      box.innerHTML = `<div class="note n-blue">${I.info}<span>قيّمت هذا الطلب ${"★".repeat(done.stars)}. شكراً لك!</span></div>`;
+    } else {
+      let stars = 0;
+      box.innerHTML = `<div class="box col gap10" style="border:2px solid #F59E0B">
+        <b>كيف كان طلبك من ${esc(o.restaurantName)}؟</b>
+        <div class="row" style="gap:6px;justify-content:center" id="rt-stars">${[1,2,3,4,5].map(i =>
+          `<button data-star="${i}" aria-label="${i} نجوم" style="border:0;background:none;padding:4px">${starIcon("#E7E5E4", 36)}</button>`).join("")}</div>
+        <label class="field">تعليق (اختياري)<textarea id="rt-text" maxlength="300" placeholder="الأكل، السرعة، التغليف..."></textarea></label>
+        <button id="rt-send" class="btn btn-sm btn-dark" disabled>إرسال التقييم</button></div>`;
+      box.querySelector("#rt-stars").onclick = e => {
+        const b = e.target.closest("[data-star]"); if (!b) return;
+        stars = +b.dataset.star;
+        box.querySelectorAll("[data-star]").forEach(x => x.innerHTML = starIcon(+x.dataset.star <= stars ? "#F59E0B" : "#E7E5E4", 36));
+        box.querySelector("#rt-send").disabled = false;
+      };
+      box.querySelector("#rt-send").onclick = e => busy(e.target, async () => {
+        await F.rateOrder(o, stars, box.querySelector("#rt-text").value.trim(), me.name);
+        toast("شكراً لتقييمك"); renderTrack(o);
+      });
+    }
+  }
   if (o.reported) {
     const rep = await F.getReport(o.id).catch(() => null);
     if (!rep) return;
@@ -1081,8 +1159,9 @@ async function renderOwnerSettings() {
         <button class="icon-btn" data-zone-del="${esc(z.id)}" aria-label="حذف المنطقة" style="width:36px;height:36px;color:var(--red)">${I.trash}</button></span></div>
       <div class="meta"><span>الحد الأدنى: ${z.min ? money(z.min) : "لا يوجد"}</span><span>الوقت: ${esc(z.time || "—")}</span></div></div>`).join("")
       : `<div class="note n-orange">${I.info}أضف منطقة واحدة على الأقل ليستطيع الزبائن طلب التوصيل.</div>`}
-    <h2 style="margin-top:6px">استلام تحويلات الزبائن</h2>
+    <h2 style="margin-top:6px">معلومات المطعم</h2>
     <section class="box col gap10">
+      <label class="field">ساعات العمل<input id="st-hours" value="${esc(r.hours)}" placeholder="مثلاً: يومياً 10 ص – 11 م، الجمعة من 2 م"></label>
       <label class="field">رقم حسابك في بنكك (اختياري)<input id="st-bankak" dir="ltr" inputmode="numeric" value="${esc(r.bankak)}"></label>
       <span class="muted">يظهر للزبون إذا اختار الدفع المسبق. الزبائن ذوو الإنذارات المتكررة لا يمكنهم الطلب إلا به.</span>
       <button id="st-bankak-save" class="btn btn-sm btn-dark">حفظ</button>
@@ -1095,8 +1174,8 @@ async function renderOwnerSettings() {
     const zd = e.target.closest("[data-zone-del]");
     if (zd) return busy(zd, async () => { await F.deleteSub("zones", zd.dataset.zoneDel); renderOwnerSettings(); });
     if (e.target.closest("#st-bankak-save")) {
-      const v = $("#st-bankak").value.trim();
-      return busy(e.target, async () => { await F.updateMyRestaurant({ bankak: v }); myRest.bankak = v; toast("تم الحفظ"); });
+      const v = $("#st-bankak").value.trim(), h = $("#st-hours").value.trim();
+      return busy(e.target, async () => { await F.updateMyRestaurant({ bankak: v, hours: h }); myRest.bankak = v; myRest.hours = h; toast("تم الحفظ"); });
     }
     if (e.target.closest("[data-logout2]")) return doLogout();
   };
@@ -1172,12 +1251,13 @@ async function loadAdmin() {
     body.innerHTML = sorted.length ? sorted.map(r => {
       const d = daysLeft(r.subActiveUntil);
       return `<div class="box col gap10">
-        <div class="row between"><b>${esc(r.name)}</b>
+        <div class="row between"><span class="row gap6"><b>${esc(r.name)}</b>${verifiedTag(r)}</span>
           <span class="badge ${r.subActiveUntil == null ? "b-blue" : r.listed === false ? "b-red" : d > 0 ? "b-green" : "b-red"}">${r.subActiveUntil == null ? "بانتظار التفعيل" : r.listed === false ? "موقوف" : d > 0 ? `باقي ${d} يوماً` : "منتهي"}</span></div>
         <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span><a class="link" href="tel:${esc(r.phone)}" dir="ltr">${esc(r.phone)}</a></div>
         <div class="row gap10">
           ${r.subActiveUntil == null ? `<button class="btn btn-sm btn-green" data-trial="${esc(r.id)}" ${seatsLeft <= 0 ? "disabled" : ""}>${seatsLeft > 0 ? "تفعيل الشهرين المجانيين" : "انتهت المقاعد المجانية"}</button>`
             : `<button class="btn btn-sm ${r.listed === false ? "btn-green" : "btn-danger"}" data-list="${esc(r.id)}" data-v="${r.listed === false ? 1 : 0}">${r.listed === false ? "إعادة إظهار المطعم" : "إيقاف المطعم"}</button>`}
+          ${r.subActiveUntil != null ? `<button class="btn btn-sm ${r.verified ? "btn-ghost" : "btn-outline"}" style="width:auto;padding:0 12px" data-verify="${esc(r.id)}" data-v="${r.verified ? 0 : 1}">${r.verified ? "إلغاء التوثيق" : "توثيق"}</button>` : ""}
           <a class="icon-btn" href="${wa(r.phone, "مرحباً من إدارة أكل شنو؟ بخصوص " + r.name + "\n")}" target="_blank" aria-label="واتساب" style="background:var(--green-soft);color:var(--green)">${I.wa}</a>
         </div>
       </div>`; }).join("") : emptyState("لا توجد مطاعم بعد", "");
@@ -1224,6 +1304,8 @@ $("#ad-body").addEventListener("click", e => {
   const body = $("#ad-body");
   const t = e.target.closest("[data-trial]");
   if (t) return busy(t, async () => { await F.adminActivateTrial(adRest.find(r => r.id === t.dataset.trial)); toast("تم التفعيل لمدة شهرين"); loadAdmin(); });
+  const vf = e.target.closest("[data-verify]");
+  if (vf) return busy(vf, async () => { await F.adminSetVerified(vf.dataset.verify, vf.dataset.v === "1"); toast(vf.dataset.v === "1" ? "تم توثيق المطعم" : "أُلغي التوثيق"); loadAdmin(); });
   const ls = e.target.closest("[data-list]");
   if (ls) {
     const v = ls.dataset.v === "1";

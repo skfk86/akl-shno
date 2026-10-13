@@ -90,13 +90,50 @@ service cloud.firestore {
 
       allow update: if isAdmin()
         || (signedIn() && uid() == rid
-            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'subActiveUntil', 'freeTrial', 'listed', 'rating', 'ratingCount']));
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'subActiveUntil', 'freeTrial', 'listed', 'verified', 'ratingSum', 'ratingCount', 'lastRatingId']))
+        || ratingFromCustomer(rid);
 
       // المنيو والعروض ومناطق التوصيل
       match /{sub}/{docId} {
         allow read: if true;
         allow write: if signedIn() && uid() == rid && sub in ['menu', 'offers', 'zones'];
       }
+    }
+
+    // تقييم: الزبون يضيف تقييمه للمجموع في نفس الـ batch الذي ينشئ فيه مستند التقييم
+    function ratingFromCustomer(rid) {
+      let id = request.resource.data.lastRatingId;
+      let rt = getAfter(/databases/$(db)/documents/ratings/$(id)).data;
+      let o = get(/databases/$(db)/documents/orders/$(id)).data;
+      return signedIn()
+        && changedOnly(['ratingSum', 'ratingCount', 'lastRatingId'])
+        && request.resource.data.ratingCount == resource.data.get('ratingCount', 0) + 1
+        && request.resource.data.ratingSum == resource.data.get('ratingSum', 0) + rt.stars
+        && !exists(/databases/$(db)/documents/ratings/$(id))
+        && rt.customerId == uid()
+        && o.customerId == uid()
+        && o.restaurantId == rid
+        && o.status == 'delivered';
+    }
+
+    // ───────── التقييمات ─────────
+    // معرّف التقييم = معرّف الطلب: تقييم واحد لكل طلب مستلَم، ولا يُعدَّل بعد ذلك.
+    match /ratings/{oid} {
+      allow read: if true;
+      allow create: if signedIn() && validRating(oid);
+    }
+
+    function validRating(oid) {
+      let d = request.resource.data;
+      let o = get(/databases/$(db)/documents/orders/$(oid)).data;
+      return d.customerId == uid()
+        && o.customerId == uid()
+        && o.status == 'delivered'
+        && d.restaurantId == o.restaurantId
+        && d.stars is int && d.stars >= 1 && d.stars <= 5
+        && d.comment is string && d.comment.size() <= 300
+        && d.createdAt == request.time
+        && getAfter(/databases/$(db)/documents/restaurants/$(o.restaurantId)).data.lastRatingId == oid;
     }
 
     // ───────── الطلبات ─────────

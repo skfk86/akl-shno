@@ -147,6 +147,37 @@ export async function markDelivered(orderId, customerId) {
   await b.commit();
 }
 
+// طلبات الزبون النشطة (لفرض طلب واحد نشط على الحساب الجديد)
+export async function myActiveOrders() {
+  const q = query(collection(db, "orders"), where("customerId", "==", uid()));
+  return list(await getDocs(q)).filter(o => ["new", "accepted", "preparing", "ready", "out_for_delivery"].includes(o.status));
+}
+
+export const saveAddresses = addresses => updateDoc(doc(db, "users", uid()), { addresses });
+
+// ═════════ التقييم ═════════
+export async function rateOrder(o, stars, comment, name) {
+  const b = writeBatch(db);
+  b.set(doc(db, "ratings", o.id), {
+    restaurantId: o.restaurantId, customerId: uid(), customerName: name,
+    stars, comment, createdAt: serverTimestamp()
+  });
+  b.update(doc(db, "restaurants", o.restaurantId), {
+    ratingSum: increment(stars), ratingCount: increment(1), lastRatingId: o.id
+  });
+  await b.commit();
+}
+
+export async function getRating(orderId) {
+  const s = await getDoc(doc(db, "ratings", orderId));
+  return s.exists() ? s.data() : null;
+}
+
+export async function listRatings(rid) {
+  const q = query(collection(db, "ratings"), where("restaurantId", "==", rid));
+  return list(await getDocs(q)).sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+}
+
 // ═════════ البلاغات ═════════
 // بلاغ عدم استلام (+1 إنذار): الثلاث كتابات معاً أو لا شيء.
 export async function reportNoShow(orderId, customerId, reason, note = "") {
@@ -195,6 +226,7 @@ export function adminActivateTrial(r, days = 60) {
 }
 
 // الإيقاف يخفي المطعم من القائمة؛ ويمنع الطلبات الجديدة أيضاً عبر شرط listed في القواعد.
+export const adminSetVerified = (rid, verified) => updateDoc(doc(db, "restaurants", rid), { verified });
 export const adminSetListed = (rid, listed) => updateDoc(doc(db, "restaurants", rid), { listed });
 
 export async function adminListPayments() {
