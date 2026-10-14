@@ -896,13 +896,21 @@ function openChat(t) {
       return `${sep}<div class="bub ${m.from === me ? "me" : "them"}">${esc(m.text)}<small>${d.toLocaleTimeString(LOC, { hour: "numeric", minute: "2-digit" })}${m.at ? "" : " · يُرسل…"}</small></div>`;
     }).join("") : `<div class="empty" style="margin:auto"><div class="ic">${I.chat}</div><b style="color:var(--ink)">ابدأ المحادثة</b><span>${t.kind === "order" ? "الرسائل هنا تخص هذا الطلب فقط." : "اكتب سؤالك أو مشكلتك، ونرد عليك في أقرب وقت."}</span></div>`;
     const L = $("#ch-list"); L.scrollTop = L.scrollHeight;
-  }, () => { $("#ch-list").innerHTML = emptyState("تعذر تحميل الرسائل", "تأكد من الإنترنت."); });
+  }, () => {
+    if (chat !== t) return;
+    // محادثة مباشرة جديدة لم تُنشأ بعد: القواعد ترفض القراءة حتى أول رسالة، فنعرض شاشة البداية ونعيد الاشتراك بعد الإرسال
+    if (t.kind === "direct") { t.pending = true; $("#ch-list").innerHTML = `<div class="empty" style="margin:auto"><div class="ic">${I.chat}</div><b style="color:var(--ink)">ابدأ المحادثة</b><span>اسأل المطعم عن أي شيء قبل الطلب.</span></div>`; }
+    else $("#ch-list").innerHTML = emptyState("تعذر تحميل الرسائل", "تأكد من الإنترنت.");
+  });
 }
 function closeChat() { chatUnsub?.(); chatUnsub = null; chat = null; show(chatBack || "home"); refreshInboxBadges(); }
 async function sendChat(text) {
   text = text.trim(); if (!text || !chat) return;
   const btn = $("#ch-send"); btn.disabled = true;
-  try { await F.sendMessage(chat, chat.role, text, chat.name || me?.name || ""); $("#ch-input").value = ""; autoGrow(); }
+  try {
+    await F.sendMessage(chat, chat.role, text, chat.name || me?.name || ""); $("#ch-input").value = ""; autoGrow();
+    if (chat.pending) { chat.pending = false; const back = chatBack; openChat(chat); chatBack = back; }
+  }
   catch (e) { console.error(e); toast(e.code === "permission-denied" ? "لا يمكن المراسلة على هذا الطلب." : "تعذر الإرسال. حاول مرة أخرى."); }
   finally { btn.disabled = !$("#ch-input").value.trim(); }
 }

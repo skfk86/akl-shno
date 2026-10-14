@@ -115,6 +115,7 @@ await t("تسجيل المطعم يفتح لوحة المطعم", async () => {
   await tap(owner, "#o-save"); await waitScreen(owner, "s-owner");
 });
 await t("المطعم الجديد يظهر «قيد المراجعة»", async () => {
+  for (let i = 0; i < 25 && !(await owner.textContent("#ow-head")).includes("قيد المراجعة"); i++) await sleep(200);
   expect((await owner.textContent("#ow-head")).includes("قيد المراجعة"), "no pending note");
 });
 await t("إضافة صنف بسعر مخفّض", async () => {
