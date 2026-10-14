@@ -889,7 +889,7 @@ function renderHome() {
       <span style="font-size:13px">${ratingTag(r)}</span></button>`).join("")}</div>` : "";
   const open = items.filter(r => r.isOpen).length;
   $("#h-title").textContent = city ? `مطاعم ${city}` : "المطاعم";
-  $("#h-count").textContent = items.length ? `${open} مفتوح الآن` : "";
+  $("#h-count").textContent = items.length ? `${items.length} ${items.length > 2 && items.length < 11 ? "مطاعم" : "مطعم"} · ${open} مفتوح الآن` : "";
   const meta = r => `<div class="meta" style="align-items:center">${ratingTag(r)}${verifiedTag(r)}${distTag(r)}<span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>`;
   const svc = r => [r.delivery && "توصيل", r.pickup && "استلام"].filter(Boolean).join(" · ");
   $("#h-list").innerHTML = items.length ? items.map((r, i) => i < 3 || r.isOpen ? `
