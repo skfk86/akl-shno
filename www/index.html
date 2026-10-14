@@ -218,6 +218,17 @@
   .bars i{display:block;width:100%;border-radius:8px 8px 4px 4px;background:var(--accent);min-height:4px}
   .hscroll{display:flex;gap:12px;overflow-x:auto;padding:0 20px 4px;scrollbar-width:none}
   .hscroll::-webkit-scrollbar{display:none}
+  .deal{flex:0 0 260px;border:0;padding:16px;border-radius:20px;color:#fff;text-align:right;display:flex;flex-direction:column;gap:6px;
+    position:relative;overflow:hidden;min-height:128px;justify-content:space-between}
+  .deal::after{content:"";position:absolute;left:-30px;bottom:-40px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.12)}
+  .deal .kicker{font-size:12px;font-weight:700;background:rgba(255,255,255,.22);padding:3px 10px;border-radius:999px;align-self:flex-start}
+  .deal b{font-size:17px;line-height:1.5;position:relative;z-index:1}
+  .deal small{font-size:12px;opacity:.92;position:relative;z-index:1}
+  .disc{flex:0 0 150px;border:0;background:none;padding:0;text-align:right;display:flex;flex-direction:column;gap:4px}
+  .disc .cover{height:100px;border-radius:16px}
+  .off{position:absolute;top:8px;right:8px;background:var(--red);color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .cover .tag3{position:absolute;top:10px;left:10px;background:var(--red);color:#fff;font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px}
+  s.old{color:var(--muted);font-size:13px;font-weight:400}
   .top-card{flex:0 0 150px;border:0;background:none;padding:0;text-align:right;display:flex;flex-direction:column;gap:6px}
   .top-card .cover{height:100px;border-radius:16px}
   .chips{display:flex;gap:8px;overflow-x:auto;padding:0 20px 4px;scrollbar-width:none}
@@ -318,6 +329,7 @@
       <b style="font-size:19px">أكل مطاعمك لحدي البيت</b><span style="font-size:13px">ادفع عند الاستلام أو ببنكك</span></div>
     <span style="width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h2l3 11.5M5.5 17.5 9 10h6l3.5 7.5M9 10 7.5 6H5"/></svg></span>
   </div>
+  <div id="h-offers"></div>
   <div id="h-top"></div>
   <div id="h-cats" class="chips" style="padding-top:16px;padding-bottom:16px"></div>
   <div class="pad row between" style="margin-bottom:6px">
@@ -611,6 +623,28 @@ I.chev = '<svg aria-hidden="true" class="chev" width="18" height="18" viewBox="0
 I.shield = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>';
 const APP_VERSION = "1.0.0";
 
+// ═════════ العروض والتخفيضات ═════════
+const isLive = o => o.active && (!o.endsAt || (o.endsAt.toMillis ? o.endsAt.toMillis() : +new Date(o.endsAt)) > Date.now());
+const pctOff = m => m.oldPrice > m.price ? Math.round((1 - m.price / m.oldPrice) * 100) : 0;
+const priceTag = m => pctOff(m)
+  ? `<span class="row gap6"><b style="color:var(--red)">${money(m.price)}</b><s class="old">${money(m.oldPrice)}</s></span>`
+  : `<b>${money(m.price)}</b>`;
+const DEAL_BG = ["linear-gradient(135deg,#C2410C,#EA580C)", "linear-gradient(135deg,#15803D,#16A34A)", "linear-gradient(135deg,#1D4ED8,#2563EB)", "linear-gradient(135deg,#7C3AED,#9333EA)"];
+let deals = { offers: [], items: [], byRest: {} };
+async function loadDeals(list) {
+  const res = await Promise.all(list.map(r => Promise.all([F.listSub(r.id, "offers"), F.listSub(r.id, "menu")]).catch(() => [[], []])));
+  const d = { offers: [], items: [], byRest: {} };
+  res.forEach(([offers, menu], i) => {
+    const r = list[i];
+    const live = offers.filter(isLive), disc = menu.filter(m => m.available && pctOff(m));
+    live.forEach(o => d.offers.push({ ...o, r }));
+    disc.forEach(m => d.items.push({ ...m, r }));
+    if (live.length || disc.length) d.byRest[r.id] = disc.length ? `خصم حتى ${Math.max(...disc.map(pctOff))}%` : "عرض";
+  });
+  d.items.sort((a, b) => pctOff(b) - pctOff(a));
+  deals = d;
+}
+
 const ST = { new: "جديد", accepted: "تم القبول", preparing: "قيد التحضير", ready: "جاهز للاستلام",
   out_for_delivery: "في الطريق", delivered: "تم التسليم", rejected: "مرفوض", cancelled: "ملغي" };
 const ST_BADGE = { new: "b-blue", accepted: "b-orange", preparing: "b-orange", ready: "b-orange",
@@ -756,7 +790,7 @@ async function showHome() {
   const list = $("#h-list");
   list.innerHTML = skeleton(3, 190);
   getMyLoc(false).then(p => p && restaurants.length && renderHome());
-  try { restaurants = await F.listOpenRestaurants(); renderHome(); }
+  try { restaurants = await F.listOpenRestaurants(); renderHome(); loadDeals(restaurants).then(renderHome).catch(console.error); }
   catch (e) {
     console.error(e);
     list.innerHTML = e.code === "permission-denied"
@@ -779,6 +813,25 @@ function renderHome() {
     .sort((a, b) => (b.isOpen ? 1 : 0) - (a.isOpen ? 1 : 0)
       || (myLoc && hasLoc(a) && hasLoc(b) ? distKm(myLoc, [a.lat, a.lng]) - distKm(myLoc, [b.lat, b.lng]) : 0));
   homeItems = items;
+  const inCityIds = new Set(inCity.map(r => r.id));
+  const dOffers = deals.offers.filter(o => inCityIds.has(o.r.id) && o.r.isOpen);
+  const dItems = deals.items.filter(m => inCityIds.has(m.r.id) && m.r.isOpen).slice(0, 12);
+  $("#h-offers").innerHTML = (dOffers.length || dItems.length) && !q ? `
+    <div class="pad row between" style="margin-top:18px;margin-bottom:10px"><h2>العروض والتخفيضات</h2>
+      <span class="badge b-red">${dOffers.length + dItems.length} عرض</span></div>
+    ${dOffers.length ? `<div class="hscroll" style="margin-bottom:${dItems.length ? 14 : 0}px">${dOffers.map((o, i) => `
+      <button class="deal" data-rest="${esc(o.r.id)}" style="background:${DEAL_BG[i % DEAL_BG.length]}">
+        <span class="kicker">${esc(o.r.name)}</span>
+        <b>${esc(o.title)}</b>
+        <small>${o.endsAt ? "حتى " + tsDate(o.endsAt)?.toLocaleDateString("ar-SD", { day: "numeric", month: "long" }) : "لفترة محدودة"}</small>
+      </button>`).join("")}</div>` : ""}
+    ${dItems.length ? `<div class="hscroll">${dItems.map(m => `
+      <button class="disc" data-rest="${esc(m.r.id)}">
+        <div class="cover" style="${coverBg(m.name)}"><span class="icon">${catIcon(m.r.category, 34)}</span><span class="off">-${pctOff(m)}%</span></div>
+        <b style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.name)}</b>
+        <span class="muted" style="font-size:12px">${esc(m.r.name)}</span>
+        ${priceTag(m)}
+      </button>`).join("")}</div>` : ""}` : "";
   const top = inCity.filter(r => r.ratingCount).sort((a, b) => avgOf(b) - avgOf(a) || b.ratingCount - a.ratingCount).slice(0, 8);
   $("#h-top").innerHTML = top.length && !q ? `<div class="pad row gap6" style="margin-top:18px;margin-bottom:10px">${starIcon("#F59E0B", 20)}<h2 id="top-title">الأعلى تقييماً</h2></div>
     <div class="hscroll">${top.map(r => `<button class="top-card" data-rest="${esc(r.id)}">
@@ -795,6 +848,7 @@ function renderHome() {
       <div class="cover" style="${coverBg(r.name)}"><span class="icon">${catIcon(r.category, 60)}</span>
         <span class="tag" style="color:${r.isOpen ? "var(--green)" : "var(--muted)"}">${r.isOpen ? "مفتوح الآن" : "مغلق"}</span>
         <span class="tag2">${svc(r)}</span>
+        ${deals.byRest[r.id] ? `<span class="tag3">${deals.byRest[r.id]}</span>` : ""}
       </div>
       <b style="font-size:16px">${esc(r.name)}</b>${meta(r)}
     </button>` : `
@@ -858,6 +912,7 @@ $("#h-cats").addEventListener("click", e => { const c = e.target.closest("[data-
 $("#h-city").addEventListener("change", renderHome);
 $("#h-search").addEventListener("input", renderHome);
 $("#h-refresh").addEventListener("click", showHome);
+$("#h-offers").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 $("#h-top").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 $("#h-list").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 
@@ -924,10 +979,10 @@ function renderRestaurant() {
           <div class="col gap6 grow">
             <b>${esc(m.name)}</b>
             ${m.desc ? `<span class="muted" style="line-height:1.6">${esc(m.desc)}</span>` : ""}
-            <b style="margin-top:2px">${money(m.price)}</b>
+            <span style="margin-top:2px">${priceTag(m)}</span>
             ${!m.available ? '<span class="badge b-red" style="align-self:flex-start">غير متوفر اليوم</span>' : ""}
           </div>
-          <div class="thumb" style="${coverBg(m.name)};color:rgba(255,255,255,.92)">${catIcon(r.category, 34)}
+          <div class="thumb" style="${coverBg(m.name)};color:rgba(255,255,255,.92)">${catIcon(r.category, 34)}${pctOff(m) && m.available ? `<span class="off" style="top:-6px;right:auto;left:-6px">-${pctOff(m)}%</span>` : ""}
             ${cart.items[m.id] ? `<span class="badge b-green" style="position:absolute;top:-6px;right:-6px">${cart.items[m.id].qty}</span>` : ""}
             <button class="add" data-add="${esc(m.id)}" aria-label="أضف ${esc(m.name)}" ${!r.isOpen || !m.available ? "disabled" : ""}>${I.plus}</button>
           </div>
@@ -1555,7 +1610,7 @@ async function renderOwnerMenu() {
     ${menu.length ? menu.map(m => `<div class="box row gap10" style="padding:10px">
       <div style="width:54px;height:54px;border-radius:12px;${coverBg(m.name)};display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${catIcon(myRest.category, 26)}</div>
       <div class="col grow"><b style="font-size:14px">${esc(m.name)}</b>${m.section ? `<span class="muted" style="font-size:12px">${esc(m.section)}</span>` : ""}
-        <span style="font-size:13px;color:${m.available ? "var(--muted)" : "var(--red)"}">${money(m.price)} · ${m.available ? "متوفر" : "غير متوفر"}</span></div>
+        <span style="font-size:13px;color:${m.available ? "var(--muted)" : "var(--red)"}">${money(m.price)}${pctOff(m) ? ` <s class="old">${money(m.oldPrice)}</s> <span class="badge b-red">-${pctOff(m)}%</span>` : ""} · ${m.available ? "متوفر" : "غير متوفر"}</span></div>
       <button class="icon-btn" data-edit="${esc(m.id)}" aria-label="تعديل">${I.edit}</button></div>`).join("")
       : emptyState("المنيو فارغ", "أضف أصنافك ليتمكن الزبائن من الطلب.")}
   </div>`;
@@ -1578,7 +1633,11 @@ function itemSheet(m) {
     <label class="field">الوصف (اختياري)<input id="it-desc" value="${esc(m?.desc)}" placeholder="مثلاً: مع سلطة دكوة وعيش"></label>
     <label class="field">القسم<input id="it-sec" list="it-secs" value="${esc(m?.section)}" placeholder="مثلاً: مشويات، سندوتشات، مشروبات">
       <datalist id="it-secs">${[...new Set(ownerMenuCache.map(x => x.section).filter(Boolean))].map(x => `<option value="${esc(x)}">`).join("")}</datalist></label>
-    <label class="field">السعر بالجنيه<input id="it-price" type="number" inputmode="numeric" min="0" value="${m?.price ?? ""}"></label>
+    <div class="row2">
+      <label class="field">السعر بالجنيه<input id="it-price" type="number" inputmode="numeric" min="0" value="${m?.price ?? ""}"></label>
+      <label class="field">السعر قبل الخصم<input id="it-old" type="number" inputmode="numeric" min="0" value="${m?.oldPrice || ""}" placeholder="اختياري"></label>
+    </div>
+    <span class="muted" style="margin-top:-6px">للتخفيض: اكتب السعر القديم هنا، فيظهر الصنف في قسم "العروض والتخفيضات".</span>
     <label class="row between box" style="padding:12px 14px"><span style="font-weight:500">متوفر اليوم</span>
       <span class="switch"><input type="checkbox" id="it-av" ${m ? (m.available ? "checked" : "") : "checked"}><span></span></span></label>
     <p id="it-err" class="err"></p>
@@ -1587,7 +1646,9 @@ function itemSheet(m) {
   b.querySelector("#it-save").onclick = e => {
     const data = { name: b.querySelector("#it-name").value.trim(), desc: b.querySelector("#it-desc").value.trim(),
       section: b.querySelector("#it-sec").value.trim(),
-      price: Number(b.querySelector("#it-price").value), available: b.querySelector("#it-av").checked };
+      price: Number(b.querySelector("#it-price").value), available: b.querySelector("#it-av").checked,
+      oldPrice: Number(b.querySelector("#it-old").value) || 0 };
+    if (data.oldPrice && data.oldPrice <= data.price) return b.querySelector("#it-err").textContent = "السعر قبل الخصم يجب أن يكون أكبر من السعر الحالي.";
     if (data.name.length < 2) return b.querySelector("#it-err").textContent = "اكتب اسم الصنف.";
     if (!(data.price > 0)) return b.querySelector("#it-err").textContent = "اكتب سعراً صحيحاً.";
     busy(e.target, async () => { m ? await F.updateSub("menu", m.id, data) : await F.addSub("menu", data); closeSheet(); renderOwnerMenu(); });
