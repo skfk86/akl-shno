@@ -946,7 +946,7 @@ function startInbox() {
   });
 }
 function showInbox() {
-  clearSubs();
+  // لا نلغي المتابعات هنا: لوحة المطعم يجب أن تبقى تستقبل الطلبات لحظياً أثناء قراءة الرسائل
   const kind = me?.role === "owner" ? "owner" : "customer";
   $("#in-nav").dataset.nav = kind;
   renderNav(kind, "inbox"); show("inbox"); renderInbox();
