@@ -156,6 +156,18 @@ export async function myActiveOrders() {
 export const updateProfile = ({ name, phone }) => updateDoc(doc(db, "users", uid()), { name, phone });
 export const saveAddresses = addresses => updateDoc(doc(db, "users", uid()), { addresses });
 
+// ═════════ الصور ═════════
+// تُخزن مضغوطة (أقل من 140KB) في مجموعة images، ويُحفظ معرّفها في المطعم أو الصنف.
+export async function uploadImage(dataUrl) {
+  const ref = await addDoc(collection(db, "images"), { owner: uid(), data: dataUrl, createdAt: serverTimestamp() });
+  return ref.id;
+}
+export async function getImage(id) {
+  const s = await getDoc(doc(db, "images", id));
+  return s.exists() ? s.data().data : null;
+}
+export const deleteImage = id => deleteDoc(doc(db, "images", id));
+
 // ═════════ التقييم ═════════
 export async function rateOrder(o, stars, comment, name) {
   const b = writeBatch(db);

@@ -116,6 +116,20 @@ service cloud.firestore {
         && o.status == 'delivered';
     }
 
+    // ───────── الصور ─────────
+    // صورة مضغوطة كـ data URL، أقل من 200KB، ويحذفها صاحبها فقط.
+    match /images/{id} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['owner', 'data', 'createdAt'])
+        && request.resource.data.owner == uid()
+        && request.resource.data.data is string
+        && request.resource.data.data.size() < 200000
+        && request.resource.data.data.matches('data:image/(webp|jpeg);base64,.*')
+        && request.resource.data.createdAt == request.time;
+      allow delete: if signedIn() && (resource.data.owner == uid() || isAdmin());
+    }
+
     // ───────── التقييمات ─────────
     // معرّف التقييم = معرّف الطلب: تقييم واحد لكل طلب مستلَم، ولا يُعدَّل بعد ذلك.
     match /ratings/{oid} {

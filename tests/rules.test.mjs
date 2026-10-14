@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
 import {
-  doc, getDoc, getDocs, setDoc, updateDoc, collection, query, where,
+  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, where,
   writeBatch, serverTimestamp, increment, Timestamp
 } from "firebase/firestore";
 
@@ -197,6 +197,17 @@ await t("الأدمن يوافق ويمدد الاشتراك", async () => {
   await assertSucceeds(b.commit());
 });
 await t("غير الأدمن لا يقرأ مجموعة الأدمن لغيره", () => assertFails(getDoc(doc(db("cust"), "admins", "admin"))));
+
+console.log("\nالصور");
+await seed();
+const img = (o = {}) => ({ owner: "owner", data: "data:image/webp;base64,AAAA", createdAt: serverTimestamp(), ...o });
+await t("صاحب المطعم يرفع صورة", () => assertSucceeds(setDoc(doc(db("owner"), "images", "i1"), img())));
+await t("الصور تُقرأ للجميع", () => assertSucceeds(getDoc(doc(anon(), "images", "i1"))));
+await t("لا يرفع صورة باسم غيره", () => assertFails(setDoc(doc(db("owner2"), "images", "i2"), img())));
+await t("لا يرفع غير الصور", () => assertFails(setDoc(doc(db("owner"), "images", "i3"), img({ data: "data:text/html;base64,AAAA" }))));
+await t("لا يرفع صورة أكبر من الحد", () => assertFails(setDoc(doc(db("owner"), "images", "i4"), img({ data: "data:image/webp;base64," + "A".repeat(210000) }))));
+await t("غير صاحبها لا يحذفها", () => assertFails(deleteDoc(doc(db("owner2"), "images", "i1"))));
+await t("صاحبها يحذفها", () => assertSucceeds(deleteDoc(doc(db("owner"), "images", "i1"))));
 
 await env.cleanup();
 console.log(`\n${pass} نجح، ${fail} فشل`);
