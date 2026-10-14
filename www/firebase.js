@@ -156,6 +156,20 @@ export async function myActiveOrders() {
 export const updateProfile = ({ name, phone }) => updateDoc(doc(db, "users", uid()), { name, phone });
 // رمز الإشعارات للهاتف الحالي (يُقرأ من سكربت GitHub Actions لإرسال الإشعارات)
 export const saveFcmToken = token => updateDoc(doc(db, "users", uid()), { fcmToken: token });
+// معرّف الجهاز: يُستخدم لمنع المحظور من فتح حساب جديد على نفس الهاتف
+export const saveDeviceId = id => updateDoc(doc(db, "users", uid()), { deviceId: id });
+export async function isDeviceBanned(id) {
+  try { return (await getDoc(doc(db, "bannedDevices", id))).exists(); } catch { return false; }
+}
+export async function adminListBanned() {
+  return list(await getDocs(collection(db, "bannedDevices")));
+}
+export const adminUnbanDevice = async b => {
+  const batch = writeBatch(db);
+  batch.delete(doc(db, "bannedDevices", b.id));
+  if (b.uid) batch.update(doc(db, "users", b.uid), { strikes: 0 });
+  await batch.commit();
+};
 export const saveAddresses = addresses => updateDoc(doc(db, "users", uid()), { addresses });
 
 // ═════════ الصور ═════════
@@ -164,9 +178,25 @@ export async function uploadImage(dataUrl) {
   const ref = await addDoc(collection(db, "images"), { owner: uid(), data: dataUrl, createdAt: serverTimestamp() });
   return ref.id;
 }
+// الصورة لا تتغير بعد رفعها (التعديل يُنشئ معرّفاً جديداً)، فتُحفظ على الهاتف وتُقرأ مرة واحدة فقط.
+const idb = new Promise(res => {
+  try {
+    const r = indexedDB.open("akl-cache", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("img");
+    r.onsuccess = () => res(r.result); r.onerror = () => res(null);
+  } catch { res(null); }
+});
+const idbGet = async k => { const d = await idb; if (!d) return null;
+  return new Promise(r => { try { const q = d.transaction("img").objectStore("img").get(k); q.onsuccess = () => r(q.result || null); q.onerror = () => r(null); } catch { r(null); } }); };
+const idbSet = async (k, v) => { const d = await idb; if (!d) return;
+  try { d.transaction("img", "readwrite").objectStore("img").put(v, k); } catch {} };
 export async function getImage(id) {
+  const cached = await idbGet(id);
+  if (cached) return cached;
   const s = await getDoc(doc(db, "images", id));
-  return s.exists() ? s.data().data : null;
+  const data = s.exists() ? s.data().data : null;
+  if (data) idbSet(id, data);
+  return data;
 }
 export const deleteImage = id => deleteDoc(doc(db, "images", id));
 

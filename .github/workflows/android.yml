@@ -22,6 +22,26 @@ jobs:
         run: |
           sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#&\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' android/app/src/main/AndroidManifest.xml
           grep -c ACCESS_FINE_LOCATION android/app/src/main/AndroidManifest.xml
+      - name: Bundle fonts and map library into the app
+        run: |
+          npm install --no-save --no-audit --no-fund leaflet@1.9.4 @fontsource/ibm-plex-sans-arabic@5
+          mkdir -p www/vendor/fonts
+          cp node_modules/leaflet/dist/leaflet.js node_modules/leaflet/dist/leaflet.css www/vendor/
+          cp -r node_modules/leaflet/dist/images www/vendor/
+          sed -i 's#https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css#vendor/leaflet.css#; s#https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js#vendor/leaflet.js#' www/index.html
+          F=node_modules/@fontsource/ibm-plex-sans-arabic/files
+          if ls $F/ibm-plex-sans-arabic-arabic-400-normal.woff2 >/dev/null 2>&1; then
+            : > www/vendor/fonts.css
+            for w in 400 500 700; do
+              for sub in arabic latin; do
+                cp $F/ibm-plex-sans-arabic-$sub-$w-normal.woff2 www/vendor/fonts/
+                R=$([ $sub = arabic ] && echo "U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200E" || echo "U+0000-00FF,U+2000-206F,U+20AC")
+                printf "@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:%s;font-display:swap;src:url(fonts/ibm-plex-sans-arabic-%s-%s-normal.woff2) format('woff2');unicode-range:%s}\n" $w $sub $w "$R" >> www/vendor/fonts.css
+              done
+            done
+            sed -i 's#<link rel="preconnect" href="https://fonts.googleapis.com">##; s#https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap#vendor/fonts.css#' www/index.html
+          else echo "::warning::font files not found, keeping Google Fonts"; fi
+          grep -n "vendor/" www/index.html
       - run: npx cap sync android
       - name: Build
         env:

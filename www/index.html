@@ -885,6 +885,26 @@ document.querySelectorAll("[data-logout]").forEach(b => b.addEventListener("clic
 // ═════════ التوجيه ═════════
 let chosenRole = localStorage.getItem("role");
 
+// ═════════ معرّف الجهاز والحظر ═════════
+async function deviceId() {
+  try {
+    const D = window.Capacitor?.Plugins?.Device;
+    if (D) { const r = await D.getId(); if (r?.identifier) return "a-" + r.identifier; }
+  } catch {}
+  let id = null;
+  try { id = localStorage.getItem("akl-dev"); } catch {}
+  if (!id) { id = "w-" + crypto.randomUUID(); try { localStorage.setItem("akl-dev", id); } catch {} }
+  return id;
+}
+let deviceBanned = false;
+async function setupDevice() {
+  try {
+    const id = await deviceId();
+    if (me && me.deviceId !== id) { await F.saveDeviceId(id); me.deviceId = id; }
+    deviceBanned = await F.isDeviceBanned(id);
+  } catch (e) { console.error("device", e); }
+}
+
 // ═════════ الإشعارات ═════════
 async function setupPush() {
   const PN = window.Capacitor?.Plugins?.PushNotifications;
@@ -918,7 +938,7 @@ F.watchAuth(async user => {
       $("#c-name").value = user.displayName || "";
       return show("customer");
     }
-    setupPush();
+    setupPush(); await setupDevice();
     if (isAdmin) return showAdmin();
     if (me.role === "owner") return showOwner();
     showHome();
@@ -948,7 +968,7 @@ $("#c-save").addEventListener("click", e => {
   busy(e.target, async () => {
     await F.createProfile({ role: "customer", name, phone: "+249" + phone });
     me = await F.getProfile();
-    setupPush();
+    setupPush(); await setupDevice();
     showHome();
   });
 });
@@ -1360,7 +1380,8 @@ function sendOrder(btn) {
   }
   if (me.delivered < 2 && draft.pay === "cash" && total > CONFIG.NEW_LIMIT) return err(`الدفع عند الاستلام متاح حتى ${money(CONFIG.NEW_LIMIT)} في أول طلبين. اختر بنكك أو قلّل الطلب.`);
   if (draft.pay === "bankak" && !draft.txn) return err("اكتب رقم عملية التحويل.");
-  if (me.strikes >= 3) return err("حسابك موقوف بسبب تكرار عدم استلام الطلبات.");
+  if (me.strikes >= 3 || deviceBanned) return err("هذا الحساب أو الجهاز موقوف عن الطلب بسبب تكرار عدم استلام الطلبات. تواصل معنا إن كان هناك خطأ.");
+  if (!me.deviceId) return err("تعذر التحقق من الجهاز. أعد فتح التطبيق وحاول مرة أخرى.");
   busy(btn, async () => {
     if (me.delivered < 2 && (await F.myActiveOrders()).length) {
       return err("لديك طلب قيد التنفيذ. للحسابات الجديدة: طلب واحد في نفس الوقت.");
@@ -2012,7 +2033,7 @@ async function showAdmin() {
 }
 
 async function loadAdmin() {
-  const [rest, pays, reps] = await Promise.all([F.adminListRestaurants(), F.adminListPayments(), F.adminListDisputes()]);
+  const [rest, pays, reps, banned] = await Promise.all([F.adminListRestaurants(), F.adminListPayments(), F.adminListDisputes(), F.adminListBanned().catch(() => [])]);
   adRest = rest;
   // إصلاح تلقائي: مطاعم فُعّلت قبل إضافة حقل listed لا تظهر للزبائن
   const fix = rest.filter(r => r.subActiveUntil != null && r.listed === undefined);
@@ -2066,7 +2087,13 @@ async function loadAdmin() {
         <div class="row gap10"><button class="btn btn-sm btn-primary" data-rep-up="${esc(r.id)}">تثبيت الإنذار</button>
           <button class="btn btn-sm btn-ghost" data-rep-cancel="${esc(r.id)}">إلغاء البلاغ</button></div></div>`; }).join("")
       : emptyState("لا توجد اعتراضات", "البلاغات التي يعترض عليها الزبائن تظهر هنا.");
-    body._reps = reps;
+    body.innerHTML += `<div class="row between" style="margin-top:8px"><h2>أجهزة محظورة</h2><span class="badge b-red">${banned.length}</span></div>
+      ${banned.length ? banned.map(b => `<div class="box row between">
+        <div class="col gap6"><b style="font-size:14px">${esc(b.name || "زبون")}</b><span class="muted" dir="ltr" style="text-align:right">${esc(b.phone || "")}</span>
+          <span class="muted" style="font-size:12px">${b.strikes || 3} إنذارات · ${tsDate(b.at)?.toLocaleDateString("ar-SD") || ""}</span></div>
+        <button class="btn btn-sm btn-ghost" style="width:auto;padding:0 14px" data-unban="${esc(b.id)}">رفع الحظر</button></div>`).join("")
+        : `<span class="muted">لا توجد أجهزة محظورة. يُحظر الجهاز تلقائياً عند وصول الحساب إلى 3 إنذارات.</span>`}`;
+    body._reps = reps; body._banned = banned;
   }
 }
 
@@ -2099,6 +2126,12 @@ $("#ad-body").addEventListener("click", e => {
       if (ok) await F.adminApprovePayment(p, adRest.find(r => r.id === p.restaurantId)); else await F.adminRejectPayment(p);
       toast(ok ? "تم تفعيل الاشتراك شهراً" : "تم الرفض"); loadAdmin();
     });
+  }
+  const ub = e.target.closest("[data-unban]");
+  if (ub) {
+    const b = body._banned.find(x => x.id === ub.dataset.unban);
+    if (!confirm("رفع الحظر يعيد للزبون إمكانية الطلب ويصفّر إنذاراته. متابعة؟")) return;
+    return busy(ub, async () => { await F.adminUnbanDevice(b); toast("تم رفع الحظر"); loadAdmin(); });
   }
   const up = e.target.closest("[data-rep-up]"), cn = e.target.closest("[data-rep-cancel]");
   if (up || cn) {

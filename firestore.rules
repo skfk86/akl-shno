@@ -41,7 +41,7 @@ service cloud.firestore {
         && request.resource.data.delivered == 0;
 
       allow update: if isAdmin()
-        || (signedIn() && uid() == userId && changedOnly(['name', 'phone', 'addresses', 'fcmToken']))
+        || (signedIn() && uid() == userId && changedOnly(['name', 'phone', 'addresses', 'fcmToken', 'deviceId']))
         || strikeFromReport(userId)
         || deliveredFromOrder(userId);
     }
@@ -150,6 +150,14 @@ service cloud.firestore {
         && getAfter(/databases/$(db)/documents/restaurants/$(o.restaurantId)).data.lastRatingId == oid;
     }
 
+    // ───────── الأجهزة المحظورة ─────────
+    // تُضاف تلقائياً من مرسل الإشعارات عند وصول الإنذارات إلى 3، ويرفعها الأدمن.
+    match /bannedDevices/{id} {
+      allow get: if signedIn();
+      allow list, delete: if isAdmin();
+      allow create, update: if false;
+    }
+
     // ───────── الطلبات ─────────
     match /orders/{oid} {
       allow read: if signedIn()
@@ -171,6 +179,8 @@ service cloud.firestore {
       return d.customerId == uid()
         && u.role == 'customer'
         && u.strikes < 3                                   // 3 إنذارات = حظر
+        && u.get('deviceId', '') != ''                     // يجب تسجيل معرّف الجهاز
+        && !exists(/databases/$(db)/documents/bannedDevices/$(u.get('deviceId', 'none')))  // جهاز محظور
         && (u.strikes < 2 || d.payMethod == 'bankak')      // إنذاران = دفع مسبق إلزامي
         && (u.delivered >= 2 || d.payMethod == 'bankak' || d.total <= 50000) // حد للكاش في أول طلبين
         && d.customerStrikes == u.strikes

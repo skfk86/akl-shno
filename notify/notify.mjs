@@ -78,5 +78,23 @@ for (const d of expiring.docs) {
   await d.ref.update({ expiryNotified: until });
 }
 
+// ───── حظر الأجهزة: 3 إنذارات ← الجهاز محظور، وأقل من ذلك ← يُرفع ─────
+let bannedNew = 0, unbanned = 0;
+const strikers = await db.collection("users").where("strikes", ">=", 3).get();
+for (const u of strikers.docs) {
+  const x = u.data(); if (!x.deviceId) continue;
+  const ref = db.doc(`bannedDevices/${x.deviceId}`);
+  if (!(await ref.get()).exists) {
+    await ref.set({ uid: u.id, name: x.name || "", phone: x.phone || "", strikes: x.strikes, at: Timestamp.now() });
+    bannedNew++;
+  }
+}
+for (const b of (await db.collection("bannedDevices").get()).docs) {
+  const uid = b.get("uid"); if (!uid) continue;
+  const s = (await db.doc(`users/${uid}`).get()).get("strikes") || 0;
+  if (s < 3) { await b.ref.delete(); unbanned++; }
+}
+console.log(`devices banned: ${bannedNew} · unbanned: ${unbanned}`);
+
 console.log(`orders checked: ${orders.size} · sent: ${sent} · no token: ${skipped} · failed: ${failed}`);
 process.exit(0);

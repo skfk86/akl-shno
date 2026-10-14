@@ -29,7 +29,7 @@ async function seed() {
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async c => {
     const s = c.firestore();
-    const user = (id, extra) => setDoc(doc(s, "users", id), { role: "customer", name: id, phone: "+249900000000", addresses: [], strikes: 0, delivered: 0, ...extra });
+    const user = (id, extra) => setDoc(doc(s, "users", id), { role: "customer", name: id, phone: "+249900000000", addresses: [], strikes: 0, delivered: 0, deviceId: "dev-" + id, ...extra });
     await user("cust");
     await user("vet", { delivered: 5 });
     await user("warned", { strikes: 2, delivered: 5 });
@@ -109,6 +109,18 @@ await env.withSecurityRulesDisabled(c => updateDoc(doc(c.firestore(), "restauran
 await t("لا يطلب من مطعم أوقفه الأدمن", () => assertFails(placeAs("vet", { strikes: 0, delivered: 5 }, {}, "o9")));
 await env.withSecurityRulesDisabled(c => updateDoc(doc(c.firestore(), "restaurants", "owner"), { listed: true, subActiveUntil: past }));
 await t("لا يطلب من مطعم انتهى اشتراكه", () => assertFails(placeAs("vet", { strikes: 0, delivered: 5 }, {}, "o10")));
+
+console.log("\nحظر الجهاز");
+await seed();
+await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), "bannedDevices", "dev-shared"), { uid: "banned", strikes: 3 }));
+await env.withSecurityRulesDisabled(c => updateDoc(doc(c.firestore(), "users", "cust"), { deviceId: "dev-shared" }));
+await t("حساب جديد على جهاز محظور لا يطلب", () => assertFails(placeAs("cust", { strikes: 0, delivered: 0 })));
+await env.withSecurityRulesDisabled(c => updateDoc(doc(c.firestore(), "users", "cust"), { deviceId: "" }));
+await t("لا طلب بدون تسجيل معرّف الجهاز", () => assertFails(placeAs("cust", { strikes: 0, delivered: 0 })));
+await t("الزبون يسجّل معرّف جهازه", () => assertSucceeds(updateDoc(doc(db("cust"), "users", "cust"), { deviceId: "dev-new" })));
+await t("بعدها يطلب عادياً", () => assertSucceeds(placeAs("cust", { strikes: 0, delivered: 0 })));
+await t("الزبون لا يحظر أو يرفع حظر جهاز", () => assertFails(setDoc(doc(db("cust"), "bannedDevices", "x"), { uid: "cust" })));
+await t("الأدمن يرفع الحظر", () => assertSucceeds(deleteDoc(doc(db("admin"), "bannedDevices", "dev-shared"))));
 
 console.log("\nمراحل الطلب");
 await seed();
