@@ -44,6 +44,9 @@ service cloud.firestore {
         || (signedIn() && uid() == userId && changedOnly(['name', 'phone', 'addresses', 'fcmToken', 'deviceId']))
         || strikeFromReport(userId)
         || deliveredFromOrder(userId);
+
+      // حذف الحساب من داخل التطبيق (متطلب Google Play)
+      allow delete: if signedIn() && (uid() == userId || isAdmin());
     }
 
     // إنذار: +1 فقط، وفي نفس الـ batch الذي ينشئ بلاغاً جديداً عن هذا الزبون.
@@ -92,6 +95,8 @@ service cloud.firestore {
         || (signedIn() && uid() == rid
             && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'subActiveUntil', 'freeTrial', 'listed', 'verified', 'ratingSum', 'ratingCount', 'lastRatingId']))
         || ratingFromCustomer(rid);
+
+      allow delete: if signedIn() && (uid() == rid || isAdmin());
 
       // المنيو والعروض ومناطق التوصيل
       match /{sub}/{docId} {

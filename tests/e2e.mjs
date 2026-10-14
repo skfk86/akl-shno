@@ -359,6 +359,18 @@ await t("إيقاف المطعم يخفيه عن الزبون", async () => {
 await shot(owner, "07-owner-stats");
 
 // ═════════════════════════════════════════
+section("8. حذف الحساب");
+await t("الزبون يحذف حسابه ويعود لشاشة الترحيب", async () => {
+  await tap(cust, '.screen.on nav [data-go="account"]'); await waitScreen(cust, "s-account"); await sleep(800);
+  await tap(cust, "[data-delete-account]"); await sleep(300);
+  expect(await cust.locator("#del-go[disabled]").count() === 1, "delete should need confirmation");
+  await cust.fill("#del-confirm", "حذف"); await tap(cust, "#del-go");
+  await waitScreen(cust, "s-welcome", 20000);
+});
+await t("الدخول من جديد يبدأ حساباً جديداً", async () => {
+  await tap(cust, '[data-role="customer"]'); await waitScreen(cust, "s-customer");
+});
+
 section("أخطاء JavaScript أثناء الفحص");
 await t("لا توجد أخطاء JavaScript", () => expect(!pageErrors.length, pageErrors.slice(0, 5).join(" | ")));
 

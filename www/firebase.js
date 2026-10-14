@@ -3,7 +3,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithCredential, onAuthStateChanged, signOut
+  getAuth, GoogleAuthProvider, signInWithCredential, onAuthStateChanged, signOut, deleteUser
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
 import {
   getFirestore, doc, collection, getDoc, getDocs, query, where,
@@ -170,6 +170,29 @@ export const adminUnbanDevice = async b => {
   if (b.uid) batch.update(doc(db, "users", b.uid), { strikes: 0 });
   await batch.commit();
 };
+// حذف الحساب نهائياً: الملف الشخصي، والمطعم بمنيوه وصوره إن وُجد، ثم حساب الدخول.
+// سجلات الطلبات السابقة تبقى لدى المطاعم لأغراض المحاسبة (مذكور في سياسة الخصوصية).
+export async function deleteMyAccount(role) {
+  const id = uid();
+  const delImg = img => img ? deleteDoc(doc(db, "images", img)).catch(() => {}) : null;
+  if (role === "owner") {
+    for (const sub of ["menu", "offers", "zones"]) {
+      for (const d of (await getDocs(collection(db, "restaurants", id, sub))).docs) {
+        await delImg(d.data().image); await deleteDoc(d.ref);
+      }
+    }
+    const r = await getDoc(doc(db, "restaurants", id));
+    if (r.exists()) { await delImg(r.data().image); await deleteDoc(r.ref); }
+  }
+  await deleteDoc(doc(db, "users", id));
+  try { await deleteUser(auth.currentUser); }
+  catch (e) {
+    if (e.code !== "auth/requires-recent-login") throw e;
+    await signInGoogle(); await deleteUser(auth.currentUser);
+  }
+  try { await window.Capacitor?.Plugins?.FirebaseAuthentication?.signOut(); } catch {}
+}
+
 export const saveAddresses = addresses => updateDoc(doc(db, "users", uid()), { addresses });
 
 // ═════════ الصور ═════════

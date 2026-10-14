@@ -42,6 +42,14 @@ jobs:
             sed -i 's#<link rel="preconnect" href="https://fonts.googleapis.com">##; s#https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap#vendor/fonts.css#' www/index.html
           else echo "::warning::font files not found, keeping Google Fonts"; fi
           grep -n "vendor/" www/index.html
+      - name: Version from build number
+        run: |
+          VC=$((100 + ${{ github.run_number }}))
+          VN="$(node -p 'require("./package.json").version').${{ github.run_number }}"
+          sed -i "s/versionCode [0-9]*/versionCode $VC/; s/versionName \"[^\"]*\"/versionName \"$VN\"/" android/app/build.gradle
+          sed -i "s/const APP_VERSION = \"[^\"]*\"/const APP_VERSION = \"$VN\"/" www/index.html
+          grep -E "versionCode|versionName" android/app/build.gradle
+          echo "### Version $VN (code $VC)" >> $GITHUB_STEP_SUMMARY
       - run: npx cap sync android
       - name: Build
         env:

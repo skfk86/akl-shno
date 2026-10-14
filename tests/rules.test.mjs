@@ -223,6 +223,16 @@ await t("لا يرفع صورة أكبر من الحد", () => assertFails(setDo
 await t("غير صاحبها لا يحذفها", () => assertFails(deleteDoc(doc(db("owner2"), "images", "i1"))));
 await t("صاحبها يحذفها", () => assertSucceeds(deleteDoc(doc(db("owner"), "images", "i1"))));
 
+console.log("\nحذف الحساب");
+await seed();
+await t("الزبون يحذف حسابه", () => assertSucceeds(deleteDoc(doc(db("cust"), "users", "cust"))));
+await t("لا يحذف حساب غيره", () => assertFails(deleteDoc(doc(db("cust"), "users", "vet"))));
+await t("صاحب المطعم يحذف منيوه ومطعمه", async () => {
+  await assertSucceeds(deleteDoc(doc(db("owner"), "restaurants", "owner", "menu", "m1")));
+  await assertSucceeds(deleteDoc(doc(db("owner"), "restaurants", "owner")));
+});
+await t("لا يحذف مطعم غيره", () => assertFails(deleteDoc(doc(db("owner"), "restaurants", "owner2"))));
+
 await env.cleanup();
 console.log(`\n${pass} نجح، ${fail} فشل`);
 process.exit(fail ? 1 : 0);

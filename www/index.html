@@ -1578,6 +1578,7 @@ function showAccount() {
           ${isAdmin ? row("admin", I.shield, "لوحة الأدمن") : ""}
         </div>
         <button class="btn btn-outline" data-go="logout" style="color:var(--red)">${I.out}تسجيل الخروج</button>
+        <button data-delete-account style="border:0;background:none;color:var(--muted);font-size:13px;text-decoration:underline;padding:10px">حذف حسابي نهائياً</button>
       </div>`;
   };
   body.innerHTML = `<div class="list">${skeleton(3, 80)}</div>`;
@@ -1614,6 +1615,27 @@ function editProfile() {
   };
 }
 
+// ───── حذف الحساب ─────
+document.addEventListener("click", e => {
+  if (!e.target.closest("[data-delete-account]")) return;
+  const owner = me?.role === "owner";
+  const b = openSheet(`<h2 style="color:var(--red)">حذف الحساب نهائياً</h2>
+    <div class="note n-red">${I.warn}<span>سيُحذف ${owner ? "حسابك ومطعمك مع المنيو والعروض والصور، ويختفي المطعم من التطبيق" : "حسابك واسمك ورقمك وعناوينك المحفوظة"}. لا يمكن التراجع عن هذا.</span></div>
+    <span class="muted" style="line-height:1.8">تبقى سجلات الطلبات السابقة لدى المطاعم لأغراض المحاسبة. ${owner ? "الاشتراك المتبقي لا يُسترد." : ""}</span>
+    <label class="field">للتأكيد اكتب كلمة: حذف<input id="del-confirm" autocomplete="off"></label>
+    <button id="del-go" class="btn" style="background:var(--red);color:#fff" disabled>حذف حسابي</button>
+    <button class="btn btn-ghost" id="del-cancel">إلغاء</button>`);
+  const inp = b.querySelector("#del-confirm"), go = b.querySelector("#del-go");
+  inp.oninput = () => go.disabled = inp.value.trim() !== "حذف";
+  b.querySelector("#del-cancel").onclick = closeSheet;
+  go.onclick = () => busy(go, async () => {
+    await F.deleteMyAccount(me.role);
+    closeSheet(); clearSubs(); cart = null; me = null; isAdmin = false;
+    try { localStorage.removeItem("role"); } catch {}
+    toast("تم حذف حسابك");
+  });
+});
+
 // ───── عن التطبيق ─────
 let aboutBack = "home";
 function showAbout() {
@@ -1624,6 +1646,9 @@ function showAbout() {
   $("#ab-ver").textContent = "الإصدار " + APP_VERSION;
   $("#ab-links").innerHTML = CONFIG.ADMIN_WHATSAPP
     ? `<a class="btn btn-green" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، بخصوص أكل شنو؟\n")}" target="_blank" style="text-decoration:none">${I.wa}تواصل معنا عبر واتساب</a>` : "";
+  $("#ab-links").innerHTML += `<div class="row" style="justify-content:center;gap:18px;margin-top:12px;font-size:14px">
+    <a class="link" href="https://skfk86.github.io/akl-shno/privacy.html" target="_blank">سياسة الخصوصية</a>
+    <a class="link" href="https://skfk86.github.io/akl-shno/delete-account.html" target="_blank">حذف الحساب</a></div>`;
 }
 $("#ab-back").addEventListener("click", () => show(aboutBack || "home"));
 
@@ -1948,6 +1973,7 @@ async function renderOwnerSettings() {
     ${CONFIG.ADMIN_WHATSAPP ? `<a class="btn btn-green" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، أنا صاحب " + r.name + " في أكل شنو؟\n")}" target="_blank" style="text-decoration:none;margin-top:8px">${I.wa}تواصل مع الإدارة عبر واتساب</a>` : ""}
     <button class="btn btn-ghost" data-go="about" style="margin-top:8px">${I.info2}عن التطبيق</button>
     <button class="btn btn-outline" data-logout2 style="margin-top:8px">تسجيل الخروج</button>
+    <button data-delete-account style="border:0;background:none;color:var(--muted);font-size:13px;text-decoration:underline;padding:10px">حذف حسابي ومطعمي نهائياً</button>
   </div>`;
   if (hasLoc(r)) miniMap("st-mini", [r.lat, r.lng]);
   body.onclick = e => {
