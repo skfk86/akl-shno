@@ -236,6 +236,32 @@ service cloud.firestore {
         && d.at == request.time && d.notified == false;
     }
 
+    // ───────── الدردشة المباشرة (زبون ↔ مطعم) ─────────
+    // معرّف المحادثة = restaurantId_customerId، فلكل زبون محادثة واحدة مع كل مطعم.
+    match /chats/{cid} {
+      function isParty(d) { return signedIn() && (d.customerId == uid() || d.restaurantId == uid()); }
+      function chatKeys() { return ['customerId', 'restaurantId', 'customerName', 'restaurantName', 'lastAt', 'lastText', 'lastFrom']; }
+      allow read: if isParty(resource.data) || isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(chatKeys())
+        && request.resource.data.customerId == uid()
+        && cid == request.resource.data.restaurantId + '_' + uid()
+        && exists(/databases/$(db)/documents/restaurants/$(request.resource.data.restaurantId))
+        && request.resource.data.lastAt == request.time
+        && request.resource.data.lastFrom == 'customer';
+      allow update: if isParty(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastAt', 'lastText', 'lastFrom', 'customerName', 'restaurantName'])
+        && request.resource.data.lastAt == request.time
+        && request.resource.data.lastFrom == (uid() == resource.data.customerId ? 'customer' : 'restaurant');
+      match /messages/{mid} {
+        function chatDoc() { return getAfter(/databases/$(db)/documents/chats/$(cid)).data; }
+        allow read: if isParty(get(/databases/$(db)/documents/chats/$(cid)).data) || isAdmin();
+        allow create: if signedIn() && validMsg()
+          && ((chatDoc().customerId == uid() && request.resource.data.role == 'customer')
+           || (chatDoc().restaurantId == uid() && request.resource.data.role == 'restaurant'));
+      }
+    }
+
     // ───────── الدعم (المستخدم ↔ الإدارة) ─────────
     match /support/{u} {
       allow read: if signedIn() && (uid() == u || isAdmin());

@@ -84,6 +84,23 @@ for (const d of orders.docs) {
   }
 }
 
+// ───── الدردشة المباشرة (زبون ↔ مطعم) ─────
+const dms = await db.collection("chats").where("lastAt", ">", since).get();
+for (const c of dms.docs) {
+  const x = c.data();
+  const msgs = await c.ref.collection("messages").where("notified", "==", false).get();
+  if (msgs.empty) continue;
+  for (const role of ["customer", "restaurant"]) {
+    const mine = msgs.docs.filter(m => m.get("role") === role);
+    if (!mine.length) continue;
+    const to = role === "customer" ? x.restaurantId : x.customerId;
+    const fromName = role === "customer" ? (x.customerName || "زبون") : (x.restaurantName || "المطعم");
+    const body = mine.length > 1 ? `${mine.length} رسائل جديدة: ${mine.at(-1).get("text")}` : mine[0].get("text");
+    await push(to, `رسالة من ${fromName}`, body.slice(0, 150), { kind: "dm", chatId: c.id });
+  }
+  const b = db.batch(); msgs.docs.forEach(m => b.update(m.ref, { notified: true })); await b.commit();
+}
+
 // ───── رسائل الدعم ─────
 const admins = (await db.collection("admins").get()).docs.map(x => x.id);
 const threads = await db.collection("support").where("lastAt", ">", since).get();

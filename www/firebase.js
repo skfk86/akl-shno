@@ -195,7 +195,7 @@ export async function deleteMyAccount(role) {
 
 // ═════════ الدردشة ═════════
 // thread: { kind: "order", id: orderId } أو { kind: "support", id: userId }
-const msgCol = t => t.kind === "order" ? collection(db, "orders", t.id, "messages") : collection(db, "support", t.id, "messages");
+const msgCol = t => collection(db, { order: "orders", support: "support", direct: "chats" }[t.kind], t.id, "messages");
 export function watchMessages(t, cb, onErr) {
   return onSnapshot(query(msgCol(t), orderBy("at"), limit(300)), s => cb(list(s)), onErr);
 }
@@ -205,10 +205,19 @@ export function watchLastMessage(t, cb) {
 export async function sendMessage(t, role, text, name = "") {
   const b = writeBatch(db);
   b.set(doc(msgCol(t)), { from: uid(), role, text, at: serverTimestamp(), notified: false });
+  if (t.kind === "direct") {
+    const m = t.meta;   // { customerId, restaurantId, customerName, restaurantName }
+    b.set(doc(db, "chats", t.id), { ...m, lastAt: serverTimestamp(), lastText: text.slice(0, 120), lastFrom: role }, { merge: true });
+  }
   if (t.kind === "support") {
     b.set(doc(db, "support", t.id), { name, lastAt: serverTimestamp(), lastText: text.slice(0, 120), lastFrom: role === "admin" ? "admin" : "user" }, { merge: true });
   }
   await b.commit();
+}
+// محادثات المستخدم المباشرة (زبون أو مطعم)، مرتبة بالأحدث
+export function watchMyChats(field, cb) {
+  return onSnapshot(query(collection(db, "chats"), where(field, "==", uid())),
+    s => cb(list(s).sort((a, b) => (b.lastAt?.seconds ?? 9e9) - (a.lastAt?.seconds ?? 9e9))), () => cb([]));
 }
 export async function adminListSupport() {
   return list(await getDocs(query(collection(db, "support"), orderBy("lastAt", "desc"), limit(100))));

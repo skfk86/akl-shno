@@ -265,6 +265,29 @@ await t("الأدمن يرد على المستخدم", () => assertSucceeds(sup(
 await t("مستخدم لا يقرأ محادثة دعم غيره", () => assertFails(getDocs(collection(db("vet"), "support", "cust", "messages"))));
 await t("مستخدم لا يرد بصفة الأدمن", () => assertFails(sup("cust", "admin", "cust")));
 
+console.log("\nالدردشة المباشرة");
+await seed();
+const dm = (who, role, cid, meta) => { const s = db(who), b = writeBatch(s);
+  b.set(doc(s, "chats", cid, "messages", "d" + Math.random()), msg(who, role));
+  b.set(doc(s, "chats", cid), { ...meta, lastAt: serverTimestamp(), lastText: "مرحباً", lastFrom: role }, { merge: true });
+  return b.commit(); };
+const META = { customerId: "cust", restaurantId: "owner", customerName: "cust", restaurantName: "owner" };
+await t("الزبون يبدأ محادثة مع مطعم قبل الطلب", () => assertSucceeds(dm("cust", "customer", "owner_cust", META)));
+await t("المطعم يرد", () => assertSucceeds(dm("owner", "restaurant", "owner_cust", META)));
+await t("الطرفان يقرآن، وغيرهما لا", async () => {
+  await assertSucceeds(getDocs(collection(db("cust"), "chats", "owner_cust", "messages")));
+  await assertSucceeds(getDocs(collection(db("owner"), "chats", "owner_cust", "messages")));
+  await assertFails(getDocs(collection(db("vet"), "chats", "owner_cust", "messages")));
+});
+await t("الزبون يستعرض محادثاته فقط", async () => {
+  await assertSucceeds(getDocs(query(collection(db("cust"), "chats"), where("customerId", "==", "cust"))));
+  await assertFails(getDocs(collection(db("cust"), "chats")));
+});
+await t("المطعم يستعرض محادثاته", () => assertSucceeds(getDocs(query(collection(db("owner"), "chats"), where("restaurantId", "==", "owner")))));
+await t("لا يبدأ محادثة باسم زبون آخر", () => assertFails(dm("vet", "customer", "owner_cust2", { ...META, customerId: "cust" })));
+await t("لا معرّف محادثة مزوّر", () => assertFails(dm("vet", "customer", "owner2_x", { ...META, customerId: "vet" })));
+await t("مطعم آخر لا يكتب في المحادثة", () => assertFails(dm("owner2", "restaurant", "owner_cust", META)));
+
 await env.cleanup();
 console.log(`\n${pass} نجح، ${fail} فشل`);
 process.exit(fail ? 1 : 0);

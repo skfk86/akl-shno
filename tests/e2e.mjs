@@ -321,6 +321,22 @@ await t("التقييم يظهر في صفحة المطعم", async () => {
 await t("صفحة المطعم تعرض خريطة الموقع", async () => {
   expect(await cust.locator("#r-map .leaflet-container").count() === 1, "no location map");
 });
+await t("الدردشة المباشرة: الزبون يراسل المطعم من صفحته", async () => {
+  await tap(cust, "[data-dm-rest]"); await waitScreen(cust, "s-chat");
+  await cust.fill("#ch-input", "هل عندكم توصيل لبحري؟"); await tap(cust, "#ch-send"); await sleep(2000);
+  expect((await cust.textContent("#ch-list")).includes("توصيل لبحري"), "message not shown");
+  await tap(cust, "#ch-back");
+});
+await t("المطعم يرى المحادثة في «الرسائل» بشارة ويرد", async () => {
+  await sleep(1000);
+  expect((await owner.locator('nav [data-go="inbox"] .dot:not([hidden])').count()) >= 1, "no unread badge on inbox tab");
+  await tap(owner, '.screen.on nav [data-go="inbox"]'); await waitScreen(owner, "s-inbox"); await sleep(800);
+  expect((await owner.textContent("#in-list")).includes("توصيل لبحري"), "thread not in inbox");
+  await tap(owner, "[data-dm]"); await waitScreen(owner, "s-chat"); await sleep(1200);
+  await owner.fill("#ch-input", "نعم، التوصيل لبحري 2000 ج"); await tap(owner, "#ch-send"); await sleep(2000);
+  expect((await cust.locator('nav [data-go="inbox"] .dot:not([hidden])').count()) >= 1, "customer has no unread badge");
+  await tap(owner, "#ch-back"); await tap(owner, '.screen.on nav [data-go="orders"]'); await waitScreen(owner, "s-owner");
+});
 await shot(cust, "05-restaurant");
 
 // ═════════════════════════════════════════

@@ -96,6 +96,7 @@
   nav.tabs button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;
     font-size:11px;color:var(--muted);min-width:64px;min-height:44px}
   nav.tabs button{position:relative}
+  nav.tabs button .dot{top:2px;left:calc(50% - 22px)}
   nav.tabs button.on{color:var(--accent);font-weight:700}
   nav.tabs button.on::before{content:"";position:absolute;top:-13px;width:28px;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
   .search{height:48px;padding:0 14px;border-radius:14px;background:var(--fill);transition:box-shadow .15s}
@@ -397,6 +398,12 @@
 </section>
 
 <!-- ═════════ الزبون: طلباتي ═════════ -->
+<section id="s-inbox" class="screen">
+  <div class="header"><h1>الرسائل</h1></div>
+  <div id="in-list" class="list grow"></div>
+  <nav class="tabs" id="in-nav" data-nav="customer"></nav>
+</section>
+
 <section id="s-myorders" class="screen">
   <div class="header"><h1>طلباتي</h1></div>
   <div id="mo-list" class="list grow"></div>
@@ -891,7 +898,7 @@ function openChat(t) {
     const L = $("#ch-list"); L.scrollTop = L.scrollHeight;
   }, () => { $("#ch-list").innerHTML = emptyState("تعذر تحميل الرسائل", "تأكد من الإنترنت."); });
 }
-function closeChat() { chatUnsub?.(); chatUnsub = null; chat = null; show(chatBack || "home"); }
+function closeChat() { chatUnsub?.(); chatUnsub = null; chat = null; show(chatBack || "home"); refreshInboxBadges(); }
 async function sendChat(text) {
   text = text.trim(); if (!text || !chat) return;
   const btn = $("#ch-send"); btn.disabled = true;
@@ -904,6 +911,58 @@ $("#ch-back").addEventListener("click", closeChat);
 $("#ch-input").addEventListener("input", () => { autoGrow(); $("#ch-send").disabled = !$("#ch-input").value.trim(); });
 $("#ch-send").addEventListener("click", () => sendChat($("#ch-input").value));
 $("#ch-qr").addEventListener("click", e => { const q = e.target.closest("[data-q]"); if (q) sendChat(q.dataset.q); });
+// ───── الدردشة المباشرة (زبون ↔ مطعم) ─────
+let myChats = [], inboxUnsub = null;
+const myRole = () => me?.role === "owner" ? "restaurant" : "customer";
+const dmThread = c => {
+  const owner = myRole() === "restaurant";
+  return { kind: "direct", id: c.id || `${c.restaurantId}_${c.customerId}`, role: myRole(),
+    title: owner ? (c.customerName || "زبون") : c.restaurantName, sub: owner ? "زبون" : "محادثة مع المطعم",
+    phone: owner ? "" : c.phone, meta: { customerId: c.customerId, restaurantId: c.restaurantId, customerName: c.customerName || "", restaurantName: c.restaurantName || "" } };
+};
+const chatUnread = c => c.lastFrom && c.lastFrom !== myRole() && (c.lastAt?.toMillis?.() || 0) > getSeen({ kind: "direct", id: c.id });
+function inboxUnread() { return myChats.filter(chatUnread).length; }
+function refreshInboxBadges() {
+  const n = inboxUnread();
+  document.querySelectorAll('[data-go="inbox"] .dot').forEach(d => { d.hidden = !n; d.textContent = n; });
+  if (curScreen === "inbox") renderInbox();
+}
+function startInbox() {
+  inboxUnsub?.(); myChats = [];
+  if (!me) return;
+  let first = true;
+  inboxUnsub = F.watchMyChats(me.role === "owner" ? "restaurantId" : "customerId", list => {
+    const before = inboxUnread(); myChats = list; const after = inboxUnread();
+    if (!first && after > before && !(chat && chat.kind === "direct")) { try { navigator.vibrate?.(120); } catch {} toast("رسالة جديدة"); }
+    first = false; refreshInboxBadges();
+  });
+}
+function showInbox() {
+  clearSubs();
+  const kind = me?.role === "owner" ? "owner" : "customer";
+  $("#in-nav").dataset.nav = kind;
+  renderNav(kind, "inbox"); show("inbox"); renderInbox();
+}
+function renderInbox() {
+  const owner = me?.role === "owner";
+  const rows = myChats.map(c => {
+    const un = chatUnread(c), name = owner ? (c.customerName || "زبون") : c.restaurantName;
+    return `<button class="box row gap10" data-dm="${esc(c.id)}" style="width:100%;text-align:right;${un ? "border:2px solid var(--accent)" : ""}">
+      <div class="avatar" style="width:46px;height:46px;font-size:18px;${owner ? "" : `background:${colorOf(name)}`}">${initial(name)}</div>
+      <div class="col grow" style="min-width:0"><div class="row between"><b>${esc(name)}</b><span class="muted" style="font-size:12px">${tsDate(c.lastAt)?.toLocaleString(LOC, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) || ""}</span></div>
+        <span class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${un ? "color:var(--ink);font-weight:700" : ""}">${c.lastFrom === myRole() ? "أنت: " : ""}${esc(c.lastText)}</span></div>
+      ${un ? '<span class="dot" style="position:static">●</span>' : ""}</button>`;
+  }).join("");
+  const supportRow = `<button class="box row gap10" data-go="support" style="width:100%;text-align:right">
+      <div class="avatar" style="width:46px;height:46px;background:var(--ink)">${I.chat}</div>
+      <div class="col grow"><b>الدعم والمساعدة</b><span class="muted">${owner ? "راسل إدارة التطبيق" : "مشكلة في طلب أو حساب؟ راسلنا"}</span></div></button>`;
+  $("#in-list").innerHTML = (rows || emptyState("لا توجد محادثات بعد", owner ? "عندما يراسلك زبون من صفحة مطعمك تظهر المحادثة هنا." : "راسل أي مطعم من صفحته لتسأل قبل الطلب، أو راسل المطعم من شاشة تتبع طلبك.")) + supportRow;
+}
+$("#in-list").addEventListener("click", e => {
+  const b = e.target.closest("[data-dm]"); if (!b) return;
+  const c = myChats.find(x => x.id === b.dataset.dm); if (c) openChat(dmThread(c));
+});
+
 const supportThread = () => ({ kind: "support", id: F.auth.currentUser.uid, role: "user", title: "الدعم والمساعدة", sub: "فريق أكل شنو؟", name: me?.name || "" });
 
 const ST = { new: "جديد", accepted: "تم القبول", preparing: "قيد التحضير", ready: "جاهز للاستلام",
@@ -948,12 +1007,12 @@ const skeleton = (n, h) => Array(n).fill(`<div class="skel" style="height:${h}px
 
 // ═════════ أشرطة التنقل ═════════
 const NAVS = {
-  customer: [["home", I.home, "الرئيسية"], ["myorders", I.bag, "طلباتي"], ["account", I.user, "حسابي"]],
-  owner: [["orders", I.clip, "الطلبات"], ["menu", I.menu, "المنيو"], ["stats", I.chart, "الإحصاءات"], ["settings", I.gear, "الإعدادات"]]
+  customer: [["home", I.home, "الرئيسية"], ["myorders", I.bag, "طلباتي"], ["inbox", I.chat, "الرسائل"], ["account", I.user, "حسابي"]],
+  owner: [["orders", I.clip, "الطلبات"], ["inbox", I.chat, "الرسائل"], ["menu", I.menu, "المنيو"], ["stats", I.chart, "الإحصاءات"], ["settings", I.gear, "الإعدادات"]]
 };
 function renderNav(kind, active) {
   document.querySelectorAll(`nav[data-nav="${kind}"]`).forEach(n => {
-    n.innerHTML = NAVS[kind].map(([k, ic, t]) => `<button data-go="${k}" class="${k === active ? "on" : ""}">${ic}${t}</button>`).join("");
+    n.innerHTML = NAVS[kind].map(([k, ic, t]) => `<button data-go="${k}" class="${k === active ? "on" : ""}">${ic}${t}${k === "inbox" ? `<span class="dot" ${inboxUnread() ? "" : "hidden"}>${inboxUnread()}</span>` : ""}</button>`).join("");
   });
 }
 document.addEventListener("click", e => {
@@ -966,10 +1025,12 @@ document.addEventListener("click", e => {
   if (k === "about") return showAbout();
   if (k === "support") return openChat(supportThread());
   if (k === "top") { showHome(); return setTimeout(() => $("#top-title")?.scrollIntoView({ behavior: "smooth" }), 400); }
+  if (k === "inbox") return showInbox();
   if (["orders", "menu", "stats", "settings"].includes(k)) return ownerTab(k);
 });
 
 async function doLogout() {
+  inboxUnsub?.(); inboxUnsub = null; myChats = [];
   clearSubs(); cart = null; me = null; isAdmin = false;
   localStorage.removeItem("role");
   await F.logout();
@@ -1013,6 +1074,7 @@ async function setupPush() {
     PN.addListener("pushNotificationReceived", n => toast(n.title || "إشعار جديد"));
     PN.addListener("pushNotificationActionPerformed", a => {
       const data = a.notification?.data || {}, id = data.orderId;
+      if (data.kind === "dm") return showInbox();
       if (data.kind === "support") return isAdmin ? (adTab = "sup", showAdmin()) : openChat(supportThread());
       if (!id) return;
       if (data.kind === "chat") {
@@ -1037,7 +1099,7 @@ F.watchAuth(async user => {
       $("#c-name").value = user.displayName || "";
       return show("customer");
     }
-    setupPush(); await setupDevice();
+    setupPush(); await setupDevice(); startInbox();
     if (isAdmin) return showAdmin();
     if (me.role === "owner") return showOwner();
     showHome();
@@ -1067,7 +1129,7 @@ $("#c-save").addEventListener("click", e => {
   busy(e.target, async () => {
     await F.createProfile({ role: "customer", name, phone: "+249" + phone });
     me = await F.getProfile();
-    setupPush(); await setupDevice();
+    setupPush(); await setupDevice(); startInbox();
     showHome();
   });
 });
@@ -1083,7 +1145,7 @@ $("#o-save").addEventListener("click", e => {
     await F.createProfile({ role: "owner", name: F.auth.currentUser.displayName || data.name, phone: data.phone });
     await F.createRestaurant(data);
     me = await F.getProfile();
-    setupPush();
+    setupPush(); startInbox();
     showOwner();
   });
 });
@@ -1374,7 +1436,8 @@ function renderRestaurant() {
       <div class="meta" style="align-items:center">${ratingTag(r)}${verifiedTag(r)}<span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>
       ${r.hours ? `<span class="muted">ساعات العمل: ${esc(r.hours)}</span>` : ""}
       <div class="meta">
-        <a class="row gap6" href="${wa(r.phone, "مرحباً، أريد الطلب من " + r.name + "\n")}" target="_blank" style="color:var(--green);font-weight:700;text-decoration:none">${I.wa}اطلب عبر واتساب</a>
+        ${me?.role === "customer" ? `<button class="row gap6" data-dm-rest style="border:0;background:none;padding:0;color:var(--accent);font-weight:700;font-size:13px">${I.chat}راسل المطعم</button>` : ""}
+        <a class="row gap6" href="${wa(r.phone, "مرحباً، أريد الطلب من " + r.name + "\n")}" target="_blank" style="color:var(--green);font-weight:700;text-decoration:none">${I.wa}واتساب</a>
         ${CONFIG.ADMIN_WHATSAPP ? `<a class="row gap6" href="${wa(CONFIG.ADMIN_WHATSAPP, "بلاغ عن مطعم " + r.name + ":\n")}" target="_blank" style="color:var(--muted);text-decoration:none">${I.flag}إبلاغ عن المطعم</a>` : ""}</div>
       ${!r.isOpen ? `<div class="note n-red">${I.info}المطعم مغلق الآن، يمكنك التصفح فقط.</div>` : ""}
       ${activeOffers.map(o => `<div class="note n-orange">${I.info}<span><b>${esc(o.title)}</b>${o.endsAt ? ` · حتى ${tsDate(o.endsAt).toLocaleDateString(LOC)}` : ""}</span></div>`).join("")}
@@ -1443,6 +1506,11 @@ function drawRestMap(r) {
 }
 
 $("#r-body").addEventListener("click", e => {
+  if (e.target.closest("[data-dm-rest]")) {
+    const r = curRest.r, uid = F.auth.currentUser.uid;
+    const c = myChats.find(x => x.restaurantId === r.id) || { restaurantId: r.id, customerId: uid };
+    return openChat(dmThread({ ...c, customerName: me.name, restaurantName: r.name, phone: r.phone }));
+  }
   const a = e.target.closest("[data-add]");
   if (a) {
     const m = curRest.menu.find(x => x.id === a.dataset.add);
