@@ -216,6 +216,24 @@ await t("التبديل لعرض الخريطة", async () => {
   expect(await cust.locator("#h-mapwrap .mpin").count() >= 1, "no restaurant pin");
   await tap(cust, '[data-view="list"]');
 });
+await t("البحث باسم وجبة يعرض الصنف والمطعم", async () => {
+  await cust.fill("#h-search", "كبده"); await sleep(600);   // تطبيع: ه/ة
+  expect(await cust.locator("#h-dishes .dish").count() === 1, "dish not found");
+  expect((await cust.textContent("#h-list")).includes("مطعم الاختبار"), "restaurant not matched by dish");
+});
+await t("بحث بلا نتائج يعرض رسالة واضحة", async () => {
+  await cust.fill("#h-search", "بيتزا"); await sleep(600);
+  expect((await cust.textContent("#h-list")).includes("لا توجد نتائج"), "no empty state");
+  await tap(cust, "#h-clear"); await sleep(400);
+});
+await t("فلتر «توصيل مجاني» يستبعد المطعم برسوم توصيل", async () => {
+  await tap(cust, "#h-filter"); await sleep(300);
+  await tap(cust, '[data-tog="freeDel"]'); await tap(cust, "#f-apply"); await sleep(500);
+  expect(!(await cust.textContent("#h-list")).includes("مطعم الاختبار"), "fee 1000 restaurant should be excluded");
+  expect((await cust.textContent("#h-fcount")) === "1", "filter badge");
+  await tap(cust, '#h-active [data-unf="freeDel"]'); await sleep(400);
+  expect((await cust.textContent("#h-list")).includes("مطعم الاختبار"), "not restored after removing filter");
+});
 await shot(cust, "03-home");
 await t("فتح المطعم وإضافة صنف للسلة", async () => {
   await tap(cust, '#h-list [data-rest]'); await waitScreen(cust, "s-rest"); await sleep(1500);

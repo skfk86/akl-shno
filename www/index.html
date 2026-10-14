@@ -238,6 +238,14 @@
   .near{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--fill)}
   .near .cover{width:64px;height:64px;border-radius:14px;flex-shrink:0}
   .near .rank{width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .fcount{position:absolute;top:-4px;left:-4px;min-width:20px;height:20px;border-radius:10px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+  .chip.x{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent-dark);font-weight:500}
+  .fopt{display:flex;flex-wrap:wrap;gap:8px}
+  .fopt button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 14px;font-size:14px}
+  .fopt button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dark);font-weight:700}
+  .dish{flex:0 0 220px;display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:#fff;border-radius:16px;padding:8px;text-align:right}
+  .dish .thumb{width:60px;height:60px;border-radius:12px;flex-shrink:0;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#fff}
+  mark{background:#FEF08A;color:inherit;border-radius:3px;padding:0 1px}
   .deal{flex:0 0 260px;border:0;padding:16px;border-radius:20px;color:#fff;text-align:right;display:flex;flex-direction:column;gap:6px;
     position:relative;overflow:hidden;min-height:128px;justify-content:space-between}
   .deal::after{content:"";position:absolute;left:-30px;bottom:-40px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.12)}
@@ -339,10 +347,15 @@
       </label>
       <button id="h-refresh" class="icon-btn" aria-label="تحديث"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
     </div>
-    <label class="search row gap10">
-      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#57534E" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="h-search" placeholder="ابحث عن مطعم" aria-label="بحث" style="flex:1;border:0;background:none;outline:none;font-size:15px">
-    </label>
+    <div class="row gap10">
+      <label class="search row gap10" style="flex:1;min-width:0">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#57534E" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="h-search" type="search" placeholder="ابحث عن مطعم أو وجبة" aria-label="بحث" style="flex:1;min-width:0;border:0;background:none;outline:none;font-size:15px">
+        <button id="h-clear" class="icon-btn" aria-label="مسح البحث" style="width:32px;height:32px;background:none" hidden><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </label>
+      <button id="h-filter" class="icon-btn" aria-label="الفلترة والترتيب" style="width:48px;height:48px;position:relative"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span id="h-fcount" class="fcount" hidden></span></button>
+    </div>
+    <div id="h-active" class="chips" style="padding:0" hidden></div>
     <div class="row2">
       <button id="h-nearest" class="quick"><span class="qi" style="background:var(--accent-soft);color:var(--accent)"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg></span>
         <span class="col"><b>الأقرب لي</b><small>مطاعم حولك الآن</small></span></button>
@@ -355,6 +368,7 @@
       <b style="font-size:19px">أكل مطاعمك لحدي البيت</b><span style="font-size:13px">ادفع عند الاستلام أو ببنكك</span></div>
     <span style="width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h2l3 11.5M5.5 17.5 9 10h6l3.5 7.5M9 10 7.5 6H5"/></svg></span>
   </div>
+  <div id="h-dishes"></div>
   <div id="h-offers"></div>
   <div id="h-top"></div>
   <div id="h-cats" class="chips" style="padding-top:16px;padding-bottom:16px"></div>
@@ -657,11 +671,14 @@ const priceTag = m => pctOff(m)
   : `<b>${money(m.price)}</b>`;
 const DEAL_BG = ["linear-gradient(135deg,#C2410C,#EA580C)", "linear-gradient(135deg,#15803D,#16A34A)", "linear-gradient(135deg,#1D4ED8,#2563EB)", "linear-gradient(135deg,#7C3AED,#9333EA)"];
 let deals = { offers: [], items: [], byRest: {} };
+const menuBy = {}, feeBy = {};   // أصناف كل مطعم، وأقل رسوم توصيل له (للبحث والفلترة)
 async function loadDeals(list) {
-  const res = await Promise.all(list.map(r => Promise.all([F.listSub(r.id, "offers"), F.listSub(r.id, "menu")]).catch(() => [[], []])));
+  const res = await Promise.all(list.map(r => Promise.all([F.listSub(r.id, "offers"), F.listSub(r.id, "menu"), F.listSub(r.id, "zones")]).catch(() => [[], [], []])));
   const d = { offers: [], items: [], byRest: {} };
-  res.forEach(([offers, menu], i) => {
+  res.forEach(([offers, menu, zones], i) => {
     const r = list[i];
+    menuBy[r.id] = menu;
+    feeBy[r.id] = zones.length ? Math.min(...zones.map(z => Number(z.fee) || 0)) : null;
     const live = offers.filter(isLive), disc = menu.filter(m => m.available && pctOff(m));
     live.forEach(o => d.offers.push({ ...o, r }));
     disc.forEach(m => d.items.push({ ...m, r }));
@@ -1011,24 +1028,109 @@ async function showHome() {
   }
 }
 
+// ═════════ البحث والفلترة ═════════
+const norm = s => String(s || "").toLowerCase()
+  .replace(/[ً-ْـ]/g, "").replace(/[أإآٱ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/ؤ/g, "و").replace(/ئ/g, "ي").trim();
+const hl = (text, q) => {
+  const t = String(text || ""); if (!q) return esc(t);
+  const nt = norm(t), nq = norm(q), i = nt.indexOf(nq);
+  return i < 0 || nt.length !== t.length ? esc(t) : esc(t.slice(0, i)) + "<mark>" + esc(t.slice(i, i + nq.length)) + "</mark>" + esc(t.slice(i + nq.length));
+};
+const FLT0 = { open: false, delivery: false, pickup: false, freeDel: false, deals: false, verified: false, rating: 0, dist: 0, sort: "smart" };
+let flt = { ...FLT0 };
+try { flt = { ...FLT0, ...JSON.parse(localStorage.getItem("akl-flt") || "{}") }; } catch {}
+const saveFlt = () => { try { localStorage.setItem("akl-flt", JSON.stringify(flt)); } catch {} };
+const SORTS = { smart: "الأنسب", near: "الأقرب", rating: "الأعلى تقييماً", popular: "الأكثر تقييمات", fee: "أقل رسوم توصيل", new: "الأحدث" };
+const FLABELS = {
+  open: () => "مفتوح الآن", delivery: () => "توصيل", pickup: () => "استلام", freeDel: () => "توصيل مجاني",
+  deals: () => "عروض وخصومات", verified: () => "موثّق", rating: v => `★ ${v} فأكثر`, dist: v => `حتى ${v} كم`, sort: v => SORTS[v]
+};
+const activeFilters = () => Object.keys(FLT0).filter(k => k === "sort" ? flt.sort !== "smart" : flt[k] && flt[k] !== FLT0[k]);
+
+function passFilters(r, f = flt) {
+  if (f.open && !r.isOpen) return false;
+  if (f.delivery && !r.delivery) return false;
+  if (f.pickup && !r.pickup) return false;
+  if (f.freeDel && !(r.delivery && feeBy[r.id] === 0)) return false;
+  if (f.deals && !deals.byRest[r.id]) return false;
+  if (f.verified && !r.verified) return false;
+  if (f.rating && !(r.ratingCount && avgOf(r) >= f.rating)) return false;
+  if (f.dist && !(myLoc && hasLoc(r) && distKm(myLoc, [r.lat, r.lng]) <= f.dist)) return false;
+  return true;
+}
+function matchQuery(r, nq) {
+  if (!nq) return true;
+  return [r.name, r.category, r.district, r.city].some(x => norm(x).includes(nq))
+    || (menuBy[r.id] || []).some(m => norm(m.name).includes(nq) || norm(m.section).includes(nq));
+}
+function sortList(list, sort) {
+  const d = r => myLoc && hasLoc(r) ? distKm(myLoc, [r.lat, r.lng]) : 9e9;
+  const by = {
+    smart: (a, b) => (b.isOpen ? 1 : 0) - (a.isOpen ? 1 : 0) || d(a) - d(b),
+    near: (a, b) => d(a) - d(b),
+    rating: (a, b) => avgOf(b) - avgOf(a) || (b.ratingCount || 0) - (a.ratingCount || 0),
+    popular: (a, b) => (b.ratingCount || 0) - (a.ratingCount || 0),
+    fee: (a, b) => (feeBy[a.id] ?? 9e9) - (feeBy[b.id] ?? 9e9),
+    new: (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+  }[sort] || (() => 0);
+  return list.sort(by);
+}
+
+function openFilters() {
+  let f = { ...flt };
+  const tog = (k, label) => `<button data-tog="${k}" class="${f[k] ? "on" : ""}">${label}</button>`;
+  const pick = (k, v, label) => `<button data-pick="${k}" data-v="${v}" class="${f[k] === v ? "on" : ""}">${label}</button>`;
+  const body = () => `<div class="row between"><h2>الفلترة والترتيب</h2><button id="f-reset" style="border:0;background:none;color:var(--accent);font-weight:700">إعادة ضبط</button></div>
+    <div class="col gap10"><b>ترتيب حسب</b><div class="fopt">${Object.entries(SORTS).map(([k, l]) => pick("sort", k, l)).join("")}</div></div>
+    <div class="col gap10"><b>الحالة والخدمة</b><div class="fopt">${tog("open", "مفتوح الآن")}${tog("delivery", "توصيل")}${tog("pickup", "استلام من المطعم")}${tog("freeDel", "توصيل مجاني")}</div></div>
+    <div class="col gap10"><b>مميزات</b><div class="fopt">${tog("deals", "عروض وخصومات")}${tog("verified", "مطاعم موثّقة")}</div></div>
+    <div class="col gap10"><b>التقييم</b><div class="fopt">${pick("rating", 0, "الكل")}${pick("rating", 3, "★ 3 فأكثر")}${pick("rating", 4, "★ 4 فأكثر")}${pick("rating", 4.5, "★ 4.5 فأكثر")}</div></div>
+    <div class="col gap10"><b>المسافة منك</b><div class="fopt">${pick("dist", 0, "أي مسافة")}${pick("dist", 2, "2 كم")}${pick("dist", 5, "5 كم")}${pick("dist", 10, "10 كم")}</div>
+      ${f.dist && !myLoc ? `<span class="muted">نحتاج موقعك لتطبيق هذا الفلتر.</span>` : ""}</div>
+    <button id="f-apply" class="btn btn-primary">عرض ${restaurants.filter(r => passFilters(r, f) && matchQuery(r, norm($("#h-search").value)) && (!$("#h-city").value || r.city === $("#h-city").value)).length} مطعم</button>`;
+  const b = openSheet(body());
+  b.onclick = e => {
+    const t = e.target.closest("[data-tog]"), p = e.target.closest("[data-pick]");
+    if (t) f[t.dataset.tog] = !f[t.dataset.tog];
+    else if (p) { const v = p.dataset.v; f[p.dataset.pick] = isNaN(+v) ? v : +v; if ((p.dataset.pick === "dist" && f.dist) || f.sort === "near") getMyLoc(true).then(() => b.isConnected && (b.innerHTML = body())); }
+    else if (e.target.closest("#f-reset")) f = { ...FLT0 };
+    else if (e.target.closest("#f-apply")) { flt = f; saveFlt(); closeSheet(); return renderHome(); }
+    else return;
+    b.innerHTML = body();
+  };
+}
+
 let homeCat = "";
 function renderHome() {
-  const city = $("#h-city").value, q = $("#h-search").value.trim();
+  const city = $("#h-city").value, q = $("#h-search").value.trim(), nq = norm(q);
+  $("#h-clear").hidden = !q;
+  const act = activeFilters();
+  $("#h-fcount").hidden = !act.length; $("#h-fcount").textContent = act.length;
+  $("#h-active").hidden = !act.length;
+  $("#h-active").innerHTML = act.map(k => `<button class="chip x" data-unf="${k}">${FLABELS[k](flt[k])} ✕</button>`).join("")
+    + (act.length > 1 ? `<button class="chip" data-unf="*">مسح الكل</button>` : "");
   const inCity = restaurants.filter(r => !city || r.city === city);
   const cats = [...new Set(inCity.map(r => r.category).filter(Boolean))];
   if (homeCat && !cats.includes(homeCat)) homeCat = "";
   $("#h-cats").innerHTML = [["", "الكل"], ...cats.map(c => [c, c])].map(([v, t]) =>
     `<button class="chip ${homeCat === v ? "on" : ""}" data-cat="${esc(v)}">${esc(t)}</button>`).join("");
   $("#h-cats").style.display = cats.length > 1 ? "" : "none";
-  const items = inCity
-    .filter(r => (!homeCat || r.category === homeCat) && (!q || r.name.includes(q)))
-    .sort((a, b) => (b.isOpen ? 1 : 0) - (a.isOpen ? 1 : 0)
-      || (myLoc && hasLoc(a) && hasLoc(b) ? distKm(myLoc, [a.lat, a.lng]) - distKm(myLoc, [b.lat, b.lng]) : 0));
+  const items = sortList(inCity.filter(r => (!homeCat || r.category === homeCat) && matchQuery(r, nq) && passFilters(r)), flt.sort);
   homeItems = items;
+  const filtering = !!q || act.length > 0;
+  // أصناف مطابقة للبحث
+  const dishes = nq.length >= 2 ? inCity.filter(passFilters).flatMap(r => (menuBy[r.id] || [])
+    .filter(m => norm(m.name).includes(nq)).map(m => ({ ...m, r }))).sort((a, b) => (b.r.isOpen ? 1 : 0) - (a.r.isOpen ? 1 : 0) || a.price - b.price).slice(0, 15) : [];
+  $("#h-dishes").innerHTML = dishes.length ? `<div class="pad row between" style="margin-top:14px;margin-bottom:10px"><h2>أصناف مطابقة</h2><span class="muted">${dishes.length}</span></div>
+    <div class="hscroll">${dishes.map(m => `<button class="dish" data-rest="${esc(m.r.id)}">
+      <div class="thumb" style="${coverBg(m.name)}">${imgTag(m.image)}${catIcon(m.r.category, 26)}</div>
+      <div class="col" style="gap:2px;min-width:0"><b style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${hl(m.name, q)}</b>
+        <span class="muted" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.r.name)}${m.r.isOpen ? "" : " · مغلق"}</span>
+        <span style="font-size:13px">${priceTag(m)}</span></div></button>`).join("")}</div>` : "";
   const inCityIds = new Set(inCity.map(r => r.id));
   const dOffers = deals.offers.filter(o => inCityIds.has(o.r.id) && o.r.isOpen);
   const dItems = deals.items.filter(m => inCityIds.has(m.r.id) && m.r.isOpen).slice(0, 12);
-  $("#h-offers").innerHTML = (dOffers.length || dItems.length) && !q ? `
+  $("#h-offers").innerHTML = (dOffers.length || dItems.length) && !filtering ? `
     <div class="pad row between" style="margin-top:18px;margin-bottom:10px"><h2>العروض والتخفيضات</h2>
       <span class="badge b-red">${dOffers.length + dItems.length} عرض</span></div>
     ${dOffers.length ? `<div class="hscroll" style="margin-bottom:${dItems.length ? 14 : 0}px">${dOffers.map((o, i) => `
@@ -1045,7 +1147,7 @@ function renderHome() {
         ${priceTag(m)}
       </button>`).join("")}</div>` : ""}` : "";
   const top = inCity.filter(r => r.ratingCount).sort((a, b) => avgOf(b) - avgOf(a) || b.ratingCount - a.ratingCount).slice(0, 8);
-  $("#h-top").innerHTML = top.length && !q ? `<div class="pad row gap6" style="margin-top:18px;margin-bottom:10px">${starIcon("#F59E0B", 20)}<h2 id="top-title">الأعلى تقييماً</h2></div>
+  $("#h-top").innerHTML = top.length && !filtering ? `<div class="pad row gap6" style="margin-top:18px;margin-bottom:10px">${starIcon("#F59E0B", 20)}<h2 id="top-title">الأعلى تقييماً</h2></div>
     <div class="hscroll">${top.map(r => `<button class="top-card" data-rest="${esc(r.id)}">
       <div class="cover" style="${coverBg(r.name)}">${imgTag(r.image)}<span class="icon">${catIcon(r.category, 36)}</span></div>
       <b style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.name)}</b>
@@ -1062,13 +1164,15 @@ function renderHome() {
         <span class="tag2">${svc(r)}</span>
         ${deals.byRest[r.id] ? `<span class="tag3">${deals.byRest[r.id]}</span>` : ""}
       </div>
-      <b style="font-size:16px">${esc(r.name)}</b>${meta(r)}
+      <b style="font-size:16px">${hl(r.name, q)}</b>${meta(r)}
     </button>` : `
     <button class="mini" data-rest="${esc(r.id)}">
       <div class="cover" style="${coverBg(r.name)}">${imgTag(r.image)}<span class="icon">${catIcon(r.category, 32)}</span></div>
       <div class="col gap6"><b style="font-size:15px">${esc(r.name)}</b>${meta(r)}
         <span class="badge b-gray" style="align-self:flex-start">مغلق · ${svc(r)}</span></div>
     </button>`).join("")
+    : filtering ? emptyState("لا توجد نتائج", q ? `لم نجد «${esc(q)}»${act.length ? " مع الفلاتر المختارة" : ""}. جرّب كلمة أخرى.` : "لا توجد مطاعم تطابق الفلاتر المختارة.")
+        + (act.length ? `<button class="btn btn-outline" data-unf="*" style="max-width:220px;margin:0 auto">مسح الفلاتر</button>` : "")
     : emptyState("لا توجد مطاعم هنا بعد", "نضيف مطاعم جديدة باستمرار. جرّب مدينة أخرى.");
   if (homeView === "map") renderHomeMap();
 }
@@ -1122,12 +1226,22 @@ function drawHomePins(fit) {
 $("#h-mapwrap").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 $("#h-cats").addEventListener("click", e => { const c = e.target.closest("[data-cat]"); if (c) { homeCat = c.dataset.cat; renderHome(); } });
 $("#h-city").addEventListener("change", renderHome);
-$("#h-search").addEventListener("input", renderHome);
+let searchT;
+$("#h-search").addEventListener("input", () => { clearTimeout(searchT); searchT = setTimeout(renderHome, 180); });
+$("#h-clear").addEventListener("click", e => { e.preventDefault(); $("#h-search").value = ""; renderHome(); $("#h-search").focus(); });
+$("#h-filter").addEventListener("click", openFilters);
+$("#h-active").addEventListener("click", e => {
+  const c = e.target.closest("[data-unf]"); if (!c) return;
+  if (c.dataset.unf === "*") flt = { ...FLT0 }; else flt[c.dataset.unf] = FLT0[c.dataset.unf];
+  saveFlt(); renderHome();
+});
+$("#h-dishes").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 $("#h-refresh").addEventListener("click", showHome);
 $("#h-nearest").addEventListener("click", showNearest);
 $("#h-route").addEventListener("click", showOnRoute);
 $("#h-offers").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 $("#h-top").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
+$("#h-list").addEventListener("click", e => { if (e.target.closest('[data-unf="*"]')) { flt = { ...FLT0 }; saveFlt(); renderHome(); } });
 $("#h-list").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 
 // ───── صفحة المطعم ─────
