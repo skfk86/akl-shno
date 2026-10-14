@@ -885,6 +885,27 @@ document.querySelectorAll("[data-logout]").forEach(b => b.addEventListener("clic
 // ═════════ التوجيه ═════════
 let chosenRole = localStorage.getItem("role");
 
+// ═════════ الإشعارات ═════════
+async function setupPush() {
+  const PN = window.Capacitor?.Plugins?.PushNotifications;
+  if (!PN || !window.Capacitor.isNativePlatform?.()) return;
+  try {
+    let st = await PN.checkPermissions();
+    if (st.receive === "prompt" || st.receive === "prompt-with-rationale") st = await PN.requestPermissions();
+    if (st.receive !== "granted") return;
+    await PN.createChannel({ id: "orders", name: "الطلبات", description: "طلبات جديدة وتحديثات الطلب", importance: 5, sound: "default", vibration: true, visibility: 1 }).catch(() => {});
+    await PN.removeAllListeners();
+    PN.addListener("registration", t => { if (t.value && t.value !== me?.fcmToken) F.saveFcmToken(t.value).then(() => { if (me) me.fcmToken = t.value; }).catch(console.error); });
+    PN.addListener("pushNotificationReceived", n => toast(n.title || "إشعار جديد"));
+    PN.addListener("pushNotificationActionPerformed", a => {
+      const id = a.notification?.data?.orderId;
+      if (!id) return;
+      if (me?.role === "owner") { ownerSeg = "new"; ownerTab("orders"); } else openTrack(id);
+    });
+    await PN.register();
+  } catch (e) { console.error("push", e); }
+}
+
 F.watchAuth(async user => {
   clearSubs();
   if (!user) return show("welcome");
@@ -897,6 +918,7 @@ F.watchAuth(async user => {
       $("#c-name").value = user.displayName || "";
       return show("customer");
     }
+    setupPush();
     if (isAdmin) return showAdmin();
     if (me.role === "owner") return showOwner();
     showHome();
@@ -926,6 +948,7 @@ $("#c-save").addEventListener("click", e => {
   busy(e.target, async () => {
     await F.createProfile({ role: "customer", name, phone: "+249" + phone });
     me = await F.getProfile();
+    setupPush();
     showHome();
   });
 });
@@ -941,6 +964,7 @@ $("#o-save").addEventListener("click", e => {
     await F.createProfile({ role: "owner", name: F.auth.currentUser.displayName || data.name, phone: data.phone });
     await F.createRestaurant(data);
     me = await F.getProfile();
+    setupPush();
     showOwner();
   });
 });

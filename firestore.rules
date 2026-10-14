@@ -41,7 +41,7 @@ service cloud.firestore {
         && request.resource.data.delivered == 0;
 
       allow update: if isAdmin()
-        || (signedIn() && uid() == userId && changedOnly(['name', 'phone', 'addresses']))
+        || (signedIn() && uid() == userId && changedOnly(['name', 'phone', 'addresses', 'fcmToken']))
         || strikeFromReport(userId)
         || deliveredFromOrder(userId);
     }

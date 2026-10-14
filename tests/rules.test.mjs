@@ -71,6 +71,8 @@ await t("لا ينشئ ملفاً بإنذارات أو بطلبات مستلم�
   { role: "customer", name: "x", phone: "+249900000001", addresses: [], strikes: 0, delivered: 9, createdAt: serverTimestamp() })));
 await t("لا يقرأ ملف مستخدم آخر", () => assertFails(getDoc(doc(db("cust"), "users", "vet"))));
 await t("يعدّل اسمه وهاتفه", () => assertSucceeds(updateDoc(doc(db("cust"), "users", "cust"), { name: "علي" })));
+await t("يحفظ رمز الإشعارات لهاتفه", () => assertSucceeds(updateDoc(doc(db("cust"), "users", "cust"), { fcmToken: "tok-123" })));
+await t("لا يحفظ رمز إشعارات لمستخدم آخر", () => assertFails(updateDoc(doc(db("cust"), "users", "vet"), { fcmToken: "tok-123" })));
 await t("لا يمسح إنذاراته بنفسه", () => assertFails(updateDoc(doc(db("warned"), "users", "warned"), { strikes: 0 })));
 
 console.log("\nالمطاعم");

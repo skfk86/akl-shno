@@ -154,6 +154,8 @@ export async function myActiveOrders() {
 }
 
 export const updateProfile = ({ name, phone }) => updateDoc(doc(db, "users", uid()), { name, phone });
+// رمز الإشعارات للهاتف الحالي (يُقرأ من سكربت GitHub Actions لإرسال الإشعارات)
+export const saveFcmToken = token => updateDoc(doc(db, "users", uid()), { fcmToken: token });
 export const saveAddresses = addresses => updateDoc(doc(db, "users", uid()), { addresses });
 
 // ═════════ الصور ═════════
