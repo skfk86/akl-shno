@@ -6,7 +6,7 @@ import {
   getAuth, GoogleAuthProvider, signInWithCredential, onAuthStateChanged, signOut, deleteUser
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
 import {
-  getFirestore, doc, collection, getDoc, getDocs, query, where,
+  getFirestore, doc, collection, getDoc, getDocs, query, where, orderBy, limit,
   writeBatch, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot,
   increment, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
@@ -191,6 +191,27 @@ export async function deleteMyAccount(role) {
     await signInGoogle(); await deleteUser(auth.currentUser);
   }
   try { await window.Capacitor?.Plugins?.FirebaseAuthentication?.signOut(); } catch {}
+}
+
+// ═════════ الدردشة ═════════
+// thread: { kind: "order", id: orderId } أو { kind: "support", id: userId }
+const msgCol = t => t.kind === "order" ? collection(db, "orders", t.id, "messages") : collection(db, "support", t.id, "messages");
+export function watchMessages(t, cb, onErr) {
+  return onSnapshot(query(msgCol(t), orderBy("at"), limit(300)), s => cb(list(s)), onErr);
+}
+export function watchLastMessage(t, cb) {
+  return onSnapshot(query(msgCol(t), orderBy("at", "desc"), limit(1)), s => cb(s.docs[0] ? { id: s.docs[0].id, ...s.docs[0].data() } : null), () => {});
+}
+export async function sendMessage(t, role, text, name = "") {
+  const b = writeBatch(db);
+  b.set(doc(msgCol(t)), { from: uid(), role, text, at: serverTimestamp(), notified: false });
+  if (t.kind === "support") {
+    b.set(doc(db, "support", t.id), { name, lastAt: serverTimestamp(), lastText: text.slice(0, 120), lastFrom: role === "admin" ? "admin" : "user" }, { merge: true });
+  }
+  await b.commit();
+}
+export async function adminListSupport() {
+  return list(await getDocs(query(collection(db, "support"), orderBy("lastAt", "desc"), limit(100))));
 }
 
 export const saveAddresses = addresses => updateDoc(doc(db, "users", uid()), { addresses });

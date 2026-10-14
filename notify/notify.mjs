@@ -65,6 +65,37 @@ for (const d of orders.docs) {
     upd.lastNotifiedStatus = o.status;
   }
   if (Object.keys(upd).length) await d.ref.update(upd);
+
+  // رسائل الدردشة غير المُبلَّغ عنها في هذا الطلب (رسالة واحدة مجمّعة لكل طرف)
+  const msgs = await d.ref.collection("messages").where("notified", "==", false).get();
+  if (!msgs.empty) {
+    const byTarget = {};
+    for (const m of msgs.docs) {
+      const x = m.data(), to = x.role === "customer" ? o.restaurantId : o.customerId;
+      (byTarget[to] ||= { role: x.role, texts: [] }).texts.push(x.text);
+    }
+    for (const [to, g] of Object.entries(byTarget)) {
+      const fromName = g.role === "customer" ? (o.customerName || "الزبون") : (o.restaurantName || "المطعم");
+      const body = g.texts.length > 1 ? `${g.texts.length} رسائل جديدة: ${g.texts.at(-1)}` : g.texts[0];
+      await push(to, `رسالة من ${fromName} · ${code(d.id)}`, body.slice(0, 150),
+        { orderId: d.id, kind: "chat", title: g.role === "customer" ? fromName : (o.restaurantName || "") });
+    }
+    const b = db.batch(); msgs.docs.forEach(m => b.update(m.ref, { notified: true })); await b.commit();
+  }
+}
+
+// ───── رسائل الدعم ─────
+const admins = (await db.collection("admins").get()).docs.map(x => x.id);
+const threads = await db.collection("support").where("lastAt", ">", since).get();
+for (const t of threads.docs) {
+  const msgs = await t.ref.collection("messages").where("notified", "==", false).get();
+  if (msgs.empty) continue;
+  const fromUser = msgs.docs.filter(m => m.get("role") === "user"), fromAdmin = msgs.docs.filter(m => m.get("role") === "admin");
+  if (fromUser.length) for (const a of admins)
+    await push(a, `دعم: ${t.get("name") || "مستخدم"}`, fromUser.at(-1).get("text").slice(0, 150), { kind: "support", userId: t.id });
+  if (fromAdmin.length)
+    await push(t.id, "رد من دعم أكل شنو؟", fromAdmin.at(-1).get("text").slice(0, 150), { kind: "support" });
+  const b = db.batch(); msgs.docs.forEach(m => b.update(m.ref, { notified: true })); await b.commit();
 }
 
 // ───── تذكير قبل انتهاء الاشتراك بـ 5 أيام ─────

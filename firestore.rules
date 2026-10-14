@@ -219,6 +219,38 @@ service cloud.firestore {
             && existsAfter(/databases/$(db)/documents/reports/$(oid)));
     }
 
+    // ───────── دردشة الطلب ─────────
+    // بين الزبون والمطعم صاحبي الطلب فقط. الرسالة لا تُعدَّل ولا تُحذف.
+    match /orders/{oid}/messages/{mid} {
+      function ord() { return get(/databases/$(db)/documents/orders/$(oid)).data; }
+      allow read: if signedIn() && (ord().customerId == uid() || ord().restaurantId == uid() || isAdmin());
+      allow create: if signedIn() && validMsg()
+        && ((ord().customerId == uid() && request.resource.data.role == 'customer')
+         || (ord().restaurantId == uid() && request.resource.data.role == 'restaurant'))
+        && !(ord().status in ['cancelled', 'rejected']);
+    }
+    function validMsg() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['from', 'role', 'text', 'at', 'notified'])
+        && d.from == uid() && d.text is string && d.text.size() > 0 && d.text.size() <= 500
+        && d.at == request.time && d.notified == false;
+    }
+
+    // ───────── الدعم (المستخدم ↔ الإدارة) ─────────
+    match /support/{u} {
+      allow read: if signedIn() && (uid() == u || isAdmin());
+      allow create, update: if signedIn() && (uid() == u || isAdmin())
+        && request.resource.data.keys().hasOnly(['name', 'lastAt', 'lastText', 'lastFrom'])
+        && request.resource.data.lastAt == request.time
+        && request.resource.data.lastFrom in ['user', 'admin'];
+      match /messages/{mid} {
+        allow read: if signedIn() && (uid() == u || isAdmin());
+        allow create: if signedIn() && validMsg()
+          && ((uid() == u && request.resource.data.role == 'user')
+           || (isAdmin() && request.resource.data.role == 'admin'));
+      }
+    }
+
     // ───────── البلاغات ─────────
     match /reports/{oid} {
       allow read: if signedIn()

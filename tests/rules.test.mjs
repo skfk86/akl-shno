@@ -233,6 +233,38 @@ await t("صاحب المطعم يحذف منيوه ومطعمه", async () => {
 });
 await t("لا يحذف مطعم غيره", () => assertFails(deleteDoc(doc(db("owner"), "restaurants", "owner2"))));
 
+console.log("\nالدردشة");
+await seed();
+await placeAs("cust", { strikes: 0, delivered: 0 });
+const msg = (who, role, extra = {}) => ({ from: who, role, text: "مرحباً", at: serverTimestamp(), notified: false, ...extra });
+await t("الزبون يراسل المطعم على طلبه", () => assertSucceeds(setDoc(doc(db("cust"), "orders", "o1", "messages", "m1"), msg("cust", "customer"))));
+await t("المطعم يرد على الزبون", () => assertSucceeds(setDoc(doc(db("owner"), "orders", "o1", "messages", "m2"), msg("owner", "restaurant"))));
+await t("الطرفان يقرآن المحادثة", async () => {
+  await assertSucceeds(getDocs(collection(db("cust"), "orders", "o1", "messages")));
+  await assertSucceeds(getDocs(collection(db("owner"), "orders", "o1", "messages")));
+});
+await t("مطعم آخر لا يقرأ المحادثة", () => assertFails(getDocs(collection(db("owner2"), "orders", "o1", "messages"))));
+await t("طرف ثالث لا يراسل على الطلب", () => assertFails(setDoc(doc(db("vet"), "orders", "o1", "messages", "m3"), msg("vet", "customer"))));
+await t("لا ينتحل الزبون صفة المطعم", () => assertFails(setDoc(doc(db("cust"), "orders", "o1", "messages", "m4"), msg("cust", "restaurant"))));
+await t("لا رسائل فارغة أو طويلة جداً", async () => {
+  await assertFails(setDoc(doc(db("cust"), "orders", "o1", "messages", "m5"), msg("cust", "customer", { text: "" })));
+  await assertFails(setDoc(doc(db("cust"), "orders", "o1", "messages", "m6"), msg("cust", "customer", { text: "ا".repeat(501) })));
+});
+await t("لا تعديل ولا حذف للرسائل", async () => {
+  await assertFails(updateDoc(doc(db("cust"), "orders", "o1", "messages", "m1"), { text: "معدّل" }));
+  await assertFails(deleteDoc(doc(db("cust"), "orders", "o1", "messages", "m1")));
+});
+await setOrder("o1", { status: "cancelled" });
+await t("لا مراسلة على طلب ملغي", () => assertFails(setDoc(doc(db("cust"), "orders", "o1", "messages", "m7"), msg("cust", "customer"))));
+const sup = (who, role, u) => { const s = db(who), b = writeBatch(s);
+  b.set(doc(s, "support", u, "messages", "s" + Math.random()), msg(who, role));
+  b.set(doc(s, "support", u), { name: "x", lastAt: serverTimestamp(), lastText: "مرحباً", lastFrom: role === "admin" ? "admin" : "user" }, { merge: true });
+  return b.commit(); };
+await t("المستخدم يراسل الدعم", () => assertSucceeds(sup("cust", "user", "cust")));
+await t("الأدمن يرد على المستخدم", () => assertSucceeds(sup("admin", "admin", "cust")));
+await t("مستخدم لا يقرأ محادثة دعم غيره", () => assertFails(getDocs(collection(db("vet"), "support", "cust", "messages"))));
+await t("مستخدم لا يرد بصفة الأدمن", () => assertFails(sup("cust", "admin", "cust")));
+
 await env.cleanup();
 console.log(`\n${pass} نجح، ${fail} فشل`);
 process.exit(fail ? 1 : 0);

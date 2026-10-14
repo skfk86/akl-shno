@@ -277,6 +277,21 @@ await t("الطلب يصل للمطعم لحظياً مع شارة «زبون ج
   const x = await owner.textContent("#ow-body");
   expect(x.includes("أحمد") && x.includes("زبون جديد") && x.includes("جنب مسجد الحارة"), "order not received");
 });
+await t("الدردشة: الزبون يرسل والمطعم يستلم لحظياً", async () => {
+  await tap(cust, "#t-chat"); await waitScreen(cust, "s-chat");
+  await cust.fill("#ch-input", "هل يمكن إضافة شطة؟"); await tap(cust, "#ch-send"); await sleep(1500);
+  expect((await cust.textContent("#ch-list")).includes("إضافة شطة"), "own message not shown");
+  await sleep(1000);
+  expect(await owner.locator("[data-chat] .dot").count() >= 1, "owner has no unread dot");
+  await tap(owner, "[data-chat]"); await waitScreen(owner, "s-chat"); await sleep(1500);
+  expect((await owner.textContent("#ch-list")).includes("إضافة شطة"), "owner did not receive");
+});
+await t("الدردشة: المطعم يرد برد سريع والزبون يستلم", async () => {
+  await tap(owner, '#ch-qr [data-q]'); await sleep(2000);
+  expect((await cust.locator("#ch-list .bub.them").count()) >= 1, "customer did not receive reply");
+  await tap(owner, "#ch-back"); await waitScreen(owner, "s-owner");
+  await tap(cust, "#ch-back"); await waitScreen(cust, "s-track");
+});
 for (const [act, label, cust_sees] of [
   ["accept", "قبول", "المطعم قبل الطلب"], ["prepare", "بدء التحضير", "قيد التحضير"],
   ["out", "خرج للتوصيل", "في الطريق إليك"], ["delivered", "تم التسليم", "تم التسليم"]]) {

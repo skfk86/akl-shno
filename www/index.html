@@ -246,6 +246,21 @@
   .dish{flex:0 0 220px;display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:#fff;border-radius:16px;padding:8px;text-align:right}
   .dish .thumb{width:60px;height:60px;border-radius:12px;flex-shrink:0;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#fff}
   mark{background:#FEF08A;color:inherit;border-radius:3px;padding:0 1px}
+  #s-chat{background:#F3EFEA}
+  .msgs{flex:1;overflow-y:auto;padding:14px 14px 8px;display:flex;flex-direction:column;gap:6px}
+  .bub{max-width:78%;padding:9px 12px 6px;border-radius:16px;font-size:15px;line-height:1.6;word-wrap:break-word;white-space:pre-wrap;box-shadow:0 1px 1px rgba(0,0,0,.06)}
+  .bub small{display:block;font-size:11px;opacity:.7;margin-top:2px;text-align:left}
+  .bub.me{align-self:flex-end;background:var(--accent);color:#fff;border-end-end-radius:4px}
+  .bub.them{align-self:flex-start;background:#fff;border-end-start-radius:4px}
+  .day{align-self:center;font-size:12px;color:var(--muted);background:rgba(255,255,255,.8);padding:3px 10px;border-radius:999px;margin:6px 0}
+  .composer{display:flex;gap:8px;align-items:flex-end;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line)}
+  .composer textarea{flex:1;border:0;background:var(--fill);border-radius:20px;padding:11px 14px;font-size:15px;resize:none;max-height:120px;outline:none;font-family:inherit}
+  .send{width:46px;height:46px;border-radius:50%;border:0;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .send:disabled{background:#D6D3D1}
+  .qr{display:flex;gap:8px;overflow-x:auto;padding:8px 12px 0;background:#fff;scrollbar-width:none}
+  .qr::-webkit-scrollbar{display:none}
+  .qr button{flex-shrink:0;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px}
+  .dot{position:absolute;top:-3px;left:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
   .deal{flex:0 0 260px;border:0;padding:16px;border-radius:20px;color:#fff;text-align:right;display:flex;flex-direction:column;gap:6px;
     position:relative;overflow:hidden;min-height:128px;justify-content:space-between}
   .deal::after{content:"";position:absolute;left:-30px;bottom:-40px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.12)}
@@ -416,7 +431,7 @@
     </div>
     <div id="ad-stats" class="stats"></div>
     <div class="seg" id="ad-seg">
-      <button data-t="rest" class="on">المطاعم</button><button data-t="pay">التحويلات</button><button data-t="rep">البلاغات</button>
+      <button data-t="rest" class="on">المطاعم</button><button data-t="pay">التحويلات</button><button data-t="rep">البلاغات</button><button data-t="sup">الدعم</button>
     </div>
   </div>
   <div id="ad-body" class="list grow" style="padding-top:16px"></div>
@@ -430,6 +445,16 @@
 </section>
 
 <!-- ═════════ عن التطبيق ═════════ -->
+<section id="s-chat" class="screen">
+  <div class="header" style="border-bottom:1px solid var(--line)"><button class="icon-btn" id="ch-back" aria-label="رجوع"></button>
+    <div class="col grow" style="min-width:0"><b id="ch-title" style="font-size:16px"></b><span id="ch-sub" class="muted" style="font-size:12px"></span></div>
+    <a id="ch-call" class="icon-btn" aria-label="اتصال" style="background:var(--green-soft);color:var(--green)" hidden></a></div>
+  <div id="ch-list" class="msgs" aria-live="polite"></div>
+  <div id="ch-qr" class="qr"></div>
+  <div class="composer"><textarea id="ch-input" rows="1" maxlength="500" placeholder="اكتب رسالة…" aria-label="رسالة"></textarea>
+    <button id="ch-send" class="send" aria-label="إرسال" disabled><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="transform:scaleX(-1)"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10 15 12 3.4 14z"/></svg></button></div>
+</section>
+
 <section id="s-about" class="screen">
   <div class="header"><button class="icon-btn" id="ab-back" aria-label="رجوع"></button><h1>عن التطبيق</h1></div>
   <div class="col gap14 grow" style="padding:8px 20px 24px">
@@ -830,6 +855,57 @@ async function showOnRoute() {
   });
 }
 
+// ═════════ الدردشة ═════════
+I.chat = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.8 7L4 20.5l1.5-4.6A8 8 0 1 1 21 12Z"/></svg>';
+const seenKey = t => `akl-seen-${t.kind}-${t.id}`;
+const getSeen = t => { try { return +localStorage.getItem(seenKey(t)) || 0; } catch { return 0; } };
+const setSeen = t => { try { localStorage.setItem(seenKey(t), Date.now()); } catch {} };
+const isUnread = (t, m) => !!m && m.from !== F.auth.currentUser?.uid && (m.at?.toMillis?.() || Date.now()) > getSeen(t);
+const QUICK = {
+  customer: ["أنا عند الباب", "متى يصل الطلب؟", "اتصل بي من فضلك", "شكراً"],
+  restaurant: ["تم استلام طلبك", "الطلب قيد التحضير", "المندوب في الطريق", "الطلب جاهز للاستلام", "وصلنا، أين أنت بالضبط؟"],
+  user: [], admin: ["أهلاً، كيف نساعدك؟", "تم حل المشكلة، شكراً لصبرك"]
+};
+let chat = null, chatUnsub = null, chatBack = "home", trackChatWatch = null;
+function openChat(t) {
+  // t = { kind, id, role, title, sub, phone, name }
+  if (curScreen !== "chat") chatBack = curScreen;
+  chat = t; chatUnsub?.(); setSeen(t);
+  $("#ch-back").innerHTML = I.back;
+  $("#ch-title").textContent = t.title; $("#ch-sub").textContent = t.sub || "";
+  const call = $("#ch-call"); call.hidden = !t.phone; if (t.phone) { call.href = "tel:" + t.phone; call.innerHTML = I.phone; }
+  $("#ch-qr").innerHTML = (QUICK[t.role] || []).map(q => `<button data-q="${esc(q)}">${esc(q)}</button>`).join("");
+  $("#ch-qr").hidden = !(QUICK[t.role] || []).length;
+  $("#ch-list").innerHTML = `<div class="center"><div class="spinner"></div></div>`;
+  show("chat");
+  chatUnsub = F.watchMessages(t, msgs => {
+    if (chat !== t) return;
+    setSeen(t);
+    const me = F.auth.currentUser?.uid; let lastDay = "";
+    $("#ch-list").innerHTML = msgs.length ? msgs.map(m => {
+      const d = m.at?.toDate ? m.at.toDate() : new Date();
+      const day = d.toLocaleDateString(LOC, { weekday: "long", day: "numeric", month: "long" });
+      const sep = day !== lastDay ? `<span class="day">${day}</span>` : ""; lastDay = day;
+      return `${sep}<div class="bub ${m.from === me ? "me" : "them"}">${esc(m.text)}<small>${d.toLocaleTimeString(LOC, { hour: "numeric", minute: "2-digit" })}${m.at ? "" : " · يُرسل…"}</small></div>`;
+    }).join("") : `<div class="empty" style="margin:auto"><div class="ic">${I.chat}</div><b style="color:var(--ink)">ابدأ المحادثة</b><span>${t.kind === "order" ? "الرسائل هنا تخص هذا الطلب فقط." : "اكتب سؤالك أو مشكلتك، ونرد عليك في أقرب وقت."}</span></div>`;
+    const L = $("#ch-list"); L.scrollTop = L.scrollHeight;
+  }, () => { $("#ch-list").innerHTML = emptyState("تعذر تحميل الرسائل", "تأكد من الإنترنت."); });
+}
+function closeChat() { chatUnsub?.(); chatUnsub = null; chat = null; show(chatBack || "home"); }
+async function sendChat(text) {
+  text = text.trim(); if (!text || !chat) return;
+  const btn = $("#ch-send"); btn.disabled = true;
+  try { await F.sendMessage(chat, chat.role, text, chat.name || me?.name || ""); $("#ch-input").value = ""; autoGrow(); }
+  catch (e) { console.error(e); toast(e.code === "permission-denied" ? "لا يمكن المراسلة على هذا الطلب." : "تعذر الإرسال. حاول مرة أخرى."); }
+  finally { btn.disabled = !$("#ch-input").value.trim(); }
+}
+const autoGrow = () => { const i = $("#ch-input"); i.style.height = "auto"; i.style.height = Math.min(i.scrollHeight, 120) + "px"; };
+$("#ch-back").addEventListener("click", closeChat);
+$("#ch-input").addEventListener("input", () => { autoGrow(); $("#ch-send").disabled = !$("#ch-input").value.trim(); });
+$("#ch-send").addEventListener("click", () => sendChat($("#ch-input").value));
+$("#ch-qr").addEventListener("click", e => { const q = e.target.closest("[data-q]"); if (q) sendChat(q.dataset.q); });
+const supportThread = () => ({ kind: "support", id: F.auth.currentUser.uid, role: "user", title: "الدعم والمساعدة", sub: "فريق أكل شنو؟", name: me?.name || "" });
+
 const ST = { new: "جديد", accepted: "تم القبول", preparing: "قيد التحضير", ready: "جاهز للاستلام",
   out_for_delivery: "في الطريق", delivered: "تم التسليم", rejected: "مرفوض", cancelled: "ملغي" };
 const ST_BADGE = { new: "b-blue", accepted: "b-orange", preparing: "b-orange", ready: "b-orange",
@@ -888,6 +964,7 @@ document.addEventListener("click", e => {
   if (k === "myorders") return showMyOrders();
   if (k === "account") return showAccount();
   if (k === "about") return showAbout();
+  if (k === "support") return openChat(supportThread());
   if (k === "top") { showHome(); return setTimeout(() => $("#top-title")?.scrollIntoView({ behavior: "smooth" }), 400); }
   if (["orders", "menu", "stats", "settings"].includes(k)) return ownerTab(k);
 });
@@ -935,8 +1012,13 @@ async function setupPush() {
     PN.addListener("registration", t => { if (t.value && t.value !== me?.fcmToken) F.saveFcmToken(t.value).then(() => { if (me) me.fcmToken = t.value; }).catch(console.error); });
     PN.addListener("pushNotificationReceived", n => toast(n.title || "إشعار جديد"));
     PN.addListener("pushNotificationActionPerformed", a => {
-      const id = a.notification?.data?.orderId;
+      const data = a.notification?.data || {}, id = data.orderId;
+      if (data.kind === "support") return isAdmin ? (adTab = "sup", showAdmin()) : openChat(supportThread());
       if (!id) return;
+      if (data.kind === "chat") {
+        const owner = me?.role === "owner";
+        return openChat({ kind: "order", id, role: owner ? "restaurant" : "customer", title: data.title || "دردشة الطلب", sub: `طلب #${id.slice(-5).toUpperCase()}` });
+      }
       if (me?.role === "owner") { ownerSeg = "new"; ownerTab("orders"); } else openTrack(id);
     });
     await PN.register();
@@ -1562,11 +1644,21 @@ async function renderTrack(o) {
     </div>
     <div class="grow"></div>
     <div class="bar row gap10">
-      <a class="btn btn-green" href="tel:${esc(o.restaurantPhone)}" style="text-decoration:none">${I.phone}اتصل بالمطعم</a>
+      ${["cancelled", "rejected"].includes(o.status) ? "" : `<button id="t-chat" class="btn btn-dark" style="position:relative">${I.chat}دردشة<span id="t-chat-dot" class="dot" hidden>!</span></button>`}
+      <a class="btn btn-green" href="tel:${esc(o.restaurantPhone)}" style="text-decoration:none">${I.phone}اتصال</a>
       ${o.status === "new" ? `<button id="t-cancel" class="btn btn-danger" style="width:130px">إلغاء</button>` : ""}
     </div>`;
   const c = $("#t-cancel");
   if (c) c.onclick = () => busy(c, () => F.setOrderStatus(o.id, "cancelled"));
+  const thr = { kind: "order", id: o.id, role: "customer", title: o.restaurantName, sub: `طلب #${o.id.slice(-5).toUpperCase()}`, phone: o.restaurantPhone };
+  const tc = $("#t-chat");
+  if (tc) {
+    tc.onclick = () => openChat(thr);
+    if (!trackChatWatch || trackChatWatch.id !== o.id) {
+      trackChatWatch?.u?.(); trackChatWatch = { id: o.id, last: null, u: F.watchLastMessage(thr, m => { trackChatWatch.last = m; const d = $("#t-chat-dot"); if (d) d.hidden = !isUnread(thr, m); }) };
+      unsubs.push(() => { trackChatWatch?.u?.(); trackChatWatch = null; });
+    } else { const d = $("#t-chat-dot"); if (d) d.hidden = !isUnread(thr, trackChatWatch.last); }
+  }
   if (o.status === "delivered" && !o.reported) {
     const box = $("#t-report");
     const done = await F.getRating(o.id).catch(() => null);
@@ -1638,7 +1730,7 @@ function openDrawer() {
       <div class="col"><b style="font-size:16px">${esc(me?.name)}</b><span class="muted" dir="ltr" style="text-align:right">${esc(me?.phone)}</span></div></div>
     <div class="col" style="padding:8px 0">
       ${row("home", I.home, "الرئيسية")}${row("top", I.star, "الأعلى تقييماً")}${row("myorders", I.bag, "طلباتي")}
-      ${row("account", I.user, "حسابي")}${row("about", I.info2, "عن التطبيق")}
+      ${row("account", I.user, "حسابي")}${row("support", I.chat, "الدعم والمساعدة")}${row("about", I.info2, "عن التطبيق")}
       ${CONFIG.ADMIN_WHATSAPP ? `<a class="mrow" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، أحتاج مساعدة في أكل شنو؟\n")}" target="_blank">${I.wa}<span>تواصل معنا</span>${I.chev}</a>` : ""}
       ${isAdmin ? row("admin", I.shield, "لوحة الأدمن") : ""}
     </div>
@@ -1687,7 +1779,7 @@ function showAccount() {
             : `<span class="muted" style="padding:12px 0">لا توجد عناوين محفوظة. احفظ عنوانك عند تأكيد الطلب.</span>`}
         </div>
         <div class="box col" style="padding:4px 0">
-          ${row("myorders", I.bag, "طلباتي")}${row("about", I.info2, "عن التطبيق")}
+          ${row("myorders", I.bag, "طلباتي")}${row("support", I.chat, "الدعم والمساعدة")}${row("about", I.info2, "عن التطبيق")}
           ${CONFIG.ADMIN_WHATSAPP ? `<a class="mrow" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، أحتاج مساعدة في أكل شنو؟\n")}" target="_blank">${I.wa}<span>تواصل معنا</span>${I.chev}</a>` : ""}
           ${isAdmin ? row("admin", I.shield, "لوحة الأدمن") : ""}
         </div>
@@ -1770,6 +1862,7 @@ $("#ab-back").addEventListener("click", () => show(aboutBack || "home"));
 //                 المطعم
 // ════════════════════════════════════════
 let myRest = null, ownerOrders = [], ownerSeg = "new", ownerTabNow = "orders", ownerMenuCache = [];
+const ownerChatLast = {}, ownerChatWatch = {};
 
 async function showOwner() {
   clearSubs();
@@ -1784,7 +1877,19 @@ async function showOwner() {
     const after = list.filter(o => o.status === "new").length;
     if (!first && after > before) { try { navigator.vibrate?.([200, 100, 200]); } catch {} toast("طلب جديد!"); }
     first = false;
-    if (ownerTabNow === "orders") renderOwnerOrders();
+    // متابعة آخر رسالة لكل طلب نشط لإظهار نقطة «رسالة جديدة»
+    const DONE = ["delivered", "rejected", "cancelled"];
+    list.filter(o => !DONE.includes(o.status) && !ownerChatWatch[o.id]).forEach(o => {
+      let firstMsg = true;
+      ownerChatWatch[o.id] = F.watchLastMessage({ kind: "order", id: o.id }, m => {
+        const fresh = !firstMsg && m && isUnread({ kind: "order", id: o.id }, m);
+        firstMsg = false; ownerChatLast[o.id] = m;
+        if (fresh && !(chat && chat.id === o.id)) { try { navigator.vibrate?.(120); } catch {} toast(`رسالة من ${o.customerName || "زبون"}`); }
+        if (ownerTabNow === "orders" && curScreen === "owner") renderOwnerOrders();
+      });
+      unsubs.push(() => { ownerChatWatch[o.id]?.(); delete ownerChatWatch[o.id]; });
+    });
+    if (ownerTabNow === "orders" && curScreen === "owner") renderOwnerOrders();
     if (ownerTabNow === "stats") renderOwnerStats();
   }, e => console.error(e)));
   ownerTab("orders");
@@ -1862,6 +1967,7 @@ function orderCard(o) {
     <div class="row between" style="font-weight:700"><span>الإجمالي</span><span>${money(o.total)} · ${o.payMethod === "cash" ? "كاش" : "بنكك"}</span></div>
     <div class="row gap10">${actions}
       <a class="icon-btn" href="tel:${esc(o.customerPhone)}" aria-label="اتصال بالزبون" style="background:var(--green-soft);color:var(--green)">${I.phone}</a>
+      ${["cancelled", "rejected"].includes(o.status) ? "" : `<button class="icon-btn" data-chat="${esc(o.id)}" aria-label="دردشة مع الزبون" style="position:relative;background:var(--accent-soft);color:var(--accent)">${I.chat}${isUnread({ kind: "order", id: o.id }, ownerChatLast[o.id]) ? '<span class="dot">!</span>' : ""}</button>`}
       ${o.location ? `<a class="icon-btn" href="${pinUrl(o.location)}" target="_blank" aria-label="فتح الموقع في الخرائط" style="background:var(--blue-soft);color:var(--blue)">${I.pin}</a>` : ""}
     </div></article>`;
 }
@@ -1869,6 +1975,11 @@ function orderCard(o) {
 $("#ow-body").addEventListener("click", e => {
   const seg = e.target.closest("[data-seg]");
   if (seg) { ownerSeg = seg.dataset.seg; return renderOwnerOrders(); }
+  const ch = e.target.closest("[data-chat]");
+  if (ch) {
+    const o = ownerOrders.find(x => x.id === ch.dataset.chat);
+    return openChat({ kind: "order", id: o.id, role: "restaurant", title: o.customerName || "الزبون", sub: `طلب #${o.id.slice(-5).toUpperCase()} · ${o.type === "delivery" ? esc(o.zone) : "استلام"}`, phone: o.customerPhone });
+  }
   const act = e.target.closest("[data-act]");
   if (!act) return;
   const o = ownerOrders.find(x => x.id === act.closest("[data-oid]").dataset.oid);
@@ -2085,6 +2196,7 @@ async function renderOwnerSettings() {
       <button id="st-bankak-save" class="btn btn-sm btn-dark">حفظ</button>
     </section>
     ${CONFIG.ADMIN_WHATSAPP ? `<a class="btn btn-green" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، أنا صاحب " + r.name + " في أكل شنو؟\n")}" target="_blank" style="text-decoration:none;margin-top:8px">${I.wa}تواصل مع الإدارة عبر واتساب</a>` : ""}
+    <button class="btn btn-dark" data-go="support" style="margin-top:8px">${I.chat}الدعم: راسل إدارة التطبيق</button>
     <button class="btn btn-ghost" data-go="about" style="margin-top:8px">${I.info2}عن التطبيق</button>
     <button class="btn btn-outline" data-logout2 style="margin-top:8px">تسجيل الخروج</button>
     <button data-delete-account style="border:0;background:none;color:var(--muted);font-size:13px;text-decoration:underline;padding:10px">حذف حسابي ومطعمي نهائياً</button>
@@ -2216,6 +2328,18 @@ async function loadAdmin() {
     body.dataset.pays = JSON.stringify(pays.map(p => p.id));
     body._pays = pays;
   }
+  if (adTab === "sup") {
+    const th = await F.adminListSupport().catch(() => []);
+    body.innerHTML = th.length ? th.map(x => {
+      const unread = x.lastFrom === "user" && (x.lastAt?.toMillis?.() || 0) > getSeen({ kind: "support", id: x.id });
+      return `<button class="box row gap10" data-sup="${esc(x.id)}" style="width:100%;text-align:right;${unread ? "border:2px solid var(--accent)" : ""}">
+        <div class="avatar" style="width:44px;height:44px;font-size:18px">${initial(x.name)}</div>
+        <div class="col grow" style="min-width:0"><div class="row between"><b>${esc(x.name || "مستخدم")}</b><span class="muted" style="font-size:12px">${tsDate(x.lastAt)?.toLocaleString(LOC, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) || ""}</span></div>
+          <span class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.lastFrom === "admin" ? "أنت: " : ""}${esc(x.lastText)}</span></div>
+        ${unread ? '<span class="badge b-red">جديد</span>' : ""}</button>`; }).join("")
+      : emptyState("لا توجد محادثات", "رسائل المستخدمين للدعم تظهر هنا.");
+    body._sup = th;
+  }
   if (adTab === "rep") {
     body.innerHTML = reps.length ? reps.map(r => {
       const rr = rest.find(x => x.id === r.restaurantId);
@@ -2267,6 +2391,8 @@ $("#ad-body").addEventListener("click", e => {
       toast(ok ? "تم تفعيل الاشتراك شهراً" : "تم الرفض"); loadAdmin();
     });
   }
+  const sp = e.target.closest("[data-sup]");
+  if (sp) { const x = body._sup.find(y => y.id === sp.dataset.sup); return openChat({ kind: "support", id: x.id, role: "admin", title: x.name || "مستخدم", sub: "محادثة دعم", name: x.name || "" }); }
   const ub = e.target.closest("[data-unban]");
   if (ub) {
     const b = body._banned.find(x => x.id === ub.dataset.unban);
