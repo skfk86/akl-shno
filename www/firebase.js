@@ -8,7 +8,7 @@ import {
 import {
   getFirestore, doc, collection, getDoc, getDocs, query, where, orderBy, limit,
   writeBatch, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot,
-  increment, serverTimestamp, Timestamp
+  increment, serverTimestamp, Timestamp, getCountFromServer
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -218,6 +218,26 @@ export async function sendMessage(t, role, text, name = "") {
 export function watchMyChats(field, cb) {
   return onSnapshot(query(collection(db, "chats"), where(field, "==", uid())),
     s => cb(list(s).sort((a, b) => (b.lastAt?.seconds ?? 9e9) - (a.lastAt?.seconds ?? 9e9))), () => cb([]));
+}
+// محادثة الدعم الخاصة بالمستخدم (لإظهار نقطة رد الإدارة)
+export function watchSupportDoc(cb) {
+  return onSnapshot(doc(db, "support", uid()), d => cb(d.exists() ? d.data() : null), () => cb(null));
+}
+// للأدمن: آخر محادثات الدعم لحظياً
+export function adminWatchSupport(cb) {
+  return onSnapshot(query(collection(db, "support"), orderBy("lastAt", "desc"), limit(100)), s => cb(list(s)), () => cb([]));
+}
+// إحصاءات لوحة الأدمن: عدّ المستخدمين من الخادم (رخيص)، وطلبات آخر 30 يوماً، والتحويلات المعتمدة
+export async function adminStats() {
+  const since = Timestamp.fromMillis(Date.now() - 30 * 864e5);
+  const cnt = q => getCountFromServer(q).then(x => x.data().count).catch(() => null);
+  const [customers, owners, orders, pays] = await Promise.all([
+    cnt(query(collection(db, "users"), where("role", "==", "customer"))),
+    cnt(query(collection(db, "users"), where("role", "==", "owner"))),
+    getDocs(query(collection(db, "orders"), where("createdAt", ">", since), limit(3000))).then(list).catch(() => []),
+    getDocs(query(collection(db, "payments"), where("status", "==", "approved"))).then(list).catch(() => [])
+  ]);
+  return { customers, owners, orders, pays };
 }
 export async function adminListSupport() {
   return list(await getDocs(query(collection(db, "support"), orderBy("lastAt", "desc"), limit(100))));

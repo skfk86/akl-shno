@@ -266,6 +266,8 @@
   .qr{display:flex;gap:8px;overflow-x:auto;padding:8px 12px 0;background:#fff;scrollbar-width:none}
   .qr::-webkit-scrollbar{display:none}
   .qr button{flex-shrink:0;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px}
+  .udot{width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;box-shadow:0 0 0 3px var(--accent-soft)}
+  #ad-sup-dot{top:2px;left:4px;min-width:16px;height:16px;font-size:10px}
   .dot{position:absolute;top:-3px;left:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
   .deal{flex:0 0 260px;border:0;padding:16px;border-radius:20px;color:#fff;text-align:right;display:flex;flex-direction:column;gap:6px;
     position:relative;overflow:hidden;min-height:128px;justify-content:space-between}
@@ -443,7 +445,7 @@
     </div>
     <div id="ad-stats" class="stats"></div>
     <div class="seg" id="ad-seg">
-      <button data-t="rest" class="on">المطاعم</button><button data-t="pay">التحويلات</button><button data-t="rep">البلاغات</button><button data-t="sup">الدعم</button>
+      <button data-t="rest" class="on">المطاعم</button><button data-t="pay">التحويلات</button><button data-t="rep">البلاغات</button><button data-t="sup" style="position:relative">الدعم<span class="dot" id="ad-sup-dot" hidden></span></button><button data-t="stats">الإحصاءات</button>
     </div>
   </div>
   <div id="ad-body" class="list grow" style="padding-top:16px"></div>
@@ -486,7 +488,7 @@
       <span class="muted" style="font-size:14px;line-height:1.8">سجّل مطعمك واستقبل الطلبات مباشرة باشتراك شهري ثابت بدون عمولة على الطلبات. أول شهرين مجاناً لأول المطاعم.</span>
     </div>
     <div class="col" id="ab-links"></div>
-    <span class="muted" style="text-align:center;font-size:12px">صُنع في السودان 🇸🇩</span>
+    <span class="muted" style="text-align:center;font-size:12px">صُنع بحب في السودان</span>
   </div>
 </section>
 
@@ -507,7 +509,7 @@ import * as F from "./firebase.js";
 const CONFIG = {
   SUB_PRICE: 25000,      // سعر الاشتراك الشهري بالجنيه (عدّله)
   ADMIN_BANKAK: "4636998", // رقم حسابك في بنكك لاستلام الاشتراكات
-  ADMIN_WHATSAPP: "249901758765", // رقم واتساب الإدارة بالصيغة الدولية بدون + مثل 2499XXXXXXXX
+  ADMIN_PHONE: "+249901758765", // رقم هاتف الإدارة للاتصال (المراسلة تتم داخل التطبيق)
   FREE_SEATS: 20,        // عدد المطاعم المؤهلة للشهرين المجانيين
   NEW_LIMIT: 50000,      // الحد الأقصى للدفع عند الاستلام في أول طلبين (مطابق للقواعد)
   DEFAULT_LOC: [15.6445, 32.4777] // أمدرمان
@@ -559,6 +561,7 @@ const I = {
 };
 
 I.wa = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.7-5A8.5 8.5 0 1 1 8 19.3Z"/><path d="M9 10c0 3 2 5 5 5l1.5-1.5-2-1-1 1c-1 0-2.5-1.5-2.5-2.5l1-1-1-2Z"/></svg>';
+I.x = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 I.flag = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4a1 1 0 0 1 1-1h13l-2 5 2 5H5"/></svg>';
 
 const avgOf = r => r?.ratingCount ? r.ratingSum / r.ratingCount : 0;
@@ -869,9 +872,11 @@ async function showOnRoute() {
 
 // ═════════ الدردشة ═════════
 I.chat = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.8 7L4 20.5l1.5-4.6A8 8 0 1 1 21 12Z"/></svg>';
-const seenKey = t => `akl-seen-${t.kind}-${t.id}`;
+// "آخر ما قُرئ" يُحفظ بتوقيت الخادم (وقت آخر رسالة رأيتها) وليس بساعة الهاتف،
+// لأن ساعة الهاتف قد تكون متقدمة فتختفي نقطة الرسائل الجديدة.
+const seenKey = t => `akl-seen2-${t.kind}-${t.id}`;
 const getSeen = t => { try { return +localStorage.getItem(seenKey(t)) || 0; } catch { return 0; } };
-const setSeen = t => { try { localStorage.setItem(seenKey(t), Date.now()); } catch {} };
+const setSeen = (t, ms) => { if (!ms) return; try { if (ms > getSeen(t)) localStorage.setItem(seenKey(t), ms); } catch {} };
 const isUnread = (t, m) => !!m && m.from !== F.auth.currentUser?.uid && (m.at?.toMillis?.() || Date.now()) > getSeen(t);
 const QUICK = {
   customer: ["أنا عند الباب", "متى يصل الطلب؟", "اتصل بي من فضلك", "شكراً"],
@@ -882,7 +887,7 @@ let chat = null, chatUnsub = null, chatBack = "home", trackChatWatch = null;
 function openChat(t) {
   // t = { kind, id, role, title, sub, phone, name }
   if (curScreen !== "chat") chatBack = curScreen;
-  chat = t; chatUnsub?.(); setSeen(t);
+  chat = t; chatUnsub?.();
   $("#ch-back").innerHTML = I.back;
   $("#ch-title").textContent = t.title; $("#ch-sub").textContent = t.sub || "";
   const call = $("#ch-call"); call.hidden = !t.phone; if (t.phone) { call.href = "tel:" + t.phone; call.innerHTML = I.phone; }
@@ -892,7 +897,7 @@ function openChat(t) {
   show("chat");
   chatUnsub = F.watchMessages(t, msgs => {
     if (chat !== t) return;
-    setSeen(t);
+    setSeen(t, Math.max(0, ...msgs.map(m => m.at?.toMillis?.() || 0))); refreshInboxBadges();
     const me = F.auth.currentUser?.uid; let lastDay = "";
     $("#ch-list").innerHTML = msgs.length ? msgs.map(m => {
       const d = m.at?.toDate ? m.at.toDate() : new Date();
@@ -934,15 +939,18 @@ const dmThread = c => {
     phone: owner ? "" : c.phone, meta: { customerId: c.customerId, restaurantId: c.restaurantId, customerName: c.customerName || "", restaurantName: c.restaurantName || "" } };
 };
 const chatUnread = c => c.lastFrom && c.lastFrom !== myRole() && (c.lastAt?.toMillis?.() || 0) > getSeen({ kind: "direct", id: c.id });
-function inboxUnread() { return myChats.filter(chatUnread).length; }
+let mySupport = null, supportUnsub = null;
+const supportUnread = () => !!mySupport && mySupport.lastFrom === "admin" && (mySupport.lastAt?.toMillis?.() || 0) > getSeen({ kind: "support", id: F.auth.currentUser?.uid });
+function inboxUnread() { return myChats.filter(chatUnread).length + (supportUnread() ? 1 : 0); }
 function refreshInboxBadges() {
   const n = inboxUnread();
   document.querySelectorAll('[data-go="inbox"] .dot').forEach(d => { d.hidden = !n; d.textContent = n; });
   if (curScreen === "inbox") renderInbox();
 }
 function startInbox() {
-  inboxUnsub?.(); myChats = [];
+  inboxUnsub?.(); myChats = []; supportUnsub?.(); mySupport = null;
   if (!me) return;
+  supportUnsub = F.watchSupportDoc(d => { mySupport = d; refreshInboxBadges(); });
   let first = true;
   inboxUnsub = F.watchMyChats(me.role === "owner" ? "restaurantId" : "customerId", list => {
     const before = inboxUnread(); myChats = list; const after = inboxUnread();
@@ -964,11 +972,13 @@ function renderInbox() {
       <div class="avatar" style="width:46px;height:46px;font-size:18px;${owner ? "" : `background:${colorOf(name)}`}">${initial(name)}</div>
       <div class="col grow" style="min-width:0"><div class="row between"><b>${esc(name)}</b><span class="muted" style="font-size:12px">${tsDate(c.lastAt)?.toLocaleString(LOC, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) || ""}</span></div>
         <span class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${un ? "color:var(--ink);font-weight:700" : ""}">${c.lastFrom === myRole() ? "أنت: " : ""}${esc(c.lastText)}</span></div>
-      ${un ? '<span class="dot" style="position:static">●</span>' : ""}</button>`;
+      ${un ? '<span class="udot" aria-label="غير مقروءة"></span>' : ""}</button>`;
   }).join("");
-  const supportRow = `<button class="box row gap10" data-go="support" style="width:100%;text-align:right">
+  const supUn = supportUnread();
+  const supportRow = `<button class="box row gap10" data-go="support" style="width:100%;text-align:right;${supUn ? "border:2px solid var(--accent)" : ""}">
       <div class="avatar" style="width:46px;height:46px;background:var(--ink)">${I.chat}</div>
-      <div class="col grow"><b>الدعم والمساعدة</b><span class="muted">${owner ? "راسل إدارة التطبيق" : "مشكلة في طلب أو حساب؟ راسلنا"}</span></div></button>`;
+      <div class="col grow" style="min-width:0"><b>الدعم والمساعدة</b><span class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${supUn ? "color:var(--ink);font-weight:700" : ""}">${supUn ? esc(mySupport.lastText) : owner ? "راسل إدارة التطبيق" : "مشكلة في طلب أو حساب؟ راسلنا"}</span></div>
+      ${supUn ? '<span class="udot" aria-label="غير مقروءة"></span>' : ""}</button>`;
   $("#in-list").innerHTML = (rows || emptyState("لا توجد محادثات بعد", owner ? "عندما يراسلك زبون من صفحة مطعمك تظهر المحادثة هنا." : "راسل أي مطعم من صفحته لتسأل قبل الطلب، أو راسل المطعم من شاشة تتبع طلبك.")) + supportRow;
 }
 $("#in-list").addEventListener("click", e => {
@@ -976,7 +986,7 @@ $("#in-list").addEventListener("click", e => {
   const c = myChats.find(x => x.id === b.dataset.dm); if (c) openChat(dmThread(c));
 });
 
-const supportThread = () => ({ kind: "support", id: F.auth.currentUser.uid, role: "user", title: "الدعم والمساعدة", sub: "فريق أكل شنو؟", name: me?.name || "" });
+const supportThread = () => ({ kind: "support", id: F.auth.currentUser.uid, role: "user", title: "الدعم والمساعدة", sub: "فريق أكل شنو؟", name: me?.role === "owner" && myRest?.name ? myRest.name : (me?.name || ""), isRest: me?.role === "owner" });
 
 const ST = { new: "جديد", accepted: "تم القبول", preparing: "قيد التحضير", ready: "جاهز للاستلام",
   out_for_delivery: "في الطريق", delivered: "تم التسليم", rejected: "مرفوض", cancelled: "ملغي" };
@@ -1113,7 +1123,7 @@ F.watchAuth(async user => {
       return show("customer");
     }
     setupPush(); await setupDevice(); startInbox();
-    if (isAdmin) return showAdmin();
+    if (isAdmin) { startAdminWatch(); return showAdmin(); }
     if (me.role === "owner") return showOwner();
     showHome();
   } catch (e) {
@@ -1200,7 +1210,7 @@ const saveFlt = () => { try { localStorage.setItem("akl-flt", JSON.stringify(flt
 const SORTS = { smart: "الأنسب", near: "الأقرب", rating: "الأعلى تقييماً", popular: "الأكثر تقييمات", fee: "أقل رسوم توصيل", new: "الأحدث" };
 const FLABELS = {
   open: () => "مفتوح الآن", delivery: () => "توصيل", pickup: () => "استلام", freeDel: () => "توصيل مجاني",
-  deals: () => "عروض وخصومات", verified: () => "موثّق", rating: v => `★ ${v} فأكثر`, dist: v => `حتى ${v} كم`, sort: v => SORTS[v]
+  deals: () => "عروض وخصومات", verified: () => "موثّق", rating: v => `${v}+ نجوم`, dist: v => `حتى ${v} كم`, sort: v => SORTS[v]
 };
 const activeFilters = () => Object.keys(FLT0).filter(k => k === "sort" ? flt.sort !== "smart" : flt[k] && flt[k] !== FLT0[k]);
 
@@ -1241,7 +1251,7 @@ function openFilters() {
     <div class="col gap10"><b>ترتيب حسب</b><div class="fopt">${Object.entries(SORTS).map(([k, l]) => pick("sort", k, l)).join("")}</div></div>
     <div class="col gap10"><b>الحالة والخدمة</b><div class="fopt">${tog("open", "مفتوح الآن")}${tog("delivery", "توصيل")}${tog("pickup", "استلام من المطعم")}${tog("freeDel", "توصيل مجاني")}</div></div>
     <div class="col gap10"><b>مميزات</b><div class="fopt">${tog("deals", "عروض وخصومات")}${tog("verified", "مطاعم موثّقة")}</div></div>
-    <div class="col gap10"><b>التقييم</b><div class="fopt">${pick("rating", 0, "الكل")}${pick("rating", 3, "★ 3 فأكثر")}${pick("rating", 4, "★ 4 فأكثر")}${pick("rating", 4.5, "★ 4.5 فأكثر")}</div></div>
+    <div class="col gap10"><b>التقييم</b><div class="fopt">${pick("rating", 0, "الكل")}${pick("rating", 3, starIcon("#F59E0B",14) + " 3 فأكثر")}${pick("rating", 4, starIcon("#F59E0B",14) + " 4 فأكثر")}${pick("rating", 4.5, starIcon("#F59E0B",14) + " 4.5 فأكثر")}</div></div>
     <div class="col gap10"><b>المسافة منك</b><div class="fopt">${pick("dist", 0, "أي مسافة")}${pick("dist", 2, "2 كم")}${pick("dist", 5, "5 كم")}${pick("dist", 10, "10 كم")}</div>
       ${f.dist && !myLoc ? `<span class="muted">نحتاج موقعك لتطبيق هذا الفلتر.</span>` : ""}</div>
     <button id="f-apply" class="btn btn-primary">عرض ${restaurants.filter(r => passFilters(r, f) && matchQuery(r, norm($("#h-search").value)) && (!$("#h-city").value || r.city === $("#h-city").value)).length} مطعم</button>`;
@@ -1264,7 +1274,7 @@ function renderHome() {
   const act = activeFilters();
   $("#h-fcount").hidden = !act.length; $("#h-fcount").textContent = act.length;
   $("#h-active").hidden = !act.length;
-  $("#h-active").innerHTML = act.map(k => `<button class="chip x" data-unf="${k}">${FLABELS[k](flt[k])} ✕</button>`).join("")
+  $("#h-active").innerHTML = act.map(k => `<button class="chip x" data-unf="${k}">${FLABELS[k](flt[k])} ${I.x}</button>`).join("")
     + (act.length > 1 ? `<button class="chip" data-unf="*">مسح الكل</button>` : "");
   const inCity = restaurants.filter(r => !city || r.city === city);
   const cats = [...new Set(inCity.map(r => r.category).filter(Boolean))];
@@ -1380,6 +1390,11 @@ function drawHomePins(fit) {
     : !pts.length ? `<div class="map-card"><span class="muted">لم تحدد المطاعم مواقعها على الخريطة بعد.</span></div>`
     : missing ? `<div class="map-card" style="padding:8px 12px"><span class="muted" style="font-size:12px">${missing} مطاعم لم تحدد موقعها بعد وتظهر في القائمة فقط.</span></div>` : "";
 }
+document.addEventListener("click", e => {
+  if (!e.target.closest("[data-report-rest]") || !curRest?.r) return;
+  openChat(supportThread());
+  $("#ch-input").value = `بلاغ عن ${curRest.r.name}: `; autoGrow(); $("#ch-send").disabled = false; $("#ch-input").focus();
+});
 $("#h-mapwrap").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 $("#h-cats").addEventListener("click", e => { const c = e.target.closest("[data-cat]"); if (c) { homeCat = c.dataset.cat; renderHome(); } });
 $("#h-city").addEventListener("change", renderHome);
@@ -1450,8 +1465,8 @@ function renderRestaurant() {
       ${r.hours ? `<span class="muted">ساعات العمل: ${esc(r.hours)}</span>` : ""}
       <div class="meta">
         ${me?.role === "customer" ? `<button class="row gap6" data-dm-rest style="border:0;background:none;padding:0;color:var(--accent);font-weight:700;font-size:13px">${I.chat}راسل المطعم</button>` : ""}
-        <a class="row gap6" href="${wa(r.phone, "مرحباً، أريد الطلب من " + r.name + "\n")}" target="_blank" style="color:var(--green);font-weight:700;text-decoration:none">${I.wa}واتساب</a>
-        ${CONFIG.ADMIN_WHATSAPP ? `<a class="row gap6" href="${wa(CONFIG.ADMIN_WHATSAPP, "بلاغ عن مطعم " + r.name + ":\n")}" target="_blank" style="color:var(--muted);text-decoration:none">${I.flag}إبلاغ عن المطعم</a>` : ""}</div>
+        ${r.phone ? `<a class="row gap6" href="tel:${esc(r.phone)}" style="color:var(--green);font-weight:700;text-decoration:none">${I.phone}اتصال</a>` : ""}
+        <button class="row gap6" data-report-rest style="border:0;background:none;padding:0;color:var(--muted);font-size:13px">${I.flag}إبلاغ عن المطعم</button></div>
       ${!r.isOpen ? `<div class="note n-red">${I.info}المطعم مغلق الآن، يمكنك التصفح فقط.</div>` : ""}
       ${activeOffers.map(o => `<div class="note n-orange">${I.info}<span><b>${esc(o.title)}</b>${o.endsAt ? ` · حتى ${tsDate(o.endsAt).toLocaleDateString(LOC)}` : ""}</span></div>`).join("")}
       ${r.delivery && r.pickup ? `<div class="seg" id="r-type">
@@ -1480,6 +1495,7 @@ function renderRestaurant() {
         <a class="btn btn-sm btn-outline" href="${dirUrl(r)}" target="_blank" style="text-decoration:none">${I.pin}الاتجاهات إلى المطعم</a>
       </section>` : ""}
       ${reviewsBlock(curRest)}
+      <div style="height:${n ? 24 : 40}px"></div>
     </div>
     ${n ? `<div class="bar"><button id="r-cart" class="btn btn-dark" style="justify-content:space-between;padding:0 18px">
       <span class="row gap10"><span style="background:var(--accent);border-radius:8px;padding:1px 9px">${n}</span>عرض السلة</span>
@@ -1744,7 +1760,7 @@ async function renderTrack(o) {
     const box = $("#t-report");
     const done = await F.getRating(o.id).catch(() => null);
     if (done) {
-      box.innerHTML = `<div class="note n-blue">${I.info}<span>قيّمت هذا الطلب ${"★".repeat(done.stars)}. شكراً لك!</span></div>`;
+      box.innerHTML = `<div class="note n-blue">${I.info}<span>قيّمت هذا الطلب <span class="row" style="display:inline-flex;gap:2px;vertical-align:middle">${starIcon("#F59E0B",14).repeat(done.stars)}</span> شكراً لك!</span></div>`;
     } else {
       let stars = 0;
       box.innerHTML = `<div class="box col gap10" style="border:2px solid #F59E0B">
@@ -1812,7 +1828,7 @@ function openDrawer() {
     <div class="col" style="padding:8px 0">
       ${row("home", I.home, "الرئيسية")}${row("top", I.star, "الأعلى تقييماً")}${row("myorders", I.bag, "طلباتي")}
       ${row("account", I.user, "حسابي")}${row("support", I.chat, "الدعم والمساعدة")}${row("about", I.info2, "عن التطبيق")}
-      ${CONFIG.ADMIN_WHATSAPP ? `<a class="mrow" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، أحتاج مساعدة في أكل شنو؟\n")}" target="_blank">${I.wa}<span>تواصل معنا</span>${I.chev}</a>` : ""}
+      ${CONFIG.ADMIN_PHONE ? `<a class="mrow" href="tel:${CONFIG.ADMIN_PHONE}">${I.phone}<span>اتصل بنا</span>${I.chev}</a>` : ""}
       ${isAdmin ? row("admin", I.shield, "لوحة الأدمن") : ""}
     </div>
     <div class="grow"></div>
@@ -1861,7 +1877,7 @@ function showAccount() {
         </div>
         <div class="box col" style="padding:4px 0">
           ${row("myorders", I.bag, "طلباتي")}${row("support", I.chat, "الدعم والمساعدة")}${row("about", I.info2, "عن التطبيق")}
-          ${CONFIG.ADMIN_WHATSAPP ? `<a class="mrow" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، أحتاج مساعدة في أكل شنو؟\n")}" target="_blank">${I.wa}<span>تواصل معنا</span>${I.chev}</a>` : ""}
+          ${CONFIG.ADMIN_PHONE ? `<a class="mrow" href="tel:${CONFIG.ADMIN_PHONE}">${I.phone}<span>اتصل بنا</span>${I.chev}</a>` : ""}
           ${isAdmin ? row("admin", I.shield, "لوحة الأدمن") : ""}
         </div>
         <button class="btn btn-outline" data-go="logout" style="color:var(--red)">${I.out}تسجيل الخروج</button>
@@ -1931,8 +1947,8 @@ function showAbout() {
   $("#ab-back").innerHTML = I.back;
   document.querySelector("#s-about .logo").innerHTML = I.food;
   $("#ab-ver").textContent = "الإصدار " + APP_VERSION;
-  $("#ab-links").innerHTML = CONFIG.ADMIN_WHATSAPP
-    ? `<a class="btn btn-green" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، بخصوص أكل شنو؟\n")}" target="_blank" style="text-decoration:none">${I.wa}تواصل معنا عبر واتساب</a>` : "";
+  $("#ab-links").innerHTML = `<button class="btn btn-dark" data-go="support">${I.chat}راسل الدعم داخل التطبيق</button>
+    ${CONFIG.ADMIN_PHONE ? `<a class="btn btn-outline" href="tel:${CONFIG.ADMIN_PHONE}" style="text-decoration:none;margin-top:8px">${I.phone}اتصل بنا <span dir="ltr">${CONFIG.ADMIN_PHONE}</span></a>` : ""}`;
   $("#ab-links").innerHTML += `<div class="row" style="justify-content:center;gap:18px;margin-top:12px;font-size:14px">
     <a class="link" href="https://skfk86.github.io/akl-shno/privacy.html" target="_blank">سياسة الخصوصية</a>
     <a class="link" href="https://skfk86.github.io/akl-shno/delete-account.html" target="_blank">حذف الحساب</a></div>`;
@@ -2276,8 +2292,8 @@ async function renderOwnerSettings() {
       <span class="muted">يظهر للزبون إذا اختار الدفع المسبق. الزبائن ذوو الإنذارات المتكررة لا يمكنهم الطلب إلا به.</span>
       <button id="st-bankak-save" class="btn btn-sm btn-dark">حفظ</button>
     </section>
-    ${CONFIG.ADMIN_WHATSAPP ? `<a class="btn btn-green" href="${wa(CONFIG.ADMIN_WHATSAPP, "مرحباً، أنا صاحب " + r.name + " في أكل شنو؟\n")}" target="_blank" style="text-decoration:none;margin-top:8px">${I.wa}تواصل مع الإدارة عبر واتساب</a>` : ""}
     <button class="btn btn-dark" data-go="support" style="margin-top:8px">${I.chat}الدعم: راسل إدارة التطبيق</button>
+    ${CONFIG.ADMIN_PHONE ? `<a class="btn btn-outline" href="tel:${CONFIG.ADMIN_PHONE}" style="text-decoration:none;margin-top:8px">${I.phone}اتصل بالإدارة</a>` : ""}
     <button class="btn btn-ghost" data-go="about" style="margin-top:8px">${I.info2}عن التطبيق</button>
     <button class="btn btn-outline" data-logout2 style="margin-top:8px">تسجيل الخروج</button>
     <button data-delete-account style="border:0;background:none;color:var(--muted);font-size:13px;text-decoration:underline;padding:10px">حذف حسابي ومطعمي نهائياً</button>
@@ -2358,6 +2374,14 @@ function openRenew() {
 // ════════════════════════════════════════
 let adTab = "rest", adRest = [];
 
+let adSupUnsub = null;
+function startAdminWatch() {
+  adSupUnsub?.();
+  adSupUnsub = F.adminWatchSupport(th => {
+    const n = th.filter(x => x.lastFrom === "user" && (x.lastAt?.toMillis?.() || 0) > getSeen({ kind: "support", id: x.id })).length;
+    const d = $("#ad-sup-dot"); d.hidden = !n; d.textContent = n;
+  });
+}
 async function showAdmin() {
   clearSubs();
   show("admin");
@@ -2392,7 +2416,7 @@ async function loadAdmin() {
           ${r.subActiveUntil == null ? `<button class="btn btn-sm btn-green" data-trial="${esc(r.id)}" ${seatsLeft <= 0 ? "disabled" : ""}>${seatsLeft > 0 ? "تفعيل الشهرين المجانيين" : "انتهت المقاعد المجانية"}</button>`
             : `<button class="btn btn-sm ${r.listed === false ? "btn-green" : "btn-danger"}" data-list="${esc(r.id)}" data-v="${r.listed === false ? 1 : 0}">${r.listed === false ? "إعادة إظهار المطعم" : "إيقاف المطعم"}</button>`}
           ${r.subActiveUntil != null ? `<button class="btn btn-sm ${r.verified ? "btn-ghost" : "btn-outline"}" style="width:auto;padding:0 12px" data-verify="${esc(r.id)}" data-v="${r.verified ? 0 : 1}">${r.verified ? "إلغاء التوثيق" : "توثيق"}</button>` : ""}
-          <a class="icon-btn" href="${wa(r.phone, "مرحباً من إدارة أكل شنو؟ بخصوص " + r.name + "\n")}" target="_blank" aria-label="واتساب" style="background:var(--green-soft);color:var(--green)">${I.wa}</a>
+          <a class="icon-btn" href="tel:${esc(r.phone)}" aria-label="اتصال" style="background:var(--green-soft);color:var(--green)">${I.phone}</a>
         </div>
       </div>`; }).join("") : emptyState("لا توجد مطاعم بعد", "");
   }
@@ -2421,6 +2445,7 @@ async function loadAdmin() {
       : emptyState("لا توجد محادثات", "رسائل المستخدمين للدعم تظهر هنا.");
     body._sup = th;
   }
+  if (adTab === "stats") await renderAdminStats(rest, banned);
   if (adTab === "rep") {
     body.innerHTML = reps.length ? reps.map(r => {
       const rr = rest.find(x => x.id === r.restaurantId);
@@ -2440,6 +2465,65 @@ async function loadAdmin() {
         : `<span class="muted">لا توجد أجهزة محظورة. يُحظر الجهاز تلقائياً عند وصول الحساب إلى 3 إنذارات.</span>`}`;
     body._reps = reps; body._banned = banned;
   }
+}
+
+async function renderAdminStats(rest, banned) {
+  const body = $("#ad-body");
+  const { customers, owners, orders, pays } = await F.adminStats();
+  const DAY = 864e5, now = Date.now(), t0 = new Date(new Date().setHours(0, 0, 0, 0)).getTime();
+  const t = o => (o.createdAt?.seconds ?? now / 1000) * 1000;
+  const done = orders.filter(o => o.status === "delivered");
+  const lost = orders.filter(o => ["rejected", "cancelled"].includes(o.status));
+  const gmv = done.reduce((a, o) => a + (o.total || 0), 0);
+  const today = orders.filter(o => t(o) >= t0).length, week = orders.filter(o => t(o) >= now - 7 * DAY).length;
+  const subRev = pays.reduce((a, p) => a + (p.amount || 0), 0);
+  const subMonth = pays.filter(p => (p.createdAt?.seconds || 0) * 1000 >= now - 30 * DAY).reduce((a, p) => a + (p.amount || 0), 0);
+  const active = rest.filter(r => daysLeft(r.subActiveUntil) > 0 && r.listed !== false);
+  const pending = rest.filter(r => r.subActiveUntil == null).length;
+  const expired = rest.filter(r => r.subActiveUntil != null && daysLeft(r.subActiveUntil) <= 0).length;
+  const trials = rest.filter(r => r.freeTrial).length;
+  const rated = rest.filter(r => r.ratingCount);
+  const avgAll = rated.length ? rated.reduce((a, r) => a + r.ratingSum, 0) / rated.reduce((a, r) => a + r.ratingCount, 0) : 0;
+  const days = [...Array(7)].map((_, i) => {
+    const d = t0 - (6 - i) * DAY;
+    return [new Date(d).toLocaleDateString(LOC, { weekday: "short" }), orders.filter(o => t(o) >= d && t(o) < d + DAY).length];
+  });
+  const maxD = Math.max(1, ...days.map(d => d[1]));
+  const byRest = {}; orders.forEach(o => { byRest[o.restaurantId] = (byRest[o.restaurantId] || 0) + 1; });
+  const topRest = Object.entries(byRest).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const byCity = {}; active.forEach(r => { byCity[r.city || "—"] = (byCity[r.city || "—"] || 0) + 1; });
+  const kpi = (v, l, c) => `<div class="kpi"><b ${c ? `style="color:${c}"` : ""}>${v}</b><span>${l}</span></div>`;
+  const num = v => v == null ? "—" : Number(v).toLocaleString("en");
+  body.innerHTML = `
+    <h2>المستخدمون والمطاعم</h2>
+    <div class="kpis">
+      ${kpi(num(customers), "زبون مسجّل")}${kpi(num(owners), "صاحب مطعم")}
+      ${kpi(active.length, "مطعم نشط ظاهر", "var(--green)")}${kpi(pending, "بانتظار التفعيل", pending ? "var(--accent)" : "")}
+      ${kpi(expired, "اشتراك منتهٍ", expired ? "var(--red)" : "")}${kpi(`${trials} / ${CONFIG.FREE_SEATS}`, "مقاعد مجانية مستخدمة")}
+    </div>
+    <h2 style="margin-top:6px">الطلبات (آخر 30 يوماً)</h2>
+    <div class="kpis">
+      ${kpi(today, "طلبات اليوم")}${kpi(week, "آخر 7 أيام")}
+      ${kpi(orders.length, "آخر 30 يوماً")}${kpi(done.length, "تم تسليمها", "var(--green)")}
+      ${kpi(orders.length ? Math.round(lost.length / orders.length * 100) + "%" : "—", "نسبة الرفض والإلغاء", lost.length ? "var(--red)" : "")}
+      ${kpi(done.length ? money(Math.round(gmv / done.length)) : "—", "متوسط الطلب")}
+    </div>
+    <section class="box col gap6"><b>الطلبات آخر 7 أيام</b>
+      <div class="bars">${days.map(([l, n]) => `<div><span style="color:var(--ink);font-weight:700">${n || ""}</span><i style="height:${(n / maxD) * 80}%;opacity:${n ? 1 : .25}"></i><span>${l}</span></div>`).join("")}</div>
+    </section>
+    <h2 style="margin-top:6px">المال</h2>
+    <div class="kpis">
+      ${kpi(money(gmv), "مبيعات المطاعم (30 يوماً)")}${kpi(money(subMonth), "اشتراكات آخر 30 يوماً", "var(--green)")}
+      ${kpi(money(subRev), "إجمالي الاشتراكات المعتمدة")}${kpi(rated.length ? `<span class="row gap6">${starIcon("#F59E0B", 18)}${avgAll.toFixed(1)}</span>` : "—", "متوسط تقييم المطاعم")}
+    </div>
+    <section class="box col gap10"><b>الأكثر طلباً (30 يوماً)</b>
+      ${topRest.length ? topRest.map(([id, n], i) => `<div class="row gap10"><span class="badge ${i ? "b-gray" : "b-orange"}">${i + 1}</span>
+        <span class="grow">${esc(rest.find(r => r.id === id)?.name || "مطعم محذوف")}</span><b>${n} طلب</b></div>`).join("") : `<span class="muted">لا توجد طلبات بعد.</span>`}
+    </section>
+    <section class="box col gap10"><b>المطاعم النشطة حسب المدينة</b>
+      ${Object.keys(byCity).length ? Object.entries(byCity).sort((a, b) => b[1] - a[1]).map(([c, n]) => `<div class="row between"><span>${esc(c)}</span><b>${n}</b></div>`).join("") : `<span class="muted">لا توجد مطاعم نشطة.</span>`}
+    </section>
+    <section class="box row between"><span class="row gap6">${I.warn}أجهزة محظورة</span><b>${banned.length}</b></section>`;
 }
 
 $("#ad-seg").addEventListener("click", e => {
