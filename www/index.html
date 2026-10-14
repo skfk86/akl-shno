@@ -1868,6 +1868,12 @@ async function showAdmin() {
 async function loadAdmin() {
   const [rest, pays, reps] = await Promise.all([F.adminListRestaurants(), F.adminListPayments(), F.adminListDisputes()]);
   adRest = rest;
+  // إصلاح تلقائي: مطاعم فُعّلت قبل إضافة حقل listed لا تظهر للزبائن
+  const fix = rest.filter(r => r.subActiveUntil != null && r.listed === undefined);
+  if (fix.length) {
+    await Promise.all(fix.map(r => F.adminSetListed(r.id, true).then(() => { r.listed = true; })));
+    toast(`تم إصلاح ظهور ${fix.length} مطعم للزبائن`);
+  }
   const active = rest.filter(r => daysLeft(r.subActiveUntil) > 0).length;
   const seatsLeft = CONFIG.FREE_SEATS - rest.filter(r => r.freeTrial).length;
   $("#ad-stats").innerHTML = `<div><b>${active}</b><span>مطعم نشط</span></div>
