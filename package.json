@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@capacitor/core": "latest",
-    "@capacitor/android": "latest",
-    "@capacitor-firebase/authentication": "latest"
+    "@capacitor/core": "8.5.3",
+    "@capacitor/android": "8.5.3",
+    "@capacitor-firebase/authentication": "8.5.2"
   },
-  "devDependencies": { "@capacitor/cli": "latest" }
+  "devDependencies": { "@capacitor/cli": "8.5.3" }
 }
