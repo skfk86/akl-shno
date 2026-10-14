@@ -3,3 +3,6 @@ android/app/build/
 *.keystore
 *.jks
 tests/firestore.rules
+tests/e2e-www/
+tests/shots/
+tests/e2e-results.txt
