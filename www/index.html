@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#C2410C">
 <title>أكل شنو؟</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,6 +21,12 @@
   [hidden]{display:none!important}
   svg{flex-shrink:0}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  html,body{overflow-x:hidden;overscroll-behavior:none;width:100%;max-width:100%;touch-action:pan-y}
+  body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text}
+  img{-webkit-user-drag:none;max-width:100%}
+  .screen{overflow-x:clip;max-width:100vw}
+  .hscroll,.chips,.tabs-h{touch-action:pan-x pan-y;overscroll-behavior-x:contain}
   html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
     font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;font-size:15px}
   button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
@@ -226,6 +232,12 @@
   .ph-box{position:relative;overflow:hidden}
   .imgpick{display:flex;gap:12px;align-items:center}
   .imgpick .ph-box{width:84px;height:84px;border-radius:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff}
+  .quick{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:16px;background:#fff;text-align:right;min-height:58px}
+  .quick b{font-size:14px}.quick small{font-size:11px;color:var(--muted)}
+  .qi{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .near{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--fill)}
+  .near .cover{width:64px;height:64px;border-radius:14px;flex-shrink:0}
+  .near .rank{width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
   .deal{flex:0 0 260px;border:0;padding:16px;border-radius:20px;color:#fff;text-align:right;display:flex;flex-direction:column;gap:6px;
     position:relative;overflow:hidden;min-height:128px;justify-content:space-between}
   .deal::after{content:"";position:absolute;left:-30px;bottom:-40px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.12)}
@@ -331,6 +343,12 @@
       <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#57534E" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
       <input id="h-search" placeholder="ابحث عن مطعم" aria-label="بحث" style="flex:1;border:0;background:none;outline:none;font-size:15px">
     </label>
+    <div class="row2">
+      <button id="h-nearest" class="quick"><span class="qi" style="background:var(--accent-soft);color:var(--accent)"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg></span>
+        <span class="col"><b>الأقرب لي</b><small>مطاعم حولك الآن</small></span></button>
+      <button id="h-route" class="quick"><span class="qi" style="background:var(--blue-soft);color:var(--blue)"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2l-2-6h-1l-2-4H8L6 11H5l-2 6h2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg></span>
+        <span class="col"><b>في طريقي</b><small>أثناء القيادة</small></span></button>
+    </div>
   </div>
   <div class="promo brand-bg">
     <div class="col" style="gap:3px"><span style="font-size:12px;font-weight:500;opacity:.9">أكل شنو؟</span>
@@ -576,12 +594,12 @@ function openPicker({ title, start, mode, landmark = "", label = "", onConfirm }
   const labels = mode === "order" ? ["", "البيت", "الشغل", "أهلي"] : ["البيت", "الشغل", "أهلي"];
   const panel = $("#pk-panel");
   panel.innerHTML = `
-    ${mode === "restaurant" ? `<span class="muted">ضع الدبوس على مدخل المطعم بالضبط ليصل إليه الزبائن والمندوبون.</span>` : `
+    ${mode === "dest" ? `<span class="muted">حرّك الخريطة إلى وجهتك، ونعرض لك المطاعم المفتوحة على طريقك.</span>` : mode === "restaurant" ? `<span class="muted">ضع الدبوس على مدخل المطعم بالضبط ليصل إليه الزبائن والمندوبون.</span>` : `
       <label class="field">وصف المكان (معلم قريب)<input id="pk-land" value="${esc(landmark)}" placeholder="مثلاً: جنب مسجد الحارة، الباب الأخضر"></label>
       <div class="col gap6"><span style="font-size:13px;font-weight:500">${mode === "order" ? "احفظ هذا العنوان باسم" : "اسم العنوان"}</span>
         <div class="chips" style="padding:0" id="pk-labels">${labels.map(l => `<button class="chip ${lbl === l ? "on" : ""}" data-lbl="${l}">${l || "لا تحفظ"}</button>`).join("")}</div></div>`}
     <p id="pk-err" class="err"></p>
-    <button id="pk-ok" class="btn btn-primary">${mode === "restaurant" ? "حفظ موقع المطعم" : "تأكيد الموقع"}</button>`;
+    <button id="pk-ok" class="btn btn-primary">${mode === "restaurant" ? "حفظ موقع المطعم" : mode === "dest" ? "اعرض المطاعم في طريقي" : "تأكيد الموقع"}</button>`;
   if (pkMap) { pkMap.remove(); pkMap = null; }
   pkMap = pickerMap("pk-map", start || myLoc || CONFIG.DEFAULT_LOC, start || myLoc ? 18 : 13, p => loc = p, !!start);
   // موقع GPS قديم أو تقريبي قد يبعد عشرات الأمتار: نطلب قراءة جديدة ولا نعتمده حتى تتحرك الخريطة إليه
@@ -595,7 +613,7 @@ function openPicker({ title, start, mode, landmark = "", label = "", onConfirm }
     if (!e.target.closest("#pk-ok")) return;
     const land = panel.querySelector("#pk-land")?.value.trim() || "";
     if (!loc) return panel.querySelector("#pk-err").textContent = "حرّك الخريطة ليقع الدبوس على المكان.";
-    if (mode !== "restaurant" && land.length < 3) return panel.querySelector("#pk-err").textContent = "اكتب وصفاً للمكان أو معلماً قريباً.";
+    if (mode !== "restaurant" && mode !== "dest" && land.length < 3) return panel.querySelector("#pk-err").textContent = "اكتب وصفاً للمكان أو معلماً قريباً.";
     busy(e.target, async () => { await onConfirm(loc, { landmark: land, label: lbl }); closePicker(); });
   };
 }
@@ -693,6 +711,107 @@ const pickFile = () => new Promise(res => {
   const i = document.createElement("input"); i.type = "file"; i.accept = "image/*";
   i.onchange = () => res(i.files[0] || null); i.click();
 });
+
+// ═════════ الأقرب لي / في طريقي ═════════
+const fmtKm = d => d < 1 ? Math.round(d * 1000) + " م" : d.toFixed(1) + " كم";
+const etaMin = (km, kmh) => Math.max(1, Math.round(km / kmh * 60));
+function nearRow(r, i, extra) {
+  return `<div class="near"><span class="rank">${i + 1}</span>
+    <div class="cover" style="${coverBg(r.name)}">${imgTag(r.image)}<span class="icon">${catIcon(r.category, 26)}</span></div>
+    <div class="col grow" style="gap:3px;min-width:0"><b style="font-size:15px">${esc(r.name)}</b>
+      <div class="meta" style="gap:8px;align-items:center">${ratingTag(r)}<span>${esc(r.category)}</span></div>
+      <span style="font-size:13px;font-weight:500;color:var(--accent-dark)">${extra}</span></div>
+    <div class="col gap6"><button class="btn btn-sm btn-primary" data-rest="${esc(r.id)}" style="width:auto;padding:0 12px;height:38px">المنيو</button>
+      <a class="btn btn-sm btn-ghost" href="https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.lng}" target="_blank" style="width:auto;padding:0 12px;height:38px;text-decoration:none">اتجاهات</a></div></div>`;
+}
+function bindNearSheet(b) {
+  b.addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) { closeSheet(); if (pickupMode) pendingPickup = true; openRestaurant(c.dataset.rest); } });
+}
+let pickupMode = false, pendingPickup = false;
+
+async function showNearest() {
+  const btn = $("#h-nearest"); btn.disabled = true;
+  const me0 = await getMyLoc(true); btn.disabled = false;
+  if (!me0) return;
+  const open = restaurants.filter(r => hasLoc(r) && r.isOpen)
+    .map(r => ({ r, d: distKm(me0, [r.lat, r.lng]) })).sort((a, b) => a.d - b.d).slice(0, 6);
+  if (!open.length) return toast("لا توجد مطاعم مفتوحة حددت موقعها بعد.");
+  pickupMode = false;
+  const b = openSheet(`<div class="row between"><h2>الأقرب لك الآن</h2><span class="muted">مفتوح فقط</span></div>
+    <div id="nr-map" class="mapbox" style="height:200px"></div>
+    <div class="col">${open.map((x, i) => nearRow(x.r, i, `${fmtKm(x.d)} · نحو ${etaMin(x.d * 1.3, 25)} د بالسيارة`)).join("")}</div>`);
+  bindNearSheet(b);
+  if (window.L) {
+    const m = makeMap(b.querySelector("#nr-map").appendChild(document.createElement("div")), me0, 14);
+    b.querySelector("#nr-map > div").style.cssText = "width:100%;height:100%";
+    L.marker(me0, { icon: userIcon(), interactive: false }).addTo(m);
+    open.forEach(x => L.marker([x.r.lat, x.r.lng], { icon: restIcon(x.r, false) }).addTo(m));
+    m.fitBounds(L.latLngBounds([me0, ...open.map(x => [x.r.lat, x.r.lng])]), { padding: [30, 30], maxZoom: 15 });
+    setTimeout(() => m.invalidateSize(), 60);
+  }
+}
+
+// إسقاط محلي بالأمتار، ثم أقرب نقطة على المسار وموقعها على طوله
+function routeMatch(path, pt) {
+  const k = Math.cos(pt[0] * Math.PI / 180), M = 111320;
+  const xy = p => [(p[1] - pt[1]) * M * k, (p[0] - pt[0]) * M];
+  let best = { off: Infinity, along: 0 }, acc = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = xy(path[i]), b = xy(path[i + 1]);
+    const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy, seg = Math.sqrt(L2);
+    const t = L2 ? Math.max(0, Math.min(1, -(a[0] * dx + a[1] * dy) / L2)) : 0;
+    const px = a[0] + t * dx, py = a[1] + t * dy, off = Math.hypot(px, py);
+    if (off < best.off) best = { off, along: acc + t * seg };
+    acc += seg;
+  }
+  return { off: best.off / 1000, along: best.along / 1000, total: acc / 1000 };
+}
+async function roadPath(a, b) {
+  try {
+    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 8000);
+    const j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson`, { signal: ctl.signal })).json();
+    const c = j.routes?.[0]?.geometry?.coordinates;
+    if (c?.length > 1) return { path: c.map(([lng, lat]) => [lat, lng]), road: true, km: j.routes[0].distance / 1000, min: Math.round(j.routes[0].duration / 60) };
+  } catch {}
+  return { path: [a, b], road: false };
+}
+
+async function showOnRoute() {
+  const btn = $("#h-route"); btn.disabled = true;
+  const from = await getMyLoc(true); btn.disabled = false;
+  if (!from) return;
+  openPicker({
+    title: "إلى أين تتجه؟", mode: "dest", start: null,
+    onConfirm: async to => {
+      const rt = await roadPath(from, to);
+      const CORRIDOR = 1.5; // كم من الطريق
+      const hits = restaurants.filter(r => hasLoc(r) && r.isOpen && r.pickup)
+        .map(r => ({ r, ...routeMatch(rt.path, [r.lat, r.lng]) }))
+        .filter(x => x.off <= CORRIDOR && x.along <= x.total + 0.3)
+        .sort((a, b) => a.along - b.along).slice(0, 8);
+      pickupMode = true;
+      const b = openSheet(`<div class="col gap6"><h2>مطاعم في طريقك</h2>
+        <span class="muted">${rt.road ? `المشوار ${rt.km.toFixed(1)} كم · نحو ${rt.min} دقيقة` : "حسبنا خطاً مستقيماً لأن خدمة الطرق لم تستجب"}. اطلب الآن واستلم وأنت تمر.</span></div>
+        <div id="rt-map" class="mapbox" style="height:220px"></div>
+        ${hits.length ? `<div class="col">${hits.map((x, i) => nearRow(x.r, i,
+            `بعد ${fmtKm(x.along)} من الطريق · ${x.off < 0.15 ? "على الطريق مباشرة" : "تحويلة " + fmtKm(x.off)}`)).join("")}</div>
+          <div class="note n-blue">${I.info}<span>عند فتح المنيو نختار لك <b>الاستلام من المطعم</b> تلقائياً، فيجهّز المطعم طلبك قبل وصولك.</span></div>`
+          : emptyState("لا توجد مطاعم مفتوحة على هذا الطريق", "جرّب وجهة أخرى أو استخدم «الأقرب لي».")}`);
+      bindNearSheet(b);
+      if (window.L) {
+        const box = b.querySelector("#rt-map"), el = box.appendChild(document.createElement("div"));
+        el.style.cssText = "width:100%;height:100%";
+        const m = makeMap(el, from, 13);
+        L.polyline(rt.path, { color: "#1D4ED8", weight: 5, opacity: .8, dashArray: rt.road ? null : "8 8" }).addTo(m);
+        L.marker(from, { icon: userIcon(), interactive: false }).addTo(m);
+        L.marker(to, { interactive: false, icon: L.divIcon({ className: "", iconSize: [38, 46], iconAnchor: [19, 45], html: `<span style="color:var(--ink)">${PIN_SVG}</span>` }) }).addTo(m);
+        hits.forEach(x => L.marker([x.r.lat, x.r.lng], { icon: restIcon(x.r, false) }).addTo(m));
+        m.fitBounds(L.latLngBounds(rt.path), { padding: [30, 30] });
+        setTimeout(() => m.invalidateSize(), 60);
+      }
+    }
+  });
+}
 
 const ST = { new: "جديد", accepted: "تم القبول", preparing: "قيد التحضير", ready: "جاهز للاستلام",
   out_for_delivery: "في الطريق", delivered: "تم التسليم", rejected: "مرفوض", cancelled: "ملغي" };
@@ -961,6 +1080,8 @@ $("#h-cats").addEventListener("click", e => { const c = e.target.closest("[data-
 $("#h-city").addEventListener("change", renderHome);
 $("#h-search").addEventListener("input", renderHome);
 $("#h-refresh").addEventListener("click", showHome);
+$("#h-nearest").addEventListener("click", showNearest);
+$("#h-route").addEventListener("click", showOnRoute);
 $("#h-offers").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 $("#h-top").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 $("#h-list").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
@@ -982,6 +1103,7 @@ async function openRestaurant(id) {
     if (!r) { toast("هذا المطعم غير متاح حالياً."); return showHome(); }
     curRest = { r, menu, offers, zones, ratings };
     if (!cart || cart.r.id !== id) cart = { r, zones, items: {}, type: r.delivery ? "delivery" : "pickup" };
+    if (pendingPickup && r.pickup) { cart.type = "pickup"; pendingPickup = false; }
     else { cart.r = r; cart.zones = zones; }
     renderRestaurant();
   } catch (e) {
