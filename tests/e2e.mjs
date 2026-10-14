@@ -44,6 +44,7 @@ const server = createServer((req, res) => {
   res.end(readFileSync(p));
 }).listen(5173);
 const URL = "http://127.0.0.1:5173/index.html";
+const PROOF_IMG = new globalThis.URL("./proof.jpg", import.meta.url).pathname;
 
 // ───── أدوات ─────
 let pass = 0, fail = 0;
@@ -114,9 +115,57 @@ await t("تسجيل المطعم يفتح لوحة المطعم", async () => {
   await owner.fill("#o-phone", "912345678");
   await tap(owner, "#o-save"); await waitScreen(owner, "s-owner");
 });
-await t("المطعم الجديد يظهر «قيد المراجعة»", async () => {
-  for (let i = 0; i < 25 && !(await owner.textContent("#ow-head")).includes("قيد المراجعة"); i++) await sleep(200);
-  expect((await owner.textContent("#ow-head")).includes("قيد المراجعة"), "no pending note");
+await t("قبل القبول تظهر شاشة التوثيق فقط بلا قائمة سفلية", async () => {
+  for (let i = 0; i < 25 && !(await owner.textContent("#ow-head")).includes("تسجيل مطعم جديد"); i++) await sleep(200);
+  expect((await owner.textContent("#ow-head")).includes("تسجيل مطعم جديد"), "no verify screen");
+  expect(!(await owner.locator("#s-owner nav.tabs").isVisible()), "nav visible before approval");
+});
+await t("لا يُرسل للمراجعة بدون صورة الواجهة", async () => {
+  await tap(owner, "#vf-send"); await sleep(300);
+  expect((await owner.textContent("#vf-err")).includes("واجهة"), "no error");
+});
+await t("رفع صورة واجهة المطعم", async () => {
+  const [fc] = await Promise.all([owner.waitForEvent("filechooser"), tap(owner, '[data-vf-pick="sign"]')]);
+  await fc.setFiles(PROOF_IMG); await sleep(1500);
+  expect(await owner.locator('[data-vf-pick="sign"].has').count() === 1, "image not attached");
+});
+await t("تحديد الموقع ثم الإرسال للمراجعة", async () => {
+  await tap(owner, "#st-loc-edit"); await sleep(2500);
+  await tap(owner, "#pk-ok"); await sleep(1800);
+  await tap(owner, "#vf-send"); await sleep(2500);
+  expect((await owner.textContent("#ow-body")).includes("قيد المراجعة"), "not pending: " + await owner.textContent("#vf-err").catch(() => ""));
+});
+
+
+// ═════════════════════════════════════════
+section("2. الأدمن");
+const adminUid = await signUpRest("admin@test.sd");
+await seed(`users/${adminUid}`, { role: "customer", name: "الأدمن", phone: "+249900000001", strikes: 0, delivered: 0 });
+await seed(`admins/${adminUid}`, { name: "admin" });
+const admin = await user("admin", "admin@test.sd");
+await admin.goto(URL);
+await t("حساب الأدمن يفتح لوحة الأدمن", async () => {
+  await tap(admin, '[data-role="customer"]'); await waitScreen(admin, "s-admin");
+});
+await t("المطعم الجديد يظهر «بانتظار المراجعة» مع صورة الإثبات", async () => {
+  await sleep(1500); expect((await admin.textContent("#ad-body")).includes("بانتظار المراجعة"), "not listed as pending review");
+  expect(await admin.locator("[data-proof]").count() >= 1, "no proof image");
+});
+await t("قبول المطعم وتفعيل الشهرين المجانيين", async () => {
+  await tap(admin, '[data-approve][data-trial-too="1"]'); await sleep(2000);
+  expect((await admin.textContent("#ad-body")).includes("يوماً"), "not activated");
+});
+await t("توثيق المطعم", async () => {
+  await tap(admin, '[data-verify][data-v="1"]'); await sleep(1800);
+  expect((await admin.textContent("#ad-body")).includes("موثّق"), "no verified badge");
+});
+await shot(admin, "02-admin");
+
+// ═════════════════════════════════════════
+section("2ب. المطعم بعد القبول");
+await t("لوحة المطعم تُفتح تلقائياً بعد القبول", async () => {
+  for (let i = 0; i < 30 && !(await owner.locator("#s-owner nav.tabs").isVisible()); i++) await sleep(300);
+  expect(await owner.locator("#s-owner nav.tabs").isVisible(), "dashboard not unlocked");
 });
 await t("إضافة صنف بسعر مخفّض", async () => {
   await tap(owner, '.screen.on nav [data-go="menu"]'); await sleep(800);
@@ -159,29 +208,6 @@ await t("فتح المطعم", async () => {
   expect((await owner.textContent("#ow-head")).includes("مفتوح"), "not open");
 });
 await shot(owner, "01-owner-settings");
-
-// ═════════════════════════════════════════
-section("2. الأدمن");
-const adminUid = await signUpRest("admin@test.sd");
-await seed(`users/${adminUid}`, { role: "customer", name: "الأدمن", phone: "+249900000001", strikes: 0, delivered: 0 });
-await seed(`admins/${adminUid}`, { name: "admin" });
-const admin = await user("admin", "admin@test.sd");
-await admin.goto(URL);
-await t("حساب الأدمن يفتح لوحة الأدمن", async () => {
-  await tap(admin, '[data-role="customer"]'); await waitScreen(admin, "s-admin");
-});
-await t("المطعم الجديد يظهر «بانتظار التفعيل»", async () => {
-  await sleep(1500); expect((await admin.textContent("#ad-body")).includes("بانتظار التفعيل"), "not listed as pending");
-});
-await t("تفعيل الشهرين المجانيين", async () => {
-  await tap(admin, "[data-trial]"); await sleep(2000);
-  expect((await admin.textContent("#ad-body")).includes("يوماً"), "not activated");
-});
-await t("توثيق المطعم", async () => {
-  await tap(admin, '[data-verify][data-v="1"]'); await sleep(1800);
-  expect((await admin.textContent("#ad-body")).includes("موثّق"), "no verified badge");
-});
-await shot(admin, "02-admin");
 
 // ═════════════════════════════════════════
 section("3. الزبون: من التسجيل حتى الطلب");

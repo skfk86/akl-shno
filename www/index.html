@@ -266,7 +266,15 @@
   .qr{display:flex;gap:8px;overflow-x:auto;padding:8px 12px 0;background:#fff;scrollbar-width:none}
   .qr::-webkit-scrollbar{display:none}
   .qr button{flex-shrink:0;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px}
-  .udot{width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;box-shadow:0 0 0 3px var(--accent-soft)}
+  .steps-v{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+  .steps-v span{display:flex;align-items:center;gap:4px;white-space:nowrap}
+  .steps-v span.on{color:var(--green);font-weight:700}
+  .steps-v i{flex:1;height:2px;background:var(--line);border-radius:2px}
+  .proof{display:flex;gap:12px;align-items:center;width:100%;padding:12px;border-radius:16px;border:2px dashed var(--line);background:#fff;font:inherit;color:inherit;cursor:pointer}
+  .proof.has{border-style:solid;border-color:var(--green)}
+  .pimg{width:76px;height:76px;border-radius:12px;background:var(--fill);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;color:var(--muted)}
+  .pimg img{width:100%;height:100%;object-fit:cover}
+  .unread-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;box-shadow:0 0 0 3px var(--accent-soft)}
   #ad-sup-dot{top:2px;left:4px;min-width:16px;height:16px;font-size:10px}
   .dot{position:absolute;top:-3px;left:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
   .deal{flex:0 0 260px;border:0;padding:16px;border-radius:20px;color:#fff;text-align:right;display:flex;flex-direction:column;gap:6px;
@@ -473,7 +481,7 @@
   <div class="header"><button class="icon-btn" id="ab-back" aria-label="رجوع"></button><h1>عن التطبيق</h1></div>
   <div class="col gap14 grow" style="padding:8px 20px 24px">
     <div class="col" style="align-items:center;gap:10px;padding:16px 0">
-      <div class="logo brand-bg" style="color:#fff;width:84px;height:84px;border-radius:24px"></div>
+      <img src="icon.webp" alt="أيقونة أكل شنو؟" width="96" height="96" style="border-radius:26px;box-shadow:0 10px 30px rgba(194,65,12,.25)">
       <b style="font-size:24px">أكل شنو؟</b><span class="muted" id="ab-ver"></span>
     </div>
     <p style="line-height:1.9;margin:0">أكل شنو؟ يجمع مطاعم السودان في مكان واحد: تصفح المنيو، اطلب للبيت أو استلم من المطعم، وتابع طلبك لحظة بلحظة. الدفع عند الاستلام أو ببنكك.</p>
@@ -561,6 +569,9 @@ const I = {
 };
 
 I.wa = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.7-5A8.5 8.5 0 1 1 8 19.3Z"/><path d="M9 10c0 3 2 5 5 5l1.5-1.5-2-1-1 1c-1 0-2.5-1.5-2.5-2.5l1-1-1-2Z"/></svg>';
+I.camera = '<svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+I.clock = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+I.lock = '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 I.x = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 I.flag = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4a1 1 0 0 1 1-1h13l-2 5 2 5H5"/></svg>';
 
@@ -972,13 +983,13 @@ function renderInbox() {
       <div class="avatar" style="width:46px;height:46px;font-size:18px;${owner ? "" : `background:${colorOf(name)}`}">${initial(name)}</div>
       <div class="col grow" style="min-width:0"><div class="row between"><b>${esc(name)}</b><span class="muted" style="font-size:12px">${tsDate(c.lastAt)?.toLocaleString(LOC, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) || ""}</span></div>
         <span class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${un ? "color:var(--ink);font-weight:700" : ""}">${c.lastFrom === myRole() ? "أنت: " : ""}${esc(c.lastText)}</span></div>
-      ${un ? '<span class="udot" aria-label="غير مقروءة"></span>' : ""}</button>`;
+      ${un ? '<span class="unread-dot" aria-label="غير مقروءة"></span>' : ""}</button>`;
   }).join("");
   const supUn = supportUnread();
   const supportRow = `<button class="box row gap10" data-go="support" style="width:100%;text-align:right;${supUn ? "border:2px solid var(--accent)" : ""}">
       <div class="avatar" style="width:46px;height:46px;background:var(--ink)">${I.chat}</div>
       <div class="col grow" style="min-width:0"><b>الدعم والمساعدة</b><span class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${supUn ? "color:var(--ink);font-weight:700" : ""}">${supUn ? esc(mySupport.lastText) : owner ? "راسل إدارة التطبيق" : "مشكلة في طلب أو حساب؟ راسلنا"}</span></div>
-      ${supUn ? '<span class="udot" aria-label="غير مقروءة"></span>' : ""}</button>`;
+      ${supUn ? '<span class="unread-dot" aria-label="غير مقروءة"></span>' : ""}</button>`;
   $("#in-list").innerHTML = (rows || emptyState("لا توجد محادثات بعد", owner ? "عندما يراسلك زبون من صفحة مطعمك تظهر المحادثة هنا." : "راسل أي مطعم من صفحته لتسأل قبل الطلب، أو راسل المطعم من شاشة تتبع طلبك.")) + supportRow;
 }
 $("#in-list").addEventListener("click", e => {
@@ -1945,7 +1956,6 @@ function showAbout() {
   if (curScreen !== "about") aboutBack = curScreen;
   show("about");
   $("#ab-back").innerHTML = I.back;
-  document.querySelector("#s-about .logo").innerHTML = I.food;
   $("#ab-ver").textContent = "الإصدار " + APP_VERSION;
   $("#ab-links").innerHTML = `<button class="btn btn-dark" data-go="support">${I.chat}راسل الدعم داخل التطبيق</button>
     ${CONFIG.ADMIN_PHONE ? `<a class="btn btn-outline" href="tel:${CONFIG.ADMIN_PHONE}" style="text-decoration:none;margin-top:8px">${I.phone}اتصل بنا <span dir="ltr">${CONFIG.ADMIN_PHONE}</span></a>` : ""}`;
@@ -1967,6 +1977,18 @@ async function showOwner() {
   $("#ow-body").innerHTML = `<div class="center"><div class="spinner"></div></div>`;
   myRest = await F.getMyRestaurant();
   if (!myRest) { show("ownerreg"); return; }
+  const nav = document.querySelector("#s-owner nav.tabs");
+  if (!isAccepted(myRest)) {
+    // قبل قبول الإدارة: لا منيو ولا طلبات ولا اشتراك، فقط شاشة التوثيق
+    nav.hidden = true;
+    unsubs.push(F.watchMyRestaurant(r => {
+      const wasOk = isAccepted(myRest); myRest = r;
+      if (isAccepted(r) && !wasOk) { toast("تم قبول مطعمك! مرحباً بك في أكل شنو؟"); showOwner(); }
+      else if (curScreen === "owner") renderVerify();
+    }));
+    show("owner"); return renderVerify();
+  }
+  nav.hidden = false;
   let first = true;
   unsubs.push(F.watchRestaurantOrders(list => {
     const before = ownerOrders.filter(o => o.status === "new").length;
@@ -1992,10 +2014,93 @@ async function showOwner() {
   ownerTab("orders");
 }
 
+// ───── توثيق المطعم قبل القبول ─────
+const isAccepted = r => r?.approved === true || r?.subActiveUntil != null;
+let vfDraft = { sign: null, license: null };
+function renderVerify() {
+  const r = myRest, st = r.review || "new", p = r.proofs || {};
+  const editing = st !== "pending" || renderVerify.edit;
+  const sent = st === "pending";
+  $("#ow-head").innerHTML = `<div class="col gap14" style="padding:16px 20px 14px;background:#fff">
+    <div class="row between"><div class="col"><span class="muted" style="font-size:12px">تسجيل مطعم جديد</span><h1 style="font-size:20px">${esc(r.name)}</h1></div>
+      <button class="icon-btn" data-logout2 aria-label="خروج">${I.out}</button></div>
+    <div class="steps-v">
+      <span class="on">${I.check}التسجيل</span><i></i>
+      <span class="${sent ? "on" : ""}">${sent ? I.check : ""}إرسال الإثبات</span><i></i>
+      <span>القبول</span>
+    </div></div>`;
+  const shot = (k, title, hint, req) => {
+    const img = vfDraft[k] ? `<img class="ph ok" src="${vfDraft[k]}" alt="">` : p[k] ? imgTag(p[k]) : "";
+    return `<button class="proof ${img ? "has" : ""}" data-vf-pick="${k}">
+      <div class="pimg">${img || I.camera}</div>
+      <div class="col grow" style="text-align:right;gap:3px"><b>${title} ${req ? '<span style="color:var(--red)">*</span>' : '<span class="muted" style="font-weight:400;font-size:12px">(اختياري)</span>'}</b>
+        <span class="muted" style="font-size:12px;line-height:1.6">${hint}</span>
+        <span style="font-size:12px;font-weight:700;color:var(--accent)">${img ? "تغيير الصورة" : "التقاط أو اختيار صورة"}</span></div></button>`;
+  };
+  const statusNote = sent
+    ? `<div class="note n-blue">${I.clock}<span><b>طلبك قيد المراجعة.</b> نراجع الإثباتات ونتصل بك على <span dir="ltr">${esc(r.phone)}</span> خلال 24 إلى 48 ساعة، وتصلك رسالة عند القبول.</span></div>`
+    : st === "rejected"
+    ? `<div class="note n-red">${I.warn}<span><b>لم يُقبل الطلب.</b> ${r.rejectReason ? "السبب: " + esc(r.rejectReason) + ". " : ""}صحّح الإثباتات وأرسلها مجدداً.</span></div>`
+    : `<div class="note n-orange">${I.shield}<span>لحماية الزبائن من المطاعم الوهمية، نتحقق من كل مطعم قبل ظهوره. أرسل الإثباتات التالية، وبعد القبول تستطيع إضافة المنيو واستقبال الطلبات.</span></div>`;
+  $("#ow-body").innerHTML = `<div class="list">
+    ${statusNote}
+    ${editing ? `
+      <h2>إثباتات المطعم</h2>
+      ${shot("sign", "صورة واجهة المطعم", "صورة واضحة للمطعم من الخارج تظهر فيها اللافتة والاسم.", true)}
+      ${shot("license", "الرخصة التجارية أو الشهادة الصحية", "إن وُجدت. تسرّع القبول.", false)}
+      <section class="box col gap10">
+        <div class="row between"><b>موقع المطعم على الخريطة <span style="color:var(--red)">*</span></b>
+          ${hasLoc(r) ? `<span class="badge b-green">محدد</span>` : ""}</div>
+        <button id="st-loc-edit" class="btn btn-sm ${hasLoc(r) ? "btn-ghost" : "btn-outline"}">${I.pin}${hasLoc(r) ? "تعديل الموقع" : "حدد موقع المطعم"}</button>
+      </section>
+      <label class="field">ملاحظة للإدارة (اختياري)<textarea id="vf-note" rows="2" placeholder="مثلاً: أفضل وقت للاتصال، أو أقرب معلم">${esc(r.proofNote || "")}</textarea></label>
+      <p id="vf-err" class="err"></p>
+      <button id="vf-send" class="btn btn-primary">${st === "rejected" ? "إعادة الإرسال للمراجعة" : sent ? "حفظ التعديلات" : "إرسال للمراجعة"}</button>
+      <span class="muted" style="font-size:12px;text-align:center">${I.lock} الصور تراها الإدارة فقط، وتُحذف تلقائياً بعد 30 يوماً من المراجعة.</span>`
+    : `<section class="box col gap10"><b>ما أرسلته</b>
+        <div class="row gap10">${["sign", "license"].filter(k => p[k]).map(k => `<div class="pimg" style="width:96px;height:96px">${imgTag(p[k])}</div>`).join("")}</div>
+        ${r.proofNote ? `<span class="muted">${esc(r.proofNote)}</span>` : ""}
+        <button class="btn btn-sm btn-ghost" id="vf-edit">${I.edit}تعديل الإثباتات</button></section>`}
+    <button class="btn btn-dark" data-go="support">${I.chat}راسل الإدارة</button>
+    ${CONFIG.ADMIN_PHONE ? `<a class="btn btn-outline" href="tel:${CONFIG.ADMIN_PHONE}" style="text-decoration:none">${I.phone}اتصل بالإدارة</a>` : ""}
+  </div>`;
+  const body = $("#ow-body");
+  body.onchange = null;
+  body.onclick = async e => {
+    if (e.target.closest("#vf-edit")) { renderVerify.edit = true; return renderVerify(); }
+    const pk = e.target.closest("[data-vf-pick]");
+    if (pk) {
+      const f = await pickFile(); if (!f) return;
+      try { vfDraft[pk.dataset.vfPick] = await compressImage(f, 1100); renderVerify(); }
+      catch { toast("تعذر قراءة الصورة. جرّب صورة أخرى."); }
+      return;
+    }
+    if (e.target.closest("#st-loc-edit")) return openPicker({
+      title: "موقع المطعم", mode: "restaurant", start: hasLoc(r) ? [r.lat, r.lng] : null,
+      onConfirm: async loc => { await F.updateMyRestaurant({ lat: loc[0], lng: loc[1] }); myRest.lat = loc[0]; myRest.lng = loc[1]; toast("تم حفظ الموقع"); renderVerify(); }
+    });
+    const send = e.target.closest("#vf-send");
+    if (send) {
+      const err = $("#vf-err");
+      if (!vfDraft.sign && !p.sign) return err.textContent = "أضف صورة واجهة المطعم.";
+      if (!hasLoc(myRest)) return err.textContent = "حدد موقع المطعم على الخريطة.";
+      return busy(send, async () => {
+        try {
+          await F.submitVerification({ ...vfDraft, note: $("#vf-note").value.trim().slice(0, 300) }, p);
+          vfDraft = { sign: null, license: null }; renderVerify.edit = false;
+          myRest.review = "pending"; renderVerify();
+          toast("تم الإرسال. سنراجع طلبك قريباً");
+        } catch (x) { console.error(x); err.textContent = "تعذر الإرسال. تأكد من الإنترنت وحاول مرة أخرى."; }
+      });
+    }
+  };
+  $("#ow-head").onclick = e => { if (e.target.closest("[data-logout2]")) doLogout(); };
+}
+
 function renderOwnerHead() {
   const r = myRest, d = daysLeft(r.subActiveUntil);
   let sub;
-  if (r.subActiveUntil == null) sub = `<div class="note n-blue">${I.info}<span>مطعمك قيد المراجعة. سنتصل بك لتفعيل فترتك المجانية. جهّز المنيو ومناطق التوصيل الآن.</span></div>`;
+  if (r.subActiveUntil == null) sub = `<div class="note n-blue">${I.info}<span style="flex:1">تم قبول مطعمك. فعّل اشتراكك ليظهر للزبائن، وجهّز المنيو ومناطق التوصيل الآن.</span><button class="link" data-renew style="border:0;background:none;color:#1D4ED8;font-weight:700">تفعيل</button></div>`;
   else if (d <= 0) sub = `<div class="note n-red">${I.warn}<span style="flex:1">انتهى اشتراكك ومطعمك مخفي عن الزبائن.</span><button class="link" data-renew style="border:0;background:none;color:var(--red);font-weight:700">تجديد</button></div>`;
   else sub = `<div class="note n-orange">${I.info}<span style="flex:1">${r.freeTrial && d > 30 ? "الفترة المجانية" : "الاشتراك"}: باقي ${d} يوماً</span><button data-renew style="border:0;background:none;color:var(--accent-dark);font-weight:700">تجديد</button></div>`;
   $("#ow-head").innerHTML = `<div class="col gap14" style="padding:16px 20px 14px;background:#fff">
@@ -2402,12 +2507,30 @@ async function loadAdmin() {
   const seatsLeft = CONFIG.FREE_SEATS - rest.filter(r => r.freeTrial).length;
   $("#ad-stats").innerHTML = `<div><b>${active}</b><span>مطعم نشط</span></div>
     <div><b>${seatsLeft} / ${CONFIG.FREE_SEATS}</b><span>مقاعد مجانية متبقية</span></div>
-    <div><b style="color:#FDBA74">${pays.length + reps.length}</b><span>بانتظار المراجعة</span></div>`;
+    <div><b style="color:#FDBA74">${pays.length + reps.length + rest.filter(r => !isAccepted(r) && r.review === "pending").length}</b><span>بانتظار المراجعة</span></div>`;
   const body = $("#ad-body");
   if (adTab === "rest") {
-    const sorted = rest.sort((a, b) => (a.subActiveUntil ? 1 : 0) - (b.subActiveUntil ? 1 : 0));
+    const rank = r => !isAccepted(r) ? (r.review === "pending" ? 0 : r.review === "rejected" ? 3 : 1) : r.subActiveUntil ? 4 : 2;
+    const sorted = rest.sort((a, b) => rank(a) - rank(b));
     body.innerHTML = sorted.length ? sorted.map(r => {
       const d = daysLeft(r.subActiveUntil);
+      if (!isAccepted(r)) {
+        const p = r.proofs || {}, rv = r.review || "new";
+        return `<div class="box col gap10" style="${rv === "pending" ? "border:2px solid var(--accent)" : ""}">
+          <div class="row between"><b>${esc(r.name)}</b>
+            <span class="badge ${rv === "pending" ? "b-orange" : rv === "rejected" ? "b-red" : "b-gray"}">${rv === "pending" ? "بانتظار المراجعة" : rv === "rejected" ? "مرفوض" : "لم يرسل الإثبات"}</span></div>
+          <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span><a class="link" href="tel:${esc(r.phone)}" dir="ltr">${esc(r.phone)}</a></div>
+          ${p.sign || p.license ? `<div class="row gap10">${[["sign", "الواجهة"], ["license", "الرخصة"]].filter(([k]) => p[k]).map(([k, l]) => `<button class="col gap6" data-proof="${esc(p[k])}" style="border:0;background:none;padding:0;align-items:center;font-size:12px;color:var(--muted)"><div class="pimg" style="width:96px;height:96px">${imgTag(p[k])}</div>${l}</button>`).join("")}</div>` : ""}
+          ${r.proofNote ? `<div class="note" style="background:var(--fill)"><span>${esc(r.proofNote)}</span></div>` : ""}
+          ${hasLoc(r) ? `<a class="link row gap6" href="https://www.google.com/maps?q=${r.lat},${r.lng}" target="_blank">${I.pin}عرض الموقع على الخريطة</a>` : `<span class="muted">${I.pin} لم يحدد الموقع</span>`}
+          ${rv === "rejected" && r.rejectReason ? `<span class="muted">سبب الرفض: ${esc(r.rejectReason)}</span>` : ""}
+          <div class="row gap10">
+            <button class="btn btn-sm btn-green" data-approve="${esc(r.id)}" data-trial-too="${seatsLeft > 0 ? 1 : 0}">${seatsLeft > 0 ? "قبول + شهرين مجاناً" : "قبول"}</button>
+            ${seatsLeft > 0 ? `<button class="btn btn-sm btn-outline" style="width:auto;padding:0 12px" data-approve="${esc(r.id)}" data-trial-too="0">قبول فقط</button>` : ""}
+            <button class="btn btn-sm btn-danger" style="width:auto;padding:0 14px" data-reject="${esc(r.id)}">رفض</button>
+            <a class="icon-btn" href="tel:${esc(r.phone)}" aria-label="اتصال" style="background:var(--green-soft);color:var(--green)">${I.phone}</a>
+          </div></div>`;
+      }
       return `<div class="box col gap10">
         <div class="row between"><span class="row gap6"><b>${esc(r.name)}</b>${verifiedTag(r)}</span>
           <span class="badge ${r.subActiveUntil == null ? "b-blue" : r.listed === false ? "b-red" : d > 0 ? "b-green" : "b-red"}">${r.subActiveUntil == null ? "بانتظار التفعيل" : r.listed === false ? "موقوف" : d > 0 ? `باقي ${d} يوماً` : "منتهي"}</span></div>
@@ -2538,6 +2661,27 @@ $("#ad-as-customer").addEventListener("click", () => {
 });
 $("#ad-body").addEventListener("click", e => {
   const body = $("#ad-body");
+  const pf = e.target.closest("[data-proof]");
+  if (pf) { openSheet(`<div class="pimg" style="width:100%;height:auto;min-height:240px;border-radius:16px">${imgTag(pf.dataset.proof)}</div>`); return; }
+  const ap = e.target.closest("[data-approve]");
+  if (ap) return busy(ap, async () => {
+    const r = adRest.find(x => x.id === ap.dataset.approve);
+    if (ap.dataset.trialToo === "1") await F.adminActivateTrial(r); else await F.adminApproveRestaurant(r.id);
+    toast(ap.dataset.trialToo === "1" ? "تم قبول المطعم وتفعيل شهرين مجاناً" : "تم قبول المطعم"); loadAdmin();
+  });
+  const rj = e.target.closest("[data-reject]");
+  if (rj) {
+    const b = openSheet(`<h2>سبب الرفض</h2><span class="muted">يظهر لصاحب المطعم ليصحح ويعيد الإرسال.</span>
+      <div class="chips" id="rj-quick">${["الصورة غير واضحة", "الواجهة لا تظهر اسم المطعم", "الموقع غير صحيح", "تعذر التواصل على الرقم"].map(x => `<button class="chip" data-q="${x}">${x}</button>`).join("")}</div>
+      <textarea id="rj-text" rows="3" maxlength="200" placeholder="اكتب السبب"></textarea>
+      <button id="rj-ok" class="btn btn-danger">رفض المطعم</button>`);
+    b.querySelector("#rj-quick").onclick = ev => { const q = ev.target.closest("[data-q]"); if (q) b.querySelector("#rj-text").value = q.dataset.q; };
+    b.querySelector("#rj-ok").onclick = ev => {
+      const why = b.querySelector("#rj-text").value.trim(); if (!why) return toast("اكتب سبب الرفض.");
+      busy(ev.target, async () => { await F.adminRejectRestaurant(rj.dataset.reject, why); closeSheet(); toast("تم الرفض وإبلاغ المطعم"); loadAdmin(); });
+    };
+    return;
+  }
   const t = e.target.closest("[data-trial]");
   if (t) return busy(t, async () => { await F.adminActivateTrial(adRest.find(r => r.id === t.dataset.trial)); toast("تم التفعيل لمدة شهرين"); loadAdmin(); });
   const vf = e.target.closest("[data-verify]");

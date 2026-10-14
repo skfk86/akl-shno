@@ -126,6 +126,64 @@ for (const d of expiring.docs) {
   await d.ref.update({ expiryNotified: until });
 }
 
+// ───── توثيق المطاعم: طلب مراجعة جديد ← الأدمن، والقرار ← صاحب المطعم ─────
+const reviews = await db.collection("restaurants").where("review", "in", ["pending", "approved", "rejected"]).get();
+for (const d of reviews.docs) {
+  const r = d.data();
+  if (r.review === "pending") {
+    const key = r.reviewAt?.toMillis?.() || 0;
+    if (key && r.notifiedReview !== key) {
+      for (const a of admins) await push(a, "مطعم جديد بانتظار المراجعة", `${r.name} · ${r.district || ""}، ${r.city || ""}`, { kind: "review", rid: d.id });
+      await d.ref.update({ notifiedReview: key });
+    }
+  } else {
+    const key = `${r.review}-${r.reviewedAt?.toMillis?.() || 0}`;
+    if (r.notifiedDecision !== key) {
+      if (r.review === "approved") await push(d.id, "تم قبول مطعمك في أكل شنو؟", "أضف المنيو ومناطق التوصيل وابدأ استقبال الطلبات.", { kind: "approved" });
+      else await push(d.id, "لم يُقبل طلب مطعمك", (r.rejectReason ? "السبب: " + r.rejectReason + ". " : "") + "صحّح الإثباتات وأعد الإرسال من التطبيق.", { kind: "rejected" });
+      await d.ref.update({ notifiedDecision: key });
+    }
+  }
+}
+
+// ───── تنظيف البيانات القديمة (مرة يومياً) ─────
+// الرسائل بعد 60 يوماً، وصور إثبات المطاعم بعد 30 يوماً من قرار المراجعة.
+const MSG_DAYS = 60, PROOF_DAYS = 30;
+const metaRef = db.doc("meta/cleanup"), meta = (await metaRef.get()).data() || {};
+if (Date.now() - (meta.at?.toMillis?.() || 0) > 20 * 3600e3) {
+  const cut = Timestamp.fromMillis(Date.now() - MSG_DAYS * 864e5);
+  const proofCut = Date.now() - PROOF_DAYS * 864e5;
+  let msgs = 0, threads = 0, proofs = 0;
+  async function wipe(snap) {
+    for (let i = 0; i < snap.docs.length; i += 400) {
+      const b = db.batch(); snap.docs.slice(i, i + 400).forEach(x => b.delete(x.ref)); await b.commit();
+    }
+    return snap.size;
+  }
+  // رسائل الطلبات القديمة: نتقدم بمؤشر زمني حتى لا نقرأ نفس الطلبات كل يوم
+  const after = meta.ordersCursor || Timestamp.fromMillis(0);
+  const old = await db.collection("orders").where("createdAt", ">", after).where("createdAt", "<", cut).orderBy("createdAt").limit(300).get();
+  for (const o of old.docs) msgs += await wipe(await o.ref.collection("messages").get());
+  const ordersCursor = old.docs.length ? old.docs.at(-1).get("createdAt") : after;
+  // المحادثات المباشرة والدعم: تُحذف الرسائل القديمة، والمحادثة الخاملة كلها
+  for (const col of ["chats", "support"]) {
+    for (const t of (await db.collection(col).get()).docs) {
+      msgs += await wipe(await t.ref.collection("messages").where("at", "<", cut).get());
+      if ((t.get("lastAt")?.toMillis?.() || 0) < cut.toMillis()) { await t.ref.delete(); threads++; }
+    }
+  }
+  // صور الإثبات بعد المراجعة
+  for (const d of reviews.docs) {
+    const r = d.data(), p = r.proofs || {};
+    if (r.review === "pending" || !(p.sign || p.license)) continue;
+    if ((r.reviewedAt?.toMillis?.() || Date.now()) > proofCut) continue;
+    for (const id of [p.sign, p.license].filter(Boolean)) { await db.doc(`images/${id}`).delete().catch(() => {}); proofs++; }
+    await d.ref.update({ proofs: { sign: "", license: "" } });
+  }
+  await metaRef.set({ at: Timestamp.now(), ordersCursor, msgs, threads, proofs });
+  console.log(`cleanup: messages ${msgs} · threads ${threads} · proof images ${proofs}`);
+}
+
 // ───── حظر الأجهزة: 3 إنذارات ← الجهاز محظور، وأقل من ذلك ← يُرفع ─────
 let bannedNew = 0, unbanned = 0;
 const strikers = await db.collection("users").where("strikes", ">=", 3).get();

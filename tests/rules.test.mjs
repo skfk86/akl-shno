@@ -36,13 +36,15 @@ async function seed() {
     await user("banned", { strikes: 3 });
     await user("owner", { role: "owner" });
     await user("owner2", { role: "owner" });
+    await user("owner3", { role: "owner" });
     await user("admin");
     await setDoc(doc(s, "admins", "admin"), { name: "admin" });
     const rest = (id, extra) => setDoc(doc(s, "restaurants", id), {
       ownerId: id, name: id, category: "مشويات", city: "أمدرمان", district: "الثورة", phone: "+249911111111",
       isOpen: true, delivery: true, pickup: true, bankak: "123", freeTrial: true, ...extra });
     await rest("owner", { subActiveUntil: future, listed: true });
-    await rest("owner2", { subActiveUntil: null, listed: false, freeTrial: false });
+    await rest("owner2", { subActiveUntil: null, listed: false, freeTrial: false, approved: true });
+    await rest("owner3", { subActiveUntil: null, listed: false, freeTrial: false, approved: false, review: "new" });
     await setDoc(doc(s, "restaurants", "owner", "menu", "m1"), { name: "كبدة", price: 6000, available: true });
   });
 }
@@ -196,12 +198,31 @@ await t("المتوسط محفوظ بشكل صحيح", async () => {
   });
 });
 
+console.log("\nتوثيق المطاعم قبل القبول");
+await seed();
+await t("مطعم غير مقبول لا يضيف منيو", () => assertFails(setDoc(doc(db("owner3"), "restaurants", "owner3", "menu", "x"), { name: "x", price: 1000 })));
+await t("مطعم غير مقبول لا يضيف عروضاً", () => assertFails(setDoc(doc(db("owner3"), "restaurants", "owner3", "offers", "x"), { title: "x" })));
+await t("مطعم مقبول (بلا اشتراك بعد) يضيف منيو", () => assertSucceeds(setDoc(doc(db("owner2"), "restaurants", "owner2", "menu", "x"), { name: "x", price: 1000 })));
+await t("المطعم يرسل إثباتاته للمراجعة", () => assertSucceeds(updateDoc(doc(db("owner3"), "restaurants", "owner3"),
+  { proofs: { sign: "img1", license: "" }, proofNote: "", review: "pending", reviewAt: serverTimestamp() })));
+await t("المطعم لا يقبل نفسه", () => assertFails(updateDoc(doc(db("owner3"), "restaurants", "owner3"), { approved: true })));
+await t("المطعم لا يغيّر حالة المراجعة إلى «مقبول»", () => assertFails(updateDoc(doc(db("owner3"), "restaurants", "owner3"), { review: "approved" })));
+await t("المطعم لا يمسح سبب الرفض", () => assertFails(updateDoc(doc(db("owner3"), "restaurants", "owner3"), { rejectReason: "" })));
+await t("لا يُنشأ مطعم مقبول مسبقاً", () => assertFails(setDoc(doc(db("cust2x"), "restaurants", "cust2x"), {})));
+await t("الأدمن يرفض المطعم مع السبب", () => assertSucceeds(updateDoc(doc(db("admin"), "restaurants", "owner3"),
+  { approved: false, review: "rejected", rejectReason: "الصورة غير واضحة", reviewedAt: serverTimestamp() })));
+await t("الأدمن يقبل المطعم", () => assertSucceeds(updateDoc(doc(db("admin"), "restaurants", "owner3"),
+  { approved: true, review: "approved", rejectReason: "", reviewedAt: serverTimestamp() })));
+await t("بعد القبول يضيف المنيو", () => assertSucceeds(setDoc(doc(db("owner3"), "restaurants", "owner3", "menu", "y"), { name: "y", price: 2000 })));
+
 console.log("\nالاشتراكات");
 await seed();
 await t("المطعم يرسل تحويل بنكك", () => assertSucceeds(setDoc(doc(db("owner2"), "payments", "p1"),
   { restaurantId: "owner2", txnId: "12345", amount: 10000, status: "pending", createdAt: serverTimestamp() })));
 await t("لا يرسل تحويلاً مقبولاً مسبقاً", () => assertFails(setDoc(doc(db("owner2"), "payments", "p2"),
   { restaurantId: "owner2", txnId: "12345", amount: 10000, status: "approved", createdAt: serverTimestamp() })));
+await t("مطعم غير مقبول لا يرسل تحويلاً", () => assertFails(setDoc(doc(db("owner3"), "payments", "p3"),
+  { restaurantId: "owner3", txnId: "999", amount: 25000, status: "pending", createdAt: serverTimestamp() })));
 await t("لا يوافق على تحويله بنفسه", () => assertFails(updateDoc(doc(db("owner2"), "payments", "p1"), { status: "approved" })));
 await t("الأدمن يستعرض التحويلات المعلّقة", () => assertSucceeds(getDocs(query(collection(db("admin"), "payments"), where("status", "==", "pending")))));
 await t("الأدمن يوافق ويمدد الاشتراك", async () => {

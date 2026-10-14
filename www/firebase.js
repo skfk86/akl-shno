@@ -69,7 +69,7 @@ export async function createRestaurant({ name, category, city, district, phone }
   await setDoc(doc(db, "restaurants", uid()), {
     ownerId: uid(), name, category, city, district, phone,
     isOpen: false, delivery: true, pickup: true, bankak: "",
-    subActiveUntil: null, freeTrial: false, listed: false,
+    subActiveUntil: null, freeTrial: false, listed: false, approved: false, review: "new",
     createdAt: serverTimestamp()
   });
 }
@@ -90,6 +90,19 @@ export async function getRestaurant(id) {
 
 export const getMyRestaurant = () => getRestaurant(uid());
 export const updateMyRestaurant = data => updateDoc(doc(db, "restaurants", uid()), data);
+export const watchMyRestaurant = cb => onSnapshot(doc(db, "restaurants", uid()), d => d.exists() && cb({ id: d.id, ...d.data() }), () => {});
+
+// ═════════ توثيق المطعم قبل القبول ═════════
+// المطعم يرفع صور الإثبات (تُحذف تلقائياً بعد 30 يوماً من المراجعة) ثم ينتظر قبول الإدارة.
+export async function submitVerification({ sign, license, note }, old = {}) {
+  const proofs = {
+    sign: sign ? await uploadImage(sign) : old.sign || "",
+    license: license ? await uploadImage(license) : old.license || ""
+  };
+  await updateDoc(doc(db, "restaurants", uid()), { proofs, proofNote: note || "", review: "pending", reviewAt: serverTimestamp() });
+  if (sign && old.sign) deleteImage(old.sign).catch(() => {});
+  if (license && old.license) deleteImage(old.license).catch(() => {});
+}
 
 // المنيو والعروض ومناطق التوصيل: sub = 'menu' | 'offers' | 'zones'
 export async function listSub(rid, sub) {
@@ -339,9 +352,13 @@ function extend(current, days) {
 
 export function adminActivateTrial(r, days = 60) {
   return updateDoc(doc(db, "restaurants", r.id), {
-    subActiveUntil: extend(r.subActiveUntil, days), freeTrial: true, listed: true
+    subActiveUntil: extend(r.subActiveUntil, days), freeTrial: true, listed: true,
+    approved: true, review: "approved", reviewedAt: serverTimestamp()
   });
 }
+// قبول المطعم دون تفعيل (يدفع الاشتراك بنفسه بعد ذلك)، أو رفضه مع ذكر السبب
+export const adminApproveRestaurant = rid => updateDoc(doc(db, "restaurants", rid), { approved: true, review: "approved", rejectReason: "", reviewedAt: serverTimestamp() });
+export const adminRejectRestaurant = (rid, reason) => updateDoc(doc(db, "restaurants", rid), { approved: false, review: "rejected", rejectReason: reason, reviewedAt: serverTimestamp() });
 
 // الإيقاف يخفي المطعم من القائمة؛ ويمنع الطلبات الجديدة أيضاً عبر شرط listed في القواعد.
 export const adminSetVerified = (rid, verified) => updateDoc(doc(db, "restaurants", rid), { verified });

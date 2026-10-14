@@ -89,11 +89,14 @@ service cloud.firestore {
         && request.resource.data.ownerId == uid()
         && request.resource.data.subActiveUntil == null
         && request.resource.data.freeTrial == false
-        && request.resource.data.listed == false;
+        && request.resource.data.listed == false
+        && request.resource.data.get('approved', false) == false;
 
       allow update: if isAdmin()
         || (signedIn() && uid() == rid
-            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'subActiveUntil', 'freeTrial', 'listed', 'verified', 'ratingSum', 'ratingCount', 'lastRatingId']))
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'subActiveUntil', 'freeTrial', 'listed', 'verified', 'ratingSum', 'ratingCount', 'lastRatingId', 'approved', 'rejectReason', 'reviewedAt'])
+            // المطعم يستطيع فقط إرسال طلب المراجعة، والقرار للإدارة
+            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['review']) || request.resource.data.review == 'pending'))
         || ratingFromCustomer(rid);
 
       allow delete: if signedIn() && (uid() == rid || isAdmin());
@@ -101,8 +104,15 @@ service cloud.firestore {
       // المنيو والعروض ومناطق التوصيل
       match /{sub}/{docId} {
         allow read: if true;
-        allow write: if signedIn() && uid() == rid && sub in ['menu', 'offers', 'zones'];
+        // لا يضيف المطعم منيو أو عروضاً قبل قبوله من الإدارة
+        allow write: if signedIn() && uid() == rid && sub in ['menu', 'offers', 'zones'] && accepted(rid);
       }
+    }
+
+    // المطعم المقبول: وافقت عليه الإدارة، أو فُعّل اشتراكه (المطاعم القديمة قبل نظام التوثيق)
+    function accepted(rid) {
+      let r = get(/databases/$(db)/documents/restaurants/$(rid)).data;
+      return r.get('approved', false) == true || r.get('subActiveUntil', null) != null;
     }
 
     // تقييم: الزبون يضيف تقييمه للمجموع في نفس الـ batch الذي ينشئ فيه مستند التقييم
@@ -315,6 +325,7 @@ service cloud.firestore {
       allow read: if signedIn() && (resource.data.restaurantId == uid() || isAdmin());
       allow create: if signedIn()
         && request.resource.data.restaurantId == uid()
+        && accepted(uid())
         && request.resource.data.status == 'pending'
         && request.resource.data.txnId is string
         && request.resource.data.txnId.size() <= 40
