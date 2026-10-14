@@ -286,6 +286,10 @@
   .faq ul{margin:0 0 12px;padding-inline-start:20px;display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.8;color:#44403C}
   .fq-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
   .fq-ic svg{width:18px;height:18px}
+  .opt-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;cursor:pointer}
+  .opt-row:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+  .opt-row input{width:20px;height:20px;accent-color:var(--accent);margin:0;flex-shrink:0}
+  .og input{height:44px;border:1px solid var(--line);border-radius:12px;padding:0 12px;font:inherit;background:var(--bg)}
   .unread-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;box-shadow:0 0 0 3px var(--accent-soft)}
   #ad-sup-dot{top:2px;left:4px;min-width:16px;height:16px;font-size:10px}
   .dot{position:absolute;top:-3px;left:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
@@ -803,6 +807,134 @@ const APP_VERSION = "1.0.0";
 // ═════════ العروض والتخفيضات ═════════
 const isLive = o => o.active && (!o.endsAt || (o.endsAt.toMillis ? o.endsAt.toMillis() : +new Date(o.endsAt)) > Date.now());
 const pctOff = m => m.oldPrice > m.price ? Math.round((1 - m.price / m.oldPrice) * 100) : 0;
+// ═════════ ساعات العمل التلقائية ═════════
+// بتوقيت السودان (UTC+2) بغض النظر عن ساعة أو منطقة الهاتف.
+// sched = { auto, open: "10:00", close: "23:00", days: [0..6] }، والإغلاق بعد منتصف الليل مدعوم.
+const DAYS_AR = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+const sdNow = () => { const d = new Date(Date.now() + 2 * 3600e3); return { day: d.getUTCDay(), min: d.getUTCHours() * 60 + d.getUTCMinutes() }; };
+const toMin = t => { const [h, m] = String(t || "0:0").split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+const fmtT = t => { let [h, m] = String(t || "0:0").split(":").map(Number); const pm = h >= 12; h = h % 12 || 12; return `${h}${m ? ":" + String(m).padStart(2, "0") : ""} ${pm ? "م" : "ص"}`; };
+function schedOpen(r) {
+  const s = r?.sched; if (!s?.auto) return true;
+  const { day, min } = sdNow(), o = toMin(s.open), c = toMin(s.close), days = s.days?.length ? s.days : [0, 1, 2, 3, 4, 5, 6];
+  if (o === c) return days.includes(day);
+  if (o < c) return days.includes(day) && min >= o && min < c;
+  return (days.includes(day) && min >= o) || (days.includes((day + 6) % 7) && min < c);
+}
+const openNow = r => !!r?.isOpen && schedOpen(r);
+const withOpen = r => r && ({ ...r, manualOpen: r.isOpen, isOpen: openNow(r) });
+function schedText(s) {
+  if (!s?.auto) return "";
+  const days = s.days?.length ? s.days : [0, 1, 2, 3, 4, 5, 6];
+  const off = [0, 1, 2, 3, 4, 5, 6].filter(d => !days.includes(d));
+  return `${fmtT(s.open)} – ${fmtT(s.close)}` + (off.length ? ` · عطلة: ${off.map(d => DAYS_AR[d]).join("، ")}` : " يومياً");
+}
+// متى يفتح المطعم المغلق حسب الجدول (للعرض فقط)
+function nextOpenText(r) {
+  const s = r?.sched; if (!s?.auto || !r.manualOpen) return "";
+  const { day, min } = sdNow(), days = s.days?.length ? s.days : [0, 1, 2, 3, 4, 5, 6];
+  for (let k = 0; k < 8; k++) {
+    const d = (day + k) % 7;
+    if (!days.includes(d)) continue;
+    if (k === 0 && min >= toMin(s.open)) continue;
+    return k === 0 ? `يفتح اليوم ${fmtT(s.open)}` : k === 1 ? `يفتح غداً ${fmtT(s.open)}` : `يفتح ${DAYS_AR[d]} ${fmtT(s.open)}`;
+  }
+  return "";
+}
+
+// ═════════ خيارات الأصناف (الأحجام والإضافات) ═════════
+// options = [{ name, type: "one" | "many", required, choices: [{ name, price }] }]
+// السعر في الخيار يُضاف لسعر الصنف الأساسي (0 = بدون زيادة).
+const hasOpts = m => Array.isArray(m?.options) && m.options.some(g => g.choices?.length);
+const qtyOf = itemId => cart ? Object.values(cart.items).filter(i => (i.itemId || i.id) === itemId).reduce((a, i) => a + i.qty, 0) : 0;
+function optsSummary(m) { return hasOpts(m) ? m.options.filter(g => g.choices?.length).map(g => g.name).join("، ") : ""; }
+
+function chooseOptions(m) {
+  const sel = m.options.map(g => g.type === "one" && g.required ? 0 : g.type === "one" ? -1 : []);
+  let qty = 1;
+  const extra = () => m.options.reduce((a, g, gi) => a + (g.type === "one"
+    ? (sel[gi] >= 0 ? Number(g.choices[sel[gi]].price) || 0 : 0)
+    : sel[gi].reduce((x, ci) => x + (Number(g.choices[ci].price) || 0), 0)), 0);
+  const unit = () => Number(m.price) + extra();
+  const plus = p => p ? `<span class="muted" style="font-size:13px">+${money(p)}</span>` : `<span class="muted" style="font-size:12px">بدون زيادة</span>`;
+  const b = openSheet(`<div class="row gap10"><div class="pimg" style="width:64px;height:64px;${coverBg(m.name)};color:#fff">${imgTag(m.image)}${catIcon(curRest.r.category, 26)}</div>
+      <div class="col grow"><h2 style="margin:0">${esc(m.name)}</h2><span class="muted">${money(m.price)}</span></div></div>
+    ${m.options.map((g, gi) => g.choices?.length ? `<div class="col gap6">
+      <div class="row between"><b>${esc(g.name)}</b><span class="badge ${g.type === "one" && g.required ? "b-orange" : "b-gray"}">${g.type === "one" ? (g.required ? "إلزامي · اختر واحداً" : "اختياري") : "اختر ما تريد"}</span></div>
+      ${g.choices.map((c, ci) => `<label class="opt-row"><input type="${g.type === "one" ? "radio" : "checkbox"}" name="og${gi}" data-g="${gi}" data-c="${ci}" ${g.type === "one" ? (sel[gi] === ci ? "checked" : "") : ""}>
+        <span class="grow">${esc(c.name)}</span>${plus(Number(c.price) || 0)}</label>`).join("")}
+    </div>` : "").join("")}
+    <div class="row between"><b>الكمية</b><div class="qty"><button data-oq="-1" aria-label="أقل">${I.minus}</button><b id="oq">1</b><button data-oq="1" aria-label="أكثر">${I.plus}</button></div></div>
+    <button id="opt-add" class="btn btn-primary" style="justify-content:space-between;padding:0 18px"><span>أضف للسلة</span><span id="opt-total"></span></button>`);
+  const upd = () => { b.querySelector("#opt-total").textContent = money(unit() * qty); b.querySelector("#oq").textContent = qty; };
+  upd();
+  b.onchange = e => {
+    const x = e.target.closest("[data-g]"); if (!x) return;
+    const gi = +x.dataset.g, ci = +x.dataset.c;
+    if (m.options[gi].type === "one") sel[gi] = ci;
+    else sel[gi] = x.checked ? [...sel[gi], ci].sort((a, c) => a - c) : sel[gi].filter(v => v !== ci);
+    upd();
+  };
+  b.onclick = e => {
+    const q = e.target.closest("[data-oq]");
+    if (q) { qty = Math.max(1, Math.min(20, qty + +q.dataset.oq)); return upd(); }
+    if (!e.target.closest("#opt-add")) return;
+    const picked = m.options.flatMap((g, gi) => g.type === "one" ? (sel[gi] >= 0 ? [g.choices[sel[gi]].name] : []) : sel[gi].map(ci => g.choices[ci].name));
+    const key = m.id + "|" + m.options.map((g, gi) => g.type === "one" ? sel[gi] : sel[gi].join(".")).join("/");
+    const it = cart.items[key] || (cart.items[key] = { id: key, itemId: m.id, name: m.name + (picked.length ? ` (${picked.join("، ")})` : ""), price: unit(), qty: 0 });
+    it.qty += qty;
+    try { navigator.vibrate?.(15); } catch {}
+    closeSheet(); renderRestaurant(); toast("أُضيف للسلة");
+  };
+}
+
+// محرر الخيارات في نافذة الصنف (لصاحب المطعم)
+function optionsEditor(box, initial) {
+  let groups = JSON.parse(JSON.stringify(initial || []));
+  const read = () => box.querySelectorAll("[data-og]").forEach(el => {
+    const g = groups[+el.dataset.og];
+    g.name = el.querySelector("[data-gname]").value.trim();
+    const req = el.querySelector("[data-greq]"); if (req) g.required = req.checked;
+    el.querySelectorAll("[data-ch]").forEach(row => {
+      const c = g.choices[+row.dataset.ch];
+      c.name = row.querySelector("[data-cname]").value.trim();
+      c.price = Math.max(0, Number(row.querySelector("[data-cprice]").value) || 0);
+    });
+  });
+  const render = () => {
+    box.innerHTML = groups.map((g, gi) => `<div class="box col gap10 og" data-og="${gi}">
+      <div class="row gap10"><input data-gname value="${esc(g.name)}" placeholder="${g.type === "one" ? "مثلاً: الحجم" : "مثلاً: الإضافات"}" style="flex:1">
+        <button class="icon-btn" data-gdel="${gi}" aria-label="حذف المجموعة" style="width:40px;height:40px;color:var(--red)">${I.trash}</button></div>
+      <span class="muted" style="font-size:12px">${g.type === "one" ? "الزبون يختار خياراً واحداً" : "الزبون يختار أي عدد من الإضافات"}</span>
+      ${g.choices.map((c, ci) => `<div class="row gap6" data-ch="${ci}">
+        <input data-cname value="${esc(c.name)}" placeholder="${g.type === "one" ? "صغير / وسط / كبير" : "جبنة إضافية"}" style="flex:1.6;min-width:0">
+        <input data-cprice type="number" inputmode="numeric" min="0" value="${c.price || ""}" placeholder="+ ج" style="flex:1;min-width:0">
+        <button class="icon-btn" data-cdel="${gi}.${ci}" aria-label="حذف" style="width:36px;height:36px;flex-shrink:0">${I.x}</button></div>`).join("")}
+      <div class="row between">
+        <button class="link" data-cadd="${gi}" style="border:0;background:none;color:var(--accent);font-weight:700;padding:0">+ خيار</button>
+        ${g.type === "one" ? `<label class="row gap6" style="font-size:13px"><input type="checkbox" data-greq ${g.required ? "checked" : ""}>إلزامي</label>` : ""}
+      </div></div>`).join("");
+  };
+  render();
+  box.onclick = e => {
+    const t = e.target.closest("[data-gdel],[data-cadd],[data-cdel]"); if (!t) return;
+    e.preventDefault(); read();
+    if (t.dataset.gdel != null) groups.splice(+t.dataset.gdel, 1);
+    if (t.dataset.cadd != null) groups[+t.dataset.cadd].choices.push({ name: "", price: 0 });
+    if (t.dataset.cdel != null) { const [gi, ci] = t.dataset.cdel.split(".").map(Number); groups[gi].choices.splice(ci, 1); }
+    render();
+  };
+  return {
+    add(type) { read(); groups.push(type === "one" ? { name: "الحجم", type, required: true, choices: [{ name: "عادي", price: 0 }, { name: "كبير", price: 0 }] } : { name: "الإضافات", type, required: false, choices: [{ name: "", price: 0 }] }); render(); },
+    value() {
+      read();
+      const out = groups.map(g => ({ ...g, choices: g.choices.filter(c => c.name) })).filter(g => g.choices.length);
+      const bad = out.find(g => !g.name); if (bad) throw new Error("اكتب اسماً لكل مجموعة خيارات.");
+      return out;
+    }
+  };
+}
+
 const priceTag = m => pctOff(m)
   ? `<span class="row gap6"><b style="color:var(--red)">${money(m.price)}</b><s class="old">${money(m.oldPrice)}</s></span>`
   : `<b>${money(m.price)}</b>`;
@@ -1283,7 +1415,7 @@ async function showHome() {
   const list = $("#h-list");
   list.innerHTML = skeleton(3, 190);
   getMyLoc(false).then(p => p && restaurants.length && renderHome());
-  try { restaurants = await F.listOpenRestaurants(); renderHome(); loadDeals(restaurants).then(renderHome).catch(console.error); }
+  try { restaurants = (await F.listOpenRestaurants()).map(withOpen); renderHome(); loadDeals(restaurants).then(renderHome).catch(console.error); }
   catch (e) {
     console.error(e);
     list.innerHTML = e.code === "permission-denied"
@@ -1528,6 +1660,7 @@ async function openRestaurant(id) {
       F.listRatings(id).catch(() => [])
     ]);
     if (!r) { toast("هذا المطعم غير متاح حالياً."); return showHome(); }
+    Object.assign(r, withOpen(r));
     curRest = { r, menu, offers, zones, ratings };
     if (!cart || cart.r.id !== id) cart = { r, zones, items: {}, type: r.delivery ? "delivery" : "pickup" };
     if (pendingPickup && r.pickup) { cart.type = "pickup"; pendingPickup = false; }
@@ -1559,12 +1692,12 @@ function renderRestaurant() {
       <div class="row between gap10"><h1>${esc(r.name)}</h1>
         <span class="badge ${r.isOpen ? "b-green" : "b-gray"}">${r.isOpen ? "مفتوح الآن" : "مغلق"}</span></div>
       <div class="meta" style="align-items:center">${ratingTag(r)}${verifiedTag(r)}<span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span></div>
-      ${r.hours ? `<span class="muted">ساعات العمل: ${esc(r.hours)}</span>` : ""}
+      ${r.sched?.auto ? `<span class="muted row gap6">${I.clock}${schedText(r.sched)}</span>` : ""}${r.hours ? `<span class="muted">${esc(r.hours)}</span>` : ""}
       <div class="meta">
         ${me?.role === "customer" ? `<button class="row gap6" data-dm-rest style="border:0;background:none;padding:0;color:var(--accent);font-weight:700;font-size:13px">${I.chat}راسل المطعم</button>` : ""}
         ${r.phone ? `<a class="row gap6" href="tel:${esc(r.phone)}" style="color:var(--green);font-weight:700;text-decoration:none">${I.phone}اتصال</a>` : ""}
         <button class="row gap6" data-report-rest style="border:0;background:none;padding:0;color:var(--muted);font-size:13px">${I.flag}إبلاغ عن المطعم</button></div>
-      ${!r.isOpen ? `<div class="note n-red">${I.info}المطعم مغلق الآن، يمكنك التصفح فقط.</div>` : ""}
+      ${!r.isOpen ? `<div class="note n-red">${I.info}المطعم مغلق الآن${nextOpenText(r) ? "، " + nextOpenText(r) : ""}. يمكنك التصفح فقط.</div>` : ""}
       ${activeOffers.map(o => `<div class="note n-orange">${I.info}<span><b>${esc(o.title)}</b>${o.endsAt ? ` · حتى ${tsDate(o.endsAt).toLocaleDateString(LOC)}` : ""}</span></div>`).join("")}
       ${r.delivery && r.pickup ? `<div class="seg" id="r-type">
         <button data-type="delivery" class="${cart.type === "delivery" ? "on" : ""}">توصيل</button>
@@ -1579,10 +1712,11 @@ function renderRestaurant() {
             <b>${esc(m.name)}</b>
             ${m.desc ? `<span class="muted" style="line-height:1.6">${esc(m.desc)}</span>` : ""}
             <span style="margin-top:2px">${priceTag(m)}</span>
+            ${hasOpts(m) ? `<span class="muted" style="font-size:12px;color:var(--accent-dark)">خيارات: ${esc(optsSummary(m))}</span>` : ""}
             ${!m.available ? '<span class="badge b-red" style="align-self:flex-start">غير متوفر اليوم</span>' : ""}
           </div>
           <div class="thumb" style="${coverBg(m.name)};color:rgba(255,255,255,.92)">${imgTag(m.image)}${catIcon(r.category, 34)}${pctOff(m) && m.available ? `<span class="off" style="top:-6px;right:auto;left:-6px">-${pctOff(m)}%</span>` : ""}
-            ${cart.items[m.id] ? `<span class="badge b-green" style="position:absolute;top:-6px;right:-6px">${cart.items[m.id].qty}</span>` : ""}
+            ${qtyOf(m.id) ? `<span class="badge b-green" style="position:absolute;top:-6px;right:-6px">${qtyOf(m.id)}</span>` : ""}
             <button class="add" data-add="${esc(m.id)}" aria-label="أضف ${esc(m.name)}" ${!r.isOpen || !m.available ? "disabled" : ""}>${I.plus}</button>
           </div>
         </div>`).join("") : emptyState("المنيو فارغ", "لم يضف المطعم أصنافه بعد.")}
@@ -1640,6 +1774,7 @@ $("#r-body").addEventListener("click", e => {
   const a = e.target.closest("[data-add]");
   if (a) {
     const m = curRest.menu.find(x => x.id === a.dataset.add);
+    if (hasOpts(m)) return chooseOptions(m);
     const it = cart.items[m.id] || (cart.items[m.id] = { id: m.id, name: m.name, price: Number(m.price), qty: 0 });
     it.qty++;
     try { navigator.vibrate?.(15); } catch {}
@@ -2193,7 +2328,7 @@ function renderOwnerHead() {
   $("#ow-head").innerHTML = `<div class="col gap14" style="padding:16px 20px 14px;background:#fff">
     <div class="row between">
       <div class="col"><span class="muted" style="font-size:12px">لوحة المطعم</span><h1 style="font-size:20px">${esc(r.name)}</h1></div>
-      <label class="row gap10" style="font-size:13px;font-weight:700;color:${r.isOpen ? "var(--green)" : "var(--muted)"}">${r.isOpen ? "مفتوح" : "مغلق"}
+      <label class="row gap10" style="font-size:13px;font-weight:700;color:${openNow(r) ? "var(--green)" : r.isOpen ? "#B45309" : "var(--muted)"}">${openNow(r) ? "مفتوح" : r.isOpen ? "خارج ساعات العمل" : "مغلق"}
         <span class="switch"><input type="checkbox" id="ow-open" ${r.isOpen ? "checked" : ""} aria-label="فتح أو إغلاق المطعم"><span></span></span></label>
     </div>${sub}</div>`;
 }
@@ -2364,7 +2499,7 @@ async function renderOwnerMenu() {
     <div class="row between" style="margin-top:8px"><h2>الأصناف</h2><button class="btn btn-sm btn-primary" data-new="item" style="width:auto;padding:0 14px">${I.plus}صنف جديد</button></div>
     ${menu.length ? menu.map(m => `<div class="box row gap10" style="padding:10px">
       <div class="ph-box" style="width:54px;height:54px;border-radius:12px;${coverBg(m.name)};display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${imgTag(m.image)}${catIcon(myRest.category, 26)}</div>
-      <div class="col grow"><b style="font-size:14px">${esc(m.name)}</b>${m.section ? `<span class="muted" style="font-size:12px">${esc(m.section)}</span>` : ""}
+      <div class="col grow"><b style="font-size:14px">${esc(m.name)}</b>${m.section ? `<span class="muted" style="font-size:12px">${esc(m.section)}</span>` : ""}${hasOpts(m) ? `<span class="muted" style="font-size:12px;color:var(--accent-dark)">خيارات: ${esc(optsSummary(m))}</span>` : ""}
         <span style="font-size:13px;color:${m.available ? "var(--muted)" : "var(--red)"}">${money(m.price)}${pctOff(m) ? ` <s class="old">${money(m.oldPrice)}</s> <span class="badge b-red">-${pctOff(m)}%</span>` : ""} · ${m.available ? "متوفر" : "غير متوفر"}</span></div>
       <button class="icon-btn" data-edit="${esc(m.id)}" aria-label="تعديل">${I.edit}</button></div>`).join("")
       : emptyState("المنيو فارغ", "أضف أصنافك ليتمكن الزبائن من الطلب.")}
@@ -2396,12 +2531,18 @@ function itemSheet(m) {
       <label class="field">السعر قبل الخصم<input id="it-old" type="number" inputmode="numeric" min="0" value="${m?.oldPrice || ""}" placeholder="اختياري"></label>
     </div>
     <span class="muted" style="margin-top:-6px">للتخفيض: اكتب السعر القديم هنا، فيظهر الصنف في قسم "العروض والتخفيضات".</span>
+    <div class="col gap6"><b>الأحجام والإضافات (اختياري)</b>
+      <span class="muted" style="font-size:12px">السعر بجانب كل خيار يُضاف لسعر الصنف. اتركه فارغاً إن لم تكن هناك زيادة.</span></div>
+    <div id="it-opts" class="col gap10"></div>
+    <div class="row gap10"><button class="btn btn-sm btn-ghost" data-og-add="one">+ حجم أو نوع</button><button class="btn btn-sm btn-ghost" data-og-add="many">+ إضافات</button></div>
     <label class="row between box" style="padding:12px 14px"><span style="font-weight:500">متوفر اليوم</span>
       <span class="switch"><input type="checkbox" id="it-av" ${m ? (m.available ? "checked" : "") : "checked"}><span></span></span></label>
     <p id="it-err" class="err"></p>
     <div class="row gap10"><button id="it-save" class="btn btn-primary">حفظ</button>
       ${m ? `<button id="it-del" class="btn btn-danger" style="width:110px">حذف</button>` : ""}</div>`);
   let newImg = null;
+  const oe = optionsEditor(b.querySelector("#it-opts"), m?.options);
+  b.querySelectorAll("[data-og-add]").forEach(x => x.onclick = () => oe.add(x.dataset.ogAdd));
   b.querySelector("#it-img-btn").onclick = async () => {
     const f = await pickFile(); if (!f) return;
     try {
@@ -2417,6 +2558,7 @@ function itemSheet(m) {
     if (data.oldPrice && data.oldPrice <= data.price) return b.querySelector("#it-err").textContent = "السعر قبل الخصم يجب أن يكون أكبر من السعر الحالي.";
     if (data.name.length < 2) return b.querySelector("#it-err").textContent = "اكتب اسم الصنف.";
     if (!(data.price > 0)) return b.querySelector("#it-err").textContent = "اكتب سعراً صحيحاً.";
+    try { data.options = oe.value(); } catch (x) { return b.querySelector("#it-err").textContent = x.message; }
     busy(e.target, async () => {
       if (newImg) { data.image = await F.uploadImage(newImg); if (m?.image) F.deleteImage(m.image).catch(() => {}); }
       m ? await F.updateSub("menu", m.id, data) : await F.addSub("menu", data); closeSheet(); renderOwnerMenu();
@@ -2477,9 +2619,22 @@ async function renderOwnerSettings() {
         : `<div class="note n-orange">${I.info}حدد موقع مطعمك ليظهر للزبائن على الخريطة ويعرفوا المسافة إليه.</div>
            <button id="st-loc-edit" class="btn btn-outline" style="height:60px">${I.pin}حدد موقع المطعم على الخريطة</button>`}
     </section>
+    <h2 style="margin-top:6px">ساعات العمل</h2>
+    <section class="box col gap10" id="st-sched">
+      <label class="row between"><span class="col"><b>فتح وإغلاق تلقائي</b><span class="muted" style="font-size:12px">يُغلق المطعم للزبائن خارج هذه الساعات حتى لو نسيت إغلاقه</span></span>
+        <span class="switch"><input type="checkbox" id="sc-auto" ${r.sched?.auto ? "checked" : ""}><span></span></span></label>
+      <div class="col gap10" id="sc-body" ${r.sched?.auto ? "" : "hidden"}>
+        <div class="row2"><label class="field">يفتح<input id="sc-open" type="time" value="${esc(r.sched?.open || "10:00")}"></label>
+          <label class="field">يغلق<input id="sc-close" type="time" value="${esc(r.sched?.close || "23:00")}"></label></div>
+        <span style="font-size:13px;font-weight:500">أيام العمل</span>
+        <div class="chips" style="padding:0;flex-wrap:wrap" id="sc-days">${[6, 0, 1, 2, 3, 4, 5].map(d => `<button class="chip ${(r.sched?.days || [0, 1, 2, 3, 4, 5, 6]).includes(d) ? "on" : ""}" data-day="${d}">${DAYS_AR[d]}</button>`).join("")}</div>
+        <span class="muted" style="font-size:12px">إذا كان الإغلاق بعد منتصف الليل (مثلاً 2 ص) يُحسب تلقائياً لليوم التالي.</span>
+      </div>
+      <button id="sc-save" class="btn btn-sm btn-dark">حفظ ساعات العمل</button>
+    </section>
     <h2 style="margin-top:6px">معلومات المطعم</h2>
     <section class="box col gap10">
-      <label class="field">ساعات العمل<input id="st-hours" value="${esc(r.hours)}" placeholder="مثلاً: يومياً 10 ص – 11 م، الجمعة من 2 م"></label>
+      <label class="field">ملاحظة عن الدوام (اختياري)<input id="st-hours" value="${esc(r.hours)}" placeholder="مثلاً: الجمعة من بعد الصلاة"></label>
       <label class="field">رقم حسابك في بنكك (اختياري)<input id="st-bankak" dir="ltr" inputmode="numeric" value="${esc(r.bankak)}"></label>
       <span class="muted">يظهر للزبون إذا اختار الدفع المسبق. الزبائن ذوو الإنذارات المتكررة لا يمكنهم الطلب إلا به.</span>
       <button id="st-bankak-save" class="btn btn-sm btn-dark">حفظ</button>
@@ -2513,9 +2668,18 @@ async function renderOwnerSettings() {
       const v = $("#st-bankak").value.trim(), h = $("#st-hours").value.trim();
       return busy(e.target, async () => { await F.updateMyRestaurant({ bankak: v, hours: h }); myRest.bankak = v; myRest.hours = h; toast("تم الحفظ"); });
     }
+    const dy = e.target.closest("[data-day]");
+    if (dy) return dy.classList.toggle("on");
+    if (e.target.closest("#sc-save")) {
+      const sched = { auto: $("#sc-auto").checked, open: $("#sc-open").value || "10:00", close: $("#sc-close").value || "23:00",
+        days: [...document.querySelectorAll("#sc-days .on")].map(x => +x.dataset.day).sort() };
+      if (sched.auto && !sched.days.length) return toast("اختر يوم عمل واحداً على الأقل.");
+      return busy(e.target, async () => { await F.updateMyRestaurant({ sched }); myRest.sched = sched; renderOwnerHead(); toast(sched.auto ? "تم الحفظ: " + schedText(sched) : "أُلغي الفتح التلقائي"); });
+    }
     if (e.target.closest("[data-logout2]")) return doLogout();
   };
   body.onchange = async e => {
+    if (e.target.id === "sc-auto") { $("#sc-body").hidden = !e.target.checked; return; }
     const f = e.target.closest("[data-flag]"); if (!f) return;
     const k = f.dataset.flag, v = f.checked;
     if (!v && !(k === "delivery" ? r.pickup : r.delivery)) { f.checked = true; return toast("يجب تفعيل التوصيل أو الاستلام على الأقل."); }
