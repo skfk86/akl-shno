@@ -289,7 +289,40 @@
   .opt-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;cursor:pointer}
   .opt-row:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
   .opt-row input{width:20px;height:20px;accent-color:var(--accent);margin:0;flex-shrink:0}
-  .og input{height:44px;border:1px solid var(--line);border-radius:12px;padding:0 12px;font:inherit;background:var(--bg)}
+  .opt-ed{display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:20px;background:linear-gradient(180deg,#FFF7ED,#fff 70%);border:1px solid #FED7AA}
+  .opt-ed-h{display:flex;gap:10px;align-items:center}
+  .opt-ed-h b{font-size:15px}.opt-ed-h span:not(.oe-ic){font-size:12px;color:var(--muted)}
+  .oe-ic{width:38px;height:38px;border-radius:12px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 10px rgba(194,65,12,.25)}
+  .og{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 3px rgba(28,25,23,.05)}
+  .og-h{display:flex;align-items:center;gap:8px}
+  .og-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .og-ic.one{background:#DBEAFE;color:#1D4ED8}.og-ic.many{background:#DCFCE7;color:#15803D}
+  .og-name{flex:1;min-width:0;border:0;border-bottom:2px dashed transparent;background:none;font:inherit;font-weight:700;font-size:16px;padding:6px 2px;color:var(--ink)}
+  .og-name:focus{outline:0;border-bottom-color:var(--accent)}
+  .og-del{width:36px;height:36px;border:0;border-radius:10px;background:#FEF2F2;color:var(--red);display:flex;align-items:center;justify-content:center}
+  .og-del svg{width:17px;height:17px}
+  .og-type{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;background:var(--fill);border-radius:11px;font-size:12px}
+  .og-type button{border:0;background:none;padding:7px;border-radius:9px;color:var(--muted);font:inherit;font-weight:500}
+  .og-type button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .ch{display:flex;align-items:center;gap:8px;padding:4px 4px 4px 4px;border-radius:12px;background:var(--bg)}
+  .ch-mark{width:16px;height:16px;flex-shrink:0;border:2px solid #D6D3D1;margin-inline-start:8px}
+  .ch-mark.one{border-radius:50%}.ch-mark.many{border-radius:5px}
+  .ch [data-cname]{flex:1;min-width:0;height:40px;border:0;background:none;font:inherit;font-size:14px;padding:0 4px;color:var(--ink)}
+  .ch [data-cname]:focus{outline:0}
+  .ch-price{display:flex;align-items:center;gap:2px;height:36px;padding:0 10px;border-radius:10px;background:#fff;border:1px solid var(--line);color:var(--muted);font-size:13px;flex-shrink:0}
+  .ch-price:focus-within{border-color:var(--accent)}
+  .ch-price input{width:58px;border:0;background:none;font:inherit;font-weight:700;color:var(--green);text-align:center;padding:0}
+  .ch-price input:focus{outline:0}
+  .ch-del{width:30px;height:30px;border:0;border-radius:8px;background:none;color:#A8A29E;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .og-f{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .og-f button{display:flex;align-items:center;gap:4px;border:0;background:var(--accent-soft);color:var(--accent-dark);font:inherit;font-size:13px;font-weight:700;padding:8px 12px;border-radius:10px}
+  .og-f button svg{width:15px;height:15px}
+  .og-req{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
+  .switch.sm{transform:scale(.8);transform-origin:center}
+  .og-add{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .og-add button{display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;border:1.5px dashed #FDBA74;background:#fff;font:inherit;color:var(--ink);text-align:right}
+  .og-add button:active{transform:scale(.98)}
+  .og-add b{font-size:13px}.og-add small{font-size:11px;color:var(--muted)}
   .unread-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;box-shadow:0 0 0 3px var(--accent-soft)}
   #ad-sup-dot{top:2px;left:4px;min-width:16px;height:16px;font-size:10px}
   .dot{position:absolute;top:-3px;left:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
@@ -624,6 +657,8 @@ I.camera = '<svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" f
 I.clock = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 I.lock = '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 I.store = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9M3 9h18M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M5 12v8h14v-8M10 20v-5h4v5"/></svg>';
+I.layers = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg>';
+I.size = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h10M9 21l-1-10h8l-1 10"/><path d="M6 11h12M10 11V6a2 2 0 0 1 4 0v5"/></svg>';
 I.x = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 I.flag = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4a1 1 0 0 1 1-1h13l-2 5 2 5H5"/></svg>';
 
@@ -902,30 +937,35 @@ function optionsEditor(box, initial) {
     });
   });
   const render = () => {
-    box.innerHTML = groups.map((g, gi) => `<div class="box col gap10 og" data-og="${gi}">
-      <div class="row gap10"><input data-gname value="${esc(g.name)}" placeholder="${g.type === "one" ? "مثلاً: الحجم" : "مثلاً: الإضافات"}" style="flex:1">
-        <button class="icon-btn" data-gdel="${gi}" aria-label="حذف المجموعة" style="width:40px;height:40px;color:var(--red)">${I.trash}</button></div>
-      <span class="muted" style="font-size:12px">${g.type === "one" ? "الزبون يختار خياراً واحداً" : "الزبون يختار أي عدد من الإضافات"}</span>
-      ${g.choices.map((c, ci) => `<div class="row gap6" data-ch="${ci}">
-        <input data-cname value="${esc(c.name)}" placeholder="${g.type === "one" ? "صغير / وسط / كبير" : "جبنة إضافية"}" style="flex:1.6;min-width:0">
-        <input data-cprice type="number" inputmode="numeric" min="0" value="${c.price || ""}" placeholder="+ ج" style="flex:1;min-width:0">
-        <button class="icon-btn" data-cdel="${gi}.${ci}" aria-label="حذف" style="width:36px;height:36px;flex-shrink:0">${I.x}</button></div>`).join("")}
-      <div class="row between">
-        <button class="link" data-cadd="${gi}" style="border:0;background:none;color:var(--accent);font-weight:700;padding:0">+ خيار</button>
-        ${g.type === "one" ? `<label class="row gap6" style="font-size:13px"><input type="checkbox" data-greq ${g.required ? "checked" : ""}>إلزامي</label>` : ""}
-      </div></div>`).join("");
+    box.innerHTML = groups.map((g, gi) => `<div class="og" data-og="${gi}">
+      <div class="og-h"><span class="og-ic ${g.type}">${g.type === "one" ? I.size : I.plus}</span>
+        <input data-gname class="og-name" value="${esc(g.name)}" placeholder="${g.type === "one" ? "اسم المجموعة: الحجم" : "اسم المجموعة: الإضافات"}" aria-label="اسم المجموعة">
+        <button class="og-del" data-gdel="${gi}" aria-label="حذف المجموعة">${I.trash}</button></div>
+      <div class="og-type"><button data-gtype="${gi}:one" class="${g.type === "one" ? "on" : ""}">اختيار واحد</button><button data-gtype="${gi}:many" class="${g.type === "many" ? "on" : ""}">عدة إضافات</button></div>
+      <div class="col" style="gap:8px">${g.choices.map((c, ci) => `<div class="ch" data-ch="${ci}">
+        <span class="ch-mark ${g.type}"></span>
+        <input data-cname value="${esc(c.name)}" placeholder="${g.type === "one" ? (["عادي", "وسط", "كبير"][ci] || "خيار") : (["جبنة إضافية", "بطاطس", "صوص حار"][ci] || "إضافة")}" aria-label="اسم الخيار">
+        <label class="ch-price"><span>+</span><input data-cprice type="number" inputmode="numeric" min="0" value="${c.price || ""}" placeholder="0" aria-label="السعر الإضافي"><span>ج</span></label>
+        <button class="ch-del" data-cdel="${gi}.${ci}" aria-label="حذف الخيار">${I.x}</button></div>`).join("")}</div>
+      <div class="og-f"><button data-cadd="${gi}">${I.plus}إضافة خيار</button>
+        ${g.type === "one" ? `<label class="og-req"><span>إلزامي</span><span class="switch sm"><input type="checkbox" data-greq ${g.required ? "checked" : ""}><span></span></span></label>` : `<span class="muted" style="font-size:12px">الزبون يختار ما يشاء</span>`}</div>
+    </div>`).join("");
   };
   render();
   box.onclick = e => {
-    const t = e.target.closest("[data-gdel],[data-cadd],[data-cdel]"); if (!t) return;
+    const t = e.target.closest("[data-gdel],[data-cadd],[data-cdel],[data-gtype]"); if (!t) return;
     e.preventDefault(); read();
+    if (t.dataset.gtype) { const [gi, ty] = t.dataset.gtype.split(":"); groups[+gi].type = ty; if (ty === "many") groups[+gi].required = false; }
     if (t.dataset.gdel != null) groups.splice(+t.dataset.gdel, 1);
-    if (t.dataset.cadd != null) groups[+t.dataset.cadd].choices.push({ name: "", price: 0 });
+    if (t.dataset.cadd != null) { groups[+t.dataset.cadd].choices.push({ name: "", price: 0 }); render(); box.querySelector(`[data-og="${t.dataset.cadd}"] .ch:last-child [data-cname]`)?.focus(); return; }
     if (t.dataset.cdel != null) { const [gi, ci] = t.dataset.cdel.split(".").map(Number); groups[gi].choices.splice(ci, 1); }
     render();
   };
   return {
-    add(type) { read(); groups.push(type === "one" ? { name: "الحجم", type, required: true, choices: [{ name: "عادي", price: 0 }, { name: "كبير", price: 0 }] } : { name: "الإضافات", type, required: false, choices: [{ name: "", price: 0 }] }); render(); },
+    add(type) {
+      read(); groups.push(type === "one" ? { name: "الحجم", type, required: true, choices: [{ name: "عادي", price: 0 }, { name: "كبير", price: 0 }] } : { name: "الإضافات", type, required: false, choices: [{ name: "", price: 0 }] });
+      render(); const last = box.lastElementChild; last?.scrollIntoView({ block: "nearest", behavior: "smooth" }); last?.querySelector(type === "many" ? "[data-cname]" : "[data-cprice]")?.focus();
+    },
     value() {
       read();
       const out = groups.map(g => ({ ...g, choices: g.choices.filter(c => c.name) })).filter(g => g.choices.length);
@@ -2531,10 +2571,15 @@ function itemSheet(m) {
       <label class="field">السعر قبل الخصم<input id="it-old" type="number" inputmode="numeric" min="0" value="${m?.oldPrice || ""}" placeholder="اختياري"></label>
     </div>
     <span class="muted" style="margin-top:-6px">للتخفيض: اكتب السعر القديم هنا، فيظهر الصنف في قسم "العروض والتخفيضات".</span>
-    <div class="col gap6"><b>الأحجام والإضافات (اختياري)</b>
-      <span class="muted" style="font-size:12px">السعر بجانب كل خيار يُضاف لسعر الصنف. اتركه فارغاً إن لم تكن هناك زيادة.</span></div>
-    <div id="it-opts" class="col gap10"></div>
-    <div class="row gap10"><button class="btn btn-sm btn-ghost" data-og-add="one">+ حجم أو نوع</button><button class="btn btn-sm btn-ghost" data-og-add="many">+ إضافات</button></div>
+    <section class="opt-ed">
+      <div class="opt-ed-h"><span class="oe-ic">${I.layers}</span>
+        <div class="col"><b>الأحجام والإضافات</b><span>اختياري · السعر بجانب كل خيار يُضاف لسعر الصنف</span></div></div>
+      <div id="it-opts" class="col gap10"></div>
+      <div class="og-add">
+        <button data-og-add="one"><span class="og-ic one">${I.size}</span><span class="col"><b>حجم أو نوع</b><small>عادي، كبير، عائلي</small></span></button>
+        <button data-og-add="many"><span class="og-ic many">${I.plus}</span><span class="col"><b>إضافات</b><small>جبنة، بطاطس، صوص</small></span></button>
+      </div>
+    </section>
     <label class="row between box" style="padding:12px 14px"><span style="font-weight:500">متوفر اليوم</span>
       <span class="switch"><input type="checkbox" id="it-av" ${m ? (m.available ? "checked" : "") : "checked"}><span></span></span></label>
     <p id="it-err" class="err"></p>
