@@ -135,7 +135,7 @@
   #map{height:220px}
   .mapbox{position:relative;border-radius:16px;overflow:hidden;direction:ltr;z-index:1;isolation:isolate}
   .mapbox > div:first-child{width:100%;height:100%}
-  .leaflet-container{font-family:inherit;background:#F2EFE9}
+  .leaflet-container{font-family:inherit;background:#3B3F3A}
   .leaflet-control-attribution{font-size:9px!important;background:rgba(255,255,255,.75)!important;border-radius:8px 0 0 0}
   .leaflet-control-attribution a{color:var(--muted)!important}
   .map-fab{position:absolute;z-index:500;width:44px;height:44px;border:0;border-radius:14px;background:#fff;color:var(--ink);
@@ -479,10 +479,16 @@ const ratingTag = r => r?.ratingCount
 const verifiedTag = r => r?.verified ? `<span class="badge b-green">${I.check}موثّق</span>` : "";
 
 // ═════════ الخرائط ═════════
-const TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+// صور القمر الصناعي من Esri مع طبقتي الشوارع وأسماء الأماكن فوقها
+const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
+const TILES = [
+  ["World_Imagery", "Imagery © Esri, Maxar, Earthstar Geographics"],
+  ["Reference/World_Transportation", ""],
+  ["Reference/World_Boundaries_and_Places", ""]
+];
 function makeMap(el, center, zoom) {
   const m = L.map(el, { zoomControl: false, attributionControl: true, tap: true }).setView(center, zoom);
-  L.tileLayer(TILE, { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(m);
+  TILES.forEach(([s, attribution]) => L.tileLayer(ESRI + s + "/MapServer/tile/{z}/{y}/{x}", { maxZoom: 20, maxNativeZoom: 18, attribution }).addTo(m));
   m.attributionControl.setPrefix(false);
   el.classList.add("map-soft");
   return m;
@@ -494,7 +500,7 @@ const restIcon = (r, sel) => L.divIcon({ className: "", iconSize: sel ? [50, 50]
   html: `<div class="mpin ${r.isOpen ? "" : "closed"} ${sel ? "sel" : ""}" style="background:${colorOf(r.name)}"><span>${catIcon(r.category, sel ? 22 : 18)}</span></div>` });
 const userIcon = () => L.divIcon({ className: "", iconSize: [18, 18], iconAnchor: [9, 9], html: '<div class="udot"></div>' });
 // خريطة باختيار الموقع بدبوس ثابت في المنتصف (تحريك الخريطة لا الدبوس)
-function pickerMap(boxId, start, zoom, onPick) {
+function pickerMap(boxId, start, zoom, onPick, known) {
   const box = $("#" + boxId);
   if (!window.L) { box.innerHTML = emptyState("تعذر تحميل الخريطة", "تأكد من الإنترنت ثم حاول مرة أخرى."); return null; }
   box.innerHTML = `<div></div><span class="center-pin">${PIN_SVG}</span><span class="map-hint">حرّك الخريطة ليقع الدبوس على المكان</span>${zoomCtl()}
@@ -503,9 +509,9 @@ function pickerMap(boxId, start, zoom, onPick) {
   bindZoom(box, m);
   m.on("movestart", () => box.classList.add("moving"));
   m.on("moveend", () => { box.classList.remove("moving"); const c = m.getCenter(); onPick([c.lat, c.lng]); });
-  box.querySelector("[data-me]").onclick = () => getMyLoc(true).then(p => p && m.setView(p, 17));
+  box.querySelector("[data-me]").onclick = () => getMyLoc(true, true).then(p => p && m.setView(p, 18));
   setTimeout(() => m.invalidateSize(), 50);
-  if (zoom >= 17) onPick(start); // موقع معروف مسبقاً: يُعتمد مباشرة
+  if (known) onPick(start); // موقع محفوظ مسبقاً: يُعتمد مباشرة
   return m;
 }
 // خريطة صغيرة ثابتة للعرض فقط
@@ -537,8 +543,12 @@ function openPicker({ title, start, mode, landmark = "", label = "", onConfirm }
     <p id="pk-err" class="err"></p>
     <button id="pk-ok" class="btn btn-primary">${mode === "restaurant" ? "حفظ موقع المطعم" : "تأكيد الموقع"}</button>`;
   if (pkMap) { pkMap.remove(); pkMap = null; }
-  pkMap = pickerMap("pk-map", start || myLoc || CONFIG.DEFAULT_LOC, start || myLoc ? 17 : 13, p => loc = p);
-  if (!start && !myLoc) getMyLoc(false).then(p => p && pkMap && pkMap.setView(p, 17));
+  pkMap = pickerMap("pk-map", start || myLoc || CONFIG.DEFAULT_LOC, start || myLoc ? 18 : 13, p => loc = p, !!start);
+  // موقع GPS قديم أو تقريبي قد يبعد عشرات الأمتار: نطلب قراءة جديدة ولا نعتمده حتى تتحرك الخريطة إليه
+  if (!start) {
+    let dragged = false; pkMap?.once("dragstart zoomstart", () => dragged = true);
+    getMyLoc(false, true).then(p => p && pkMap && !dragged && pkMap.setView(p, 18));
+  }
   panel.onclick = e => {
     const c = e.target.closest("[data-lbl]");
     if (c) { lbl = c.dataset.lbl; panel.querySelectorAll("[data-lbl]").forEach(x => x.classList.toggle("on", x === c)); return; }
@@ -553,12 +563,12 @@ function closePicker() { $("#picker").classList.remove("on"); if (pkMap) { pkMap
 $("#pk-close").addEventListener("click", closePicker);
 
 let myLoc = null;
-function getMyLoc(loud) {
+function getMyLoc(loud, fresh) {
   return new Promise(res => {
     if (!navigator.geolocation) { loud && toast("تحديد الموقع غير مدعوم في هذا الجهاز."); return res(null); }
     navigator.geolocation.getCurrentPosition(p => { myLoc = [p.coords.latitude, p.coords.longitude]; res(myLoc); },
       () => { loud && toast("لم نتمكن من تحديد موقعك. فعّل خدمة الموقع."); res(null); },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: fresh ? 0 : 60000 });
   });
 }
 function distKm(a, b) {
@@ -568,6 +578,9 @@ function distKm(a, b) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 const hasLoc = r => typeof r?.lat === "number" && typeof r?.lng === "number";
+const ll = p => `${(+p.lat).toFixed(6)},${(+p.lng).toFixed(6)}`;
+const dirUrl = p => `https://www.google.com/maps/dir/?api=1&destination=${ll(p)}&travelmode=driving`;
+const pinUrl = p => `https://www.google.com/maps/search/?api=1&query=${ll(p)}`;
 const distTag = r => myLoc && hasLoc(r) ? `<span>${(d => d < 1 ? Math.round(d * 1000) + " م" : d.toFixed(1) + " كم")(distKm(myLoc, [r.lat, r.lng]))}</span>` : "";
 
 I.chart = '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>';
@@ -902,7 +915,7 @@ function renderRestaurant() {
       ${hasLoc(r) ? `<section class="col gap10" style="padding-top:22px">
         <div class="row between"><h2>الموقع</h2><span class="muted">${distTag(r)}</span></div>
         <div id="r-map" class="mapbox" style="height:170px"></div>
-        <a class="btn btn-sm btn-outline" href="https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.lng}" target="_blank" style="text-decoration:none">${I.pin}الاتجاهات إلى المطعم</a>
+        <a class="btn btn-sm btn-outline" href="${dirUrl(r)}" target="_blank" style="text-decoration:none">${I.pin}الاتجاهات إلى المطعم</a>
       </section>` : ""}
       ${reviewsBlock(curRest)}
     </div>
@@ -1419,7 +1432,7 @@ function orderCard(o) {
     <div class="row between" style="font-weight:700"><span>الإجمالي</span><span>${money(o.total)} · ${o.payMethod === "cash" ? "كاش" : "بنكك"}</span></div>
     <div class="row gap10">${actions}
       <a class="icon-btn" href="tel:${esc(o.customerPhone)}" aria-label="اتصال بالزبون" style="background:var(--green-soft);color:var(--green)">${I.phone}</a>
-      ${o.location ? `<a class="icon-btn" href="https://maps.google.com/?q=${o.location.lat},${o.location.lng}" target="_blank" aria-label="فتح الموقع في الخرائط" style="background:var(--blue-soft);color:var(--blue)">${I.pin}</a>` : ""}
+      ${o.location ? `<a class="icon-btn" href="${pinUrl(o.location)}" target="_blank" aria-label="فتح الموقع في الخرائط" style="background:var(--blue-soft);color:var(--blue)">${I.pin}</a>` : ""}
     </div></article>`;
 }
 
