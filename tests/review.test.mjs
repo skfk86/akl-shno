@@ -3,7 +3,8 @@
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { readFileSync } from "node:fs";
-import { reviewRestaurant, aiProvider, nameMatch } from "../notify/review.mjs";
+import sharp from "sharp";
+import { reviewRestaurant, nameMatch } from "../notify/review.mjs";
 
 initializeApp({ projectId: "demo-akl-shno" });
 const db = getFirestore();
@@ -14,7 +15,12 @@ async function t(name, fn) {
 }
 const expect = (c, m) => { if (!c) throw new Error(m); };
 const img = f => "data:image/jpeg;base64," + readFileSync(new URL(f, import.meta.url)).toString("base64");
-const jpg = img("./proof.jpg"), poster = img("./fake-poster.jpg");
+const jpg = img("./proof.jpg"), poster = img("./fake-poster.jpg"), photo = img("./real-photo.jpg"), shot = img("./screenshot.jpg");
+const camera = (ago = 3600e3, extra = {}) => ({ proofMeta: { sign: { camera: true, make: "samsung", model: "SM-A155F", software: "A155FXXU1", taken: Date.now() - ago, ...extra } } });
+let n = 10;
+const fresh = (extra = {}) => ({ phone: `+2499120${String(++n).padStart(5, "0")}`, name: `مطعم تجربة ${n}`, ...extra });
+// نفس الصورة بإعادة ضغط مختلفة (بصمة مختلفة) لتجربة حالات أخرى دون كشف التكرار
+const uniq = async d => "data:image/jpeg;base64," + (await sharp(Buffer.from(d.split(",")[1], "base64")).jpeg({ quality: 70 + (++n % 25) }).toBuffer()).toString("base64");
 
 async function rest(id, extra = {}, img = jpg) {
   await db.doc(`images/img-${id}`).set({ owner: id, data: img });
@@ -31,23 +37,41 @@ await t("مطابقة اسم اللافتة: «مطعم الريّان» = «ا�
 await t("مطابقة اسم اللافتة: «شواية الساقية» ≠ «مطعم النيل»", () => expect(nameMatch("شواية الساقية", "مطعم النيل") === "no", "matched"));
 await t("لافتة فارغة ← غير معروف", () => expect(nameMatch("", "مطعم النيل") === "unknown", "should be unknown"));
 let res;
-await t("صورة غير موثوقة لا تُقبل تلقائياً", async () => {
-  res = await reviewRestaurant(db, await rest("r1"));
-  console.log("      →", res.decision, "|", res.reason, "|", res.report.ai ? `${res.report.ai.type}/${res.report.ai.scene} «${res.report.ai.sign}» ${res.report.ai.note}` : "no ai");
-  res.report.checks.forEach(c => console.log("      ", c.ok ? "+" : "-", c.label));
-  expect(res.decision !== "approve", "graphic image was auto-approved");
+await t("تصميم مسطّح ← رفض تلقائي", async () => {
+  res = await reviewRestaurant(db, await rest("r1", camera()));
+  console.log("      →", res.decision, "|", res.reason, "|", JSON.stringify(res.report.stats));
+  expect(res.decision === "reject", res.decision);
 });
-await t("ملصق/إنفوغرافيك (مثل صور الطقس) لا يُقبل تلقائياً", async () => {
-  const r = await reviewRestaurant(db, await rest("p1", { phone: "+249912000666", name: "مطعم سادس" }, poster));
-  console.log("      →", r.decision, "|", r.reason, "|", r.report.ai ? `${r.report.ai.type}/${r.report.ai.scene} «${r.report.ai.sign}» ${r.report.ai.note}` : "no ai");
-  expect(r.decision !== "approve", "poster was auto-approved");
+await t("ملصق/إنفوغرافيك (مثل صور الطقس) ← رفض تلقائي", async () => {
+  const r = await reviewRestaurant(db, await rest("p1", fresh(camera()), poster));
+  console.log("      →", r.decision, "|", JSON.stringify(r.report.stats));
+  expect(r.decision === "reject", r.decision + " " + r.reason);
 });
-if (aiProvider()) await t(`الذكاء الاصطناعي (${aiProvider()}) متاح ويرد`, async () => {
-  expect(res.report.ai, "AI provider configured but did not answer");
+await t("لقطة شاشة من التطبيق ← رفض تلقائي", async () => {
+  const r = await reviewRestaurant(db, await rest("s1", fresh(camera()), shot));
+  console.log("      →", r.decision, "|", JSON.stringify(r.report.stats));
+  expect(r.decision === "reject", r.decision + " " + r.reason);
 });
-else console.log("      → لا يوجد مفتاح ذكاء اصطناعي بعد: الفحص يعمل بالقواعد فقط ويحوّل الباقي للأدمن");
+await t("صورة كاميرا حقيقية حديثة + كل الفحوصات ← قبول تلقائي", async () => {
+  const r = await reviewRestaurant(db, await rest("ok1", fresh(camera()), photo));
+  console.log("      →", r.decision, "|", r.reason, "|", JSON.stringify(r.report.stats));
+  r.report.checks.forEach(c => console.log("      ", c.ok ? "+" : "-", c.label));
+  expect(r.decision === "approve", r.decision + " " + r.reason);
+});
+await t("صورة حقيقية بلا بيانات كاميرا (من المعرض أو الإنترنت) ← للأدمن", async () => {
+  const r = await reviewRestaurant(db, await rest("m1", fresh(), await uniq(photo)));
+  expect(r.decision === "manual", r.decision);
+});
+await t("صورة قديمة (قبل شهر) ← للأدمن", async () => {
+  const r = await reviewRestaurant(db, await rest("m2", fresh(camera(30 * 864e5)), await uniq(photo)));
+  expect(r.decision === "manual", r.decision);
+});
+await t("صورة معدّلة ببرنامج تصميم ← للأدمن", async () => {
+  const r = await reviewRestaurant(db, await rest("m3", fresh(camera(3600e3, { software: "Canva" })), await uniq(photo)));
+  expect(r.decision === "manual", r.decision);
+});
 await t("تقرير الفحص يحوي البنود", async () => {
-  expect(res.report.checks.length >= 6, "few checks: " + res.report.checks.length);
+  expect(res.report.checks.length >= 10, "few checks: " + res.report.checks.length);
   expect(res.hashes.sign, "no image hash");
 });
 await db.doc(`proofHashes/${res.hashes.sign}`).set({ rid: "r1" });

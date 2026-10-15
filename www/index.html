@@ -272,6 +272,7 @@
   .steps-v i{flex:1;height:2px;background:var(--line);border-radius:2px}
   .proof{display:flex;gap:12px;align-items:center;width:100%;padding:12px;border-radius:16px;border:2px dashed var(--line);background:#fff;font:inherit;color:inherit;cursor:pointer}
   .proof.has{border-style:solid;border-color:var(--green)}
+  .proof.bad{border-style:solid;border-color:var(--red);background:#FEF2F2}
   .pimg{width:76px;height:76px;border-radius:12px;background:var(--fill);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;color:var(--muted)}
   .pimg img{width:100%;height:100%;object-fit:cover}
   .acc-chip{position:absolute;top:48px;left:50%;transform:translateX(-50%);z-index:600;background:#fff;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.18);white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
@@ -2333,9 +2334,105 @@ function maybeCongrats() {
   b.querySelector("#cg-later").onclick = closeSheet;
 }
 
+// ═════════ فحص صور الإثبات على الهاتف (بدون ذكاء اصطناعي) ═════════
+// قبل الضغط: نقرأ بيانات الكاميرا (EXIF) من الملف الأصلي، ونحلل البكسلات لنعرف إن كانت
+// صورة كاميرا حقيقية أم لقطة شاشة أو تصميماً، ونفحص الحجم والإضاءة والوضوح.
+
+// قارئ EXIF مصغّر لملفات JPEG: الشركة المصنّعة والطراز وتاريخ الالتقاط
+async function readExif(file) {
+  try {
+    const buf = new DataView(await file.slice(0, 256 * 1024).arrayBuffer());
+    if (buf.getUint16(0) !== 0xFFD8) return null;
+    let off = 2;
+    while (off + 4 < buf.byteLength) {
+      const marker = buf.getUint16(off), len = buf.getUint16(off + 2);
+      if (marker === 0xFFE1 && buf.getUint32(off + 4) === 0x45786966) {   // "Exif"
+        const t = off + 10, le = buf.getUint16(t) === 0x4949;
+        const u16 = o => buf.getUint16(t + o, le), u32 = o => buf.getUint32(t + o, le);
+        const str = (o, n) => { let s = ""; for (let i = 0; i < n - 1 && t + o + i < buf.byteLength; i++) { const c = buf.getUint8(t + o + i); if (!c) break; s += String.fromCharCode(c); } return s.trim(); };
+        const ifd = (o, want) => {
+          const out = {}, n = u16(o);
+          for (let i = 0; i < n; i++) {
+            const e = o + 2 + i * 12, tag = u16(e), cnt = u32(e + 4);
+            if (!want.includes(tag)) continue;
+            out[tag] = tag === 0x8769 ? u32(e + 8) : str(cnt > 4 ? u32(e + 8) : e + 8, cnt);
+          }
+          return out;
+        };
+        const i0 = ifd(u32(4), [0x010F, 0x0110, 0x0131, 0x8769]);
+        const ex = i0[0x8769] ? ifd(i0[0x8769], [0x9003]) : {};
+        return { make: i0[0x010F] || "", model: i0[0x0110] || "", software: i0[0x0131] || "", taken: ex[0x9003] || "" };
+      }
+      if ((marker & 0xFF00) !== 0xFF00) break;
+      off += 2 + len;
+    }
+  } catch {}
+  return null;
+}
+const exifDate = s => { const m = /^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d)/.exec(s || ""); return m ? new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5]).getTime() : 0; };
+
+// مقاييس البكسلات بحجم العمل (الضلع الأطول 1100 بكسل، وهو حجم الصورة المحفوظة؛ نفس الخوارزمية على الخادم)
+//   flat: نسبة البكسلات المطابقة لجيرانها تماماً. صور الكاميرا فيها ضجيج طبيعي (0.1–0.3)،
+//         واللقطات والتصاميم فيها مساحات لونية مسطحة (أكثر من 0.6)
+//   colors: عدد الألوان المختلفة (قليل جداً في التصاميم)، lum: متوسط الإضاءة
+function pixelStats(d, w, h) {
+  let flat = 0, total = 0, lum = 0;
+  const colors = new Set();
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    if ((x & 3) === 0 && (y & 3) === 0) colors.add((d[i] >> 3) << 10 | (d[i + 1] >> 3) << 5 | d[i + 2] >> 3);
+    lum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    if (x < w - 1 && y < h - 1) {
+      const r = i + 4, b = i + w * 4;
+      if (Math.max(Math.abs(d[i] - d[r]), Math.abs(d[i + 1] - d[r + 1]), Math.abs(d[i + 2] - d[r + 2])) <= 1 &&
+          Math.max(Math.abs(d[i] - d[b]), Math.abs(d[i + 1] - d[b + 1]), Math.abs(d[i + 2] - d[b + 2])) <= 1) flat++;
+      total++;
+    }
+  }
+  return { flat: +(flat / total).toFixed(3), colors: colors.size, lum: Math.round(lum / (w * h)) };
+}
+
+async function analyzePhoto(file, kind) {
+  const problems = [], meta = { type: file.type, size: file.size };
+  const exif = await readExif(file);
+  if (exif) Object.assign(meta, { make: exif.make, model: exif.model, software: exif.software, taken: exifDate(exif.taken) || null });
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    meta.w = img.naturalWidth; meta.h = img.naturalHeight;
+    const k = Math.min(1, 1100 / Math.max(meta.w, meta.h)), cw = Math.round(meta.w * k), ch = Math.round(meta.h * k);
+    const c = document.createElement("canvas"); c.width = cw; c.height = ch;
+    const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(img, 0, 0, cw, ch);
+    Object.assign(meta, pixelStats(g.getImageData(0, 0, cw, ch).data, cw, ch));
+  } catch { problems.push("تعذر قراءة الصورة. جرّب مرة أخرى."); return { ok: false, problems, meta }; }
+  finally { URL.revokeObjectURL(url); }
+
+  const short = Math.min(meta.w, meta.h), dpr = window.devicePixelRatio || 1;
+  const scr = [Math.round(screen.width * dpr), Math.round(screen.height * dpr)];
+  const isScreenSize = [[meta.w, meta.h], [meta.h, meta.w]].some(([a, b]) => Math.abs(a - scr[0]) <= 2 && Math.abs(b - scr[1]) <= 2);
+  const screenshotish = file.type === "image/png" || isScreenSize || /screenshot|لقطة/i.test(file.name || "");
+  meta.camera = !!(meta.make || meta.model);
+
+  if (short < 480) problems.push("الصورة صغيرة جداً. التقطها بكاميرا الهاتف مباشرة.");
+  if (screenshotish && !meta.camera) problems.push("هذه لقطة شاشة. المطلوب صورة حقيقية تلتقطها بالكاميرا.");
+  else if (meta.flat > 0.6 || meta.colors < 150) problems.push(kind === "sign"
+    ? "هذه تبدو صورة مصممة أو ملصقاً وليست صورة كاميرا. التقط صورة لواجهة المطعم الحقيقية."
+    : "الصورة لا تبدو تصويراً حقيقياً للوثيقة. صوّر الرخصة الورقية بالكاميرا.");
+  if (meta.lum < 35) problems.push("الصورة مظلمة جداً. صوّر في ضوء النهار أو مع إنارة.");
+  if (meta.lum > 240) problems.push("الصورة ساطعة جداً. ابتعد عن الضوء المباشر.");
+  if (kind === "sign" && meta.taken && Date.now() - meta.taken > 30 * 864e5) problems.push("هذه صورة قديمة. التقط صورة جديدة لواجهة المطعم الآن.");
+  return { ok: !problems.length, problems, meta };
+}
+// اختيار صورة من الكاميرا مباشرة (واجهة المطعم) أو من المعرض (الرخصة)
+const pickPhoto = camera => new Promise(res => {
+  const i = document.createElement("input"); i.type = "file"; i.accept = "image/*";
+  if (camera) i.setAttribute("capture", "environment");
+  i.onchange = () => res(i.files[0] || null); i.click();
+});
+
 // ───── توثيق المطعم قبل القبول ─────
 const isAccepted = r => r?.approved === true || r?.subActiveUntil != null;
-let vfDraft = { sign: null, license: null };
+let vfDraft = { sign: null, license: null }, vfMeta = {}, vfErr = {};
 function renderVerify() {
   const r = myRest, st = r.review || "new", p = r.proofs || {};
   const editing = st !== "pending" || renderVerify.edit;
@@ -2350,11 +2447,14 @@ function renderVerify() {
     </div></div>`;
   const shot = (k, title, hint, req) => {
     const img = vfDraft[k] ? `<img class="ph ok" src="${vfDraft[k]}" alt="">` : p[k] ? imgTag(p[k]) : "";
-    return `<button class="proof ${img ? "has" : ""}" data-vf-pick="${k}">
+    const m = vfMeta[k], er = vfErr[k];
+    const status = er ? `<div class="note n-red" style="margin-top:6px">${I.warn}<span>${er.map(esc).join("<br>")}</span></div>`
+      : m ? `<span class="row gap6" style="font-size:12px;color:var(--green);font-weight:700;margin-top:4px">${I.check}${m.camera ? `صورة كاميرا${m.make ? " · " + esc((m.make + " " + m.model).trim().slice(0, 30)) : ""}` : "اجتازت الفحص"}</span>` : "";
+    return `<div class="col"><button class="proof ${img && !er ? "has" : ""} ${er ? "bad" : ""}" data-vf-pick="${k}">
       <div class="pimg">${img || I.camera}</div>
       <div class="col grow" style="text-align:right;gap:3px"><b>${title} ${req ? '<span style="color:var(--red)">*</span>' : '<span class="muted" style="font-weight:400;font-size:12px">(اختياري)</span>'}</b>
         <span class="muted" style="font-size:12px;line-height:1.6">${hint}</span>
-        <span style="font-size:12px;font-weight:700;color:var(--accent)">${img ? "تغيير الصورة" : "التقاط أو اختيار صورة"}</span></div></button>`;
+        <span style="font-size:12px;font-weight:700;color:var(--accent)" class="row gap6">${k === "sign" ? I.camera.replace('width="28" height="28"', 'width="15" height="15"') : ""}${img ? (k === "sign" ? "إعادة التصوير" : "تغيير الصورة") : (k === "sign" ? "التقط صورة بالكاميرا" : "صوّر أو اختر صورة")}</span></div></button>${status}</div>`;
   };
   const statusNote = sent
     ? `<div class="note n-blue">${I.clock}<span><b>طلبك قيد المراجعة.</b> نراجع الإثباتات ونتصل بك على <span dir="ltr">${esc(r.phone)}</span> خلال 24 إلى 48 ساعة، وتصلك رسالة عند القبول.</span></div>`
@@ -2365,7 +2465,7 @@ function renderVerify() {
     ${statusNote}
     ${editing ? `
       <h2>إثباتات المطعم</h2>
-      ${shot("sign", "صورة واجهة المطعم", "صورة واضحة للمطعم من الخارج تظهر فيها اللافتة والاسم.", true)}
+      ${shot("sign", "صورة واجهة المطعم", "التقطها الآن بالكاميرا من أمام المطعم، وتظهر فيها اللافتة والاسم بوضوح. لا تُقبل صور المعرض أو لقطات الشاشة أو التصاميم.", true)}
       ${shot("license", "الرخصة التجارية أو الشهادة الصحية", "إن وُجدت. تسرّع القبول.", false)}
       <section class="box col gap10">
         <div class="row between"><b>موقع المطعم على الخريطة <span style="color:var(--red)">*</span></b>
@@ -2389,8 +2489,12 @@ function renderVerify() {
     if (e.target.closest("#vf-edit")) { renderVerify.edit = true; return renderVerify(); }
     const pk = e.target.closest("[data-vf-pick]");
     if (pk) {
-      const f = await pickFile(); if (!f) return;
-      try { vfDraft[pk.dataset.vfPick] = await compressImage(f, 1100); renderVerify(); }
+      const k = pk.dataset.vfPick;
+      const f = await pickPhoto(k === "sign"); if (!f) return;
+      toast("جارٍ فحص الصورة…");
+      const a = await analyzePhoto(f, k);
+      if (!a.ok) { vfErr[k] = a.problems; vfDraft[k] = null; delete vfMeta[k]; return renderVerify(); }
+      try { vfDraft[k] = await compressImage(f, 1100); vfMeta[k] = a.meta; delete vfErr[k]; renderVerify(); }
       catch { toast("تعذر قراءة الصورة. جرّب صورة أخرى."); }
       return;
     }
@@ -2401,12 +2505,12 @@ function renderVerify() {
     const send = e.target.closest("#vf-send");
     if (send) {
       const err = $("#vf-err");
-      if (!vfDraft.sign && !p.sign) return err.textContent = "أضف صورة واجهة المطعم.";
+      if (!vfDraft.sign && !p.sign) return err.textContent = vfErr.sign ? "صورة الواجهة لم تجتز الفحص. أعد التصوير." : "التقط صورة واجهة المطعم.";
       if (!hasLoc(myRest)) return err.textContent = "حدد موقع المطعم على الخريطة.";
       return busy(send, async () => {
         try {
-          await F.submitVerification({ ...vfDraft, note: $("#vf-note").value.trim().slice(0, 300) }, p);
-          vfDraft = { sign: null, license: null }; renderVerify.edit = false;
+          await F.submitVerification({ ...vfDraft, note: $("#vf-note").value.trim().slice(0, 300), meta: vfMeta }, p, r.proofMeta);
+          vfDraft = { sign: null, license: null }; vfMeta = {}; vfErr = {}; renderVerify.edit = false;
           myRest.review = "pending"; renderVerify();
           toast("تم الإرسال. سنراجع طلبك قريباً");
         } catch (x) { console.error(x); err.textContent = "تعذر الإرسال. تأكد من الإنترنت وحاول مرة أخرى."; }

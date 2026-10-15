@@ -3,9 +3,31 @@
 //   approve  ← كل الفحوصات نجحت والذكاء الاصطناعي واثق أن الصورة واجهة مطعم حقيقية باسمه
 //   reject   ← مشكلة واضحة (رقم/صورة مكررة، جهاز محظور، موقع خارج السودان، لقطة شاشة أو تصميم)
 //   manual   ← حالة غير محسومة: تبقى للأدمن مع تقرير الفحص
-// الذكاء الاصطناعي: Cloudflare Workers AI أو Gemini (مجاني بمفتاح في أسرار GitHub). بدونه يعمل الفحص بالقواعد فقط.
+// الفحص بالطريقة العادية بدون ذكاء اصطناعي: بيانات الكاميرا (EXIF) + تحليل البكسلات + القواعد.
 
 import { createHash } from "node:crypto";
+import sharp from "sharp";
+
+// نفس خوارزمية الهاتف (pixelStats في index.html) بحجم العمل: الضلع الأطول 1100 بكسل
+export async function imageStats(dataUrl) {
+  const buf = Buffer.from(String(dataUrl).split(",")[1] || "", "base64");
+  const { data: d, info } = await sharp(buf).resize(1100, 1100, { fit: "inside", withoutEnlargement: true }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const w = info.width, h = info.height;
+  let flat = 0, total = 0, lum = 0;
+  const colors = new Set();
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    if ((x & 3) === 0 && (y & 3) === 0) colors.add((d[i] >> 3) << 10 | (d[i + 1] >> 3) << 5 | d[i + 2] >> 3);
+    lum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    if (x < w - 1 && y < h - 1) {
+      const r = i + 4, b = i + w * 4;
+      if (Math.max(Math.abs(d[i] - d[r]), Math.abs(d[i + 1] - d[r + 1]), Math.abs(d[i + 2] - d[r + 2])) <= 1 &&
+          Math.max(Math.abs(d[i] - d[b]), Math.abs(d[i + 1] - d[b + 1]), Math.abs(d[i + 2] - d[b + 2])) <= 1) flat++;
+      total++;
+    }
+  }
+  return { flat: +(flat / total).toFixed(3), colors: colors.size, lum: Math.round(lum / (w * h)) };
+}
 
 const SUDAN = { minLat: 8.6, maxLat: 22.3, minLng: 21.8, maxLng: 38.7 };
 const norm = s => String(s || "").toLowerCase()
@@ -127,32 +149,41 @@ export async function reviewRestaurant(db, doc) {
   const banned = dev ? (await db.doc(`bannedDevices/${dev}`).get()).exists : false;
   add(!banned, banned ? "جهاز صاحب المطعم محظور" : "الجهاز غير محظور", true);
 
-  // الذكاء الاصطناعي
-  const ai = imgs.sign ? await askAI(r, [imgs.sign, imgs.license].filter(Boolean)) : null;
+  // ───── تحليل الصورة بالطريقة العادية (بدون ذكاء اصطناعي) ─────
+  // 1) بيانات الكاميرا التي قرأها الهاتف من الملف الأصلي عند الالتقاط
+  const m = r.proofMeta?.sign || null;
+  const EDITORS = /photoshop|canva|picsart|snapseed|gimp|lightroom|illustrator|figma|remini|facetune/i;
+  add(!!m?.camera, m?.camera ? `صورة من كاميرا الهاتف${m.make ? ` (${String(m.make + " " + (m.model || "")).trim().slice(0, 30)})` : ""}` : "لا توجد بيانات كاميرا في الصورة");
+  const takenAgo = m?.taken ? (r.reviewAt?.toMillis?.() || Date.now()) - m.taken : null;
+  add(takenAgo != null && takenAgo > -864e5 && takenAgo < 7 * 864e5, takenAgo == null ? "تاريخ الالتقاط غير معروف" : takenAgo < 7 * 864e5 ? "التُقطت حديثاً" : "الصورة قديمة (التُقطت قبل أكثر من أسبوع)");
+  add(!EDITORS.test(m?.software || ""), EDITORS.test(m?.software || "") ? `الصورة معدّلة ببرنامج (${m.software})` : "لا أثر لبرامج تعديل الصور");
+  // 2) نعيد تحليل البكسلات على الخادم (لا نعتمد على الهاتف وحده)
+  const st = imgs.sign ? await imageStats(imgs.sign).catch(() => null) : null;
+  const graphic = !!st && (st.flat > 0.6 || st.colors < 150);
+  if (st) {
+    add(!graphic && st.flat < 0.45, graphic ? "الصورة تصميم أو لقطة شاشة (مساحات لونية مسطحة)" : st.flat < 0.45 ? "تفاصيل الصورة طبيعية كصور الكاميرا" : "تفاصيل الصورة غير كافية للحكم");
+    add(st.lum >= 35 && st.lum <= 240, st.lum < 35 ? "الصورة مظلمة جداً" : st.lum > 240 ? "الصورة ساطعة جداً" : "الإضاءة مناسبة");
+  }
+
+  // ───── ذكاء اصطناعي اختياري (معطّل افتراضياً، يعمل فقط إذا أُضيف مزوّد في أسرار GitHub) ─────
+  const ai = imgs.sign && aiProvider() ? await askAI(r, [imgs.sign, imgs.license].filter(Boolean)) : null;
   if (ai) {
-    const photo = ai.photo_type === "camera_photo", front = ["restaurant_storefront", "building_exterior"].includes(ai.scene);
     ai.name_match = nameMatch(ai.sign_text, r.name);
-    ai.screenshot_or_graphic = ["screenshot", "graphic_or_illustration", "photo_of_screen"].includes(ai.photo_type) || ["abstract", "poster_or_ad"].includes(ai.scene);
-    add(photo && !ai.screenshot_or_graphic, ai.screenshot_or_graphic ? "الصورة لقطة شاشة أو تصميم أو ملصق وليست صورة حقيقية" : photo ? "صورة حقيقية ملتقطة بالكاميرا" : "نوع الصورة غير واضح");
-    add(front, front ? "تظهر واجهة مبنى أو مطعم" : "لا تظهر واجهة مطعم");
-    add(!!ai.sign_visible && !!ai.sign_text, ai.sign_visible && ai.sign_text ? `اللافتة مقروءة: «${String(ai.sign_text).slice(0, 40)}»` : "لا توجد لافتة مقروءة");
-    add(["yes", "partial"].includes(ai.name_match), ai.name_match === "yes" ? "الاسم على اللافتة يطابق اسم المطعم" : ai.name_match === "partial" ? "الاسم على اللافتة يطابق جزئياً" : "الاسم على اللافتة لا يطابق اسم المطعم");
-    if (imgs.license && typeof ai.license_is_document === "boolean") add(ai.license_is_document, ai.license_is_document ? "صورة الرخصة وثيقة حقيقية" : "صورة الرخصة لا تبدو وثيقة");
+    add(!!ai.sign_visible && ai.name_match !== "no", ai.name_match === "no" ? "الاسم على اللافتة لا يطابق اسم المطعم" : "اللافتة متوافقة مع اسم المطعم");
   }
 
   // القرار
-  const conf = Number(ai?.confidence) || 0;
   const hardFail = checks.find(c => c.hard && !c.ok);
   let decision = "manual", reason = "";
   if (hardFail) { decision = "reject"; reason = hardFail.label; }
-  else if (ai && ai.screenshot_or_graphic && conf >= 0.7) { decision = "reject"; reason = "صورة الواجهة لقطة شاشة أو تصميم. التقط صورة حقيقية لواجهة مطعمك بالكاميرا"; }
-  else if (ai && ["food", "document", "interior"].includes(ai.scene) && conf >= 0.85) { decision = "reject"; reason = "الصورة لا تُظهر واجهة مطعم. التقط صورة لواجهة المطعم من الخارج تظهر فيها اللافتة"; }
-  else if (ai && checks.every(c => c.ok) && conf >= 0.75) decision = "approve";
-  if (!ai && !hardFail) reason = "تعذر فحص الصورة آلياً، تحتاج مراجعة يدوية";
+  else if (graphic) { decision = "reject"; reason = "صورة الواجهة تصميم أو لقطة شاشة. التقط صورة حقيقية لواجهة مطعمك بالكاميرا"; }
+  else if (st && checks.every(c => c.ok)) decision = "approve";
+  else reason = checks.filter(c => !c.ok).map(c => c.label).join("، ");
+  const conf = checks.filter(c => c.ok).length / checks.length;
 
   return {
     decision, reason, hashes,
     report: { key: r.reviewAt?.toMillis?.() || 0, at: new Date().toISOString(), decision, reason, confidence: conf,
-      checks: checks.map(({ ok, label }) => ({ ok, label })), ai: ai ? { model: ai.model, note: String(ai.description || "").slice(0, 220), type: ai.photo_type || "", scene: ai.scene || "", sign: String(ai.sign_text || "").slice(0, 60) } : null }
+      checks: checks.map(({ ok, label }) => ({ ok, label })), stats: st, ai: ai ? { model: ai.model, note: String(ai.description || "").slice(0, 220), sign: String(ai.sign_text || "").slice(0, 60) } : null }
   };
 }

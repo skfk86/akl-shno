@@ -94,12 +94,14 @@ export const watchMyRestaurant = cb => onSnapshot(doc(db, "restaurants", uid()),
 
 // ═════════ توثيق المطعم قبل القبول ═════════
 // المطعم يرفع صور الإثبات (تُحذف تلقائياً بعد 30 يوماً من المراجعة) ثم ينتظر قبول الإدارة.
-export async function submitVerification({ sign, license, note }, old = {}) {
+export async function submitVerification({ sign, license, note, meta = {} }, old = {}, oldMeta = {}) {
   const proofs = {
     sign: sign ? await uploadImage(sign) : old.sign || "",
     license: license ? await uploadImage(license) : old.license || ""
   };
-  await updateDoc(doc(db, "restaurants", uid()), { proofs, proofNote: note || "", review: "pending", reviewAt: serverTimestamp() });
+  // نتيجة فحص الصورة على الهاتف (بيانات الكاميرا ومقاييس البكسلات) ليراها الفحص التلقائي والأدمن
+  const proofMeta = { sign: sign ? meta.sign || null : oldMeta?.sign || null, license: license ? meta.license || null : oldMeta?.license || null };
+  await updateDoc(doc(db, "restaurants", uid()), { proofs, proofMeta, proofNote: note || "", review: "pending", reviewAt: serverTimestamp() });
   if (sign && old.sign) deleteImage(old.sign).catch(() => {});
   if (license && old.license) deleteImage(old.license).catch(() => {});
 }

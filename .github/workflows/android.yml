@@ -20,7 +20,7 @@ jobs:
       - run: printf "\next.rgcfaIncludeGoogle = true\n" >> android/variables.gradle
       - name: Location permissions
         run: |
-          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#&\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#&\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' android/app/src/main/AndroidManifest.xml
           grep -c ACCESS_FINE_LOCATION android/app/src/main/AndroidManifest.xml
       - name: Bundle fonts and map library into the app
         run: |
