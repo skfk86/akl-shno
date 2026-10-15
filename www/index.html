@@ -234,7 +234,7 @@
   .cover img.ph,.thumb img.ph,.ph-box img.ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;opacity:0;transition:opacity .3s;z-index:0}
   img.ph.ok{opacity:1}
   .cover > :not(img),.thumb > :not(img){position:relative;z-index:1}
-  .cover > .tag,.cover > .tag2,.cover > .tag3,.cover > .off,.thumb > .add,.thumb > .off,.thumb > .badge,.cover > button{position:absolute}
+  .cover > .tag,.cover > .tag2,.cover > .tag3,.cover > .off,.thumb > .add,.thumb > .off,.thumb > .badge,.cover > button,.cover > .feat-shade,.cover > .feat-badge,.cover > .feat-info{position:absolute}
   .cover:has(img.ok) .icon,.thumb:has(img.ok) > svg,.ph-box:has(img.ok) > svg{opacity:0}
   .ph-box{position:relative;overflow:hidden}
   .imgpick{display:flex;gap:12px;align-items:center}
@@ -351,6 +351,23 @@
   .off{position:absolute;top:8px;right:8px;background:var(--red);color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
   .cover .tag3{position:absolute;top:10px;left:10px;background:var(--red);color:#fff;font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px}
   s.old{color:var(--muted);font-size:13px;font-weight:400}
+  .feat-promo{display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:18px;background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FDE68A}
+  .feat-promo.on{background:linear-gradient(135deg,#FEF3C7,#FDE68A)}
+  .feat-promo b{font-size:15px}.feat-promo span{font-size:12px;color:#78350F;line-height:1.7}
+  .fp-ic{width:42px;height:42px;border-radius:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(135deg,#FBBF24,#F59E0B);box-shadow:0 4px 12px rgba(245,158,11,.4)}
+  .feat-wrap{margin:14px 0 4px}
+  .feat{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;gap:0;padding:0}
+  .feat::-webkit-scrollbar{display:none}
+  .feat-card{flex:0 0 100%;scroll-snap-align:center;border:0;background:none;padding:0 20px;text-align:right}
+  .feat-card .cover{height:170px;border-radius:22px;position:relative;overflow:hidden;box-shadow:0 10px 24px rgba(28,25,23,.18)}
+  .feat-shade{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.72),rgba(0,0,0,0) 62%)}
+  .feat-badge{position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:4px;background:linear-gradient(135deg,#FBBF24,#F59E0B);color:#422006;font-size:12px;font-weight:800;padding:5px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(245,158,11,.45);z-index:2}
+  .feat-info{position:absolute;right:16px;left:16px;bottom:14px;color:#fff;display:flex;flex-direction:column;gap:2px;z-index:2}
+  .feat-info b{font-size:19px;text-shadow:0 1px 3px rgba(0,0,0,.4)}
+  .feat-info span{font-size:13px;opacity:.92}
+  .feat-dots{display:flex;justify-content:center;gap:6px;margin-top:10px}
+  .feat-dots i{width:6px;height:6px;border-radius:3px;background:#D6D3D1;transition:width .2s,background .2s}
+  .feat-dots i.on{width:18px;background:var(--accent)}
   .top-card{flex:0 0 150px;border:0;background:none;padding:0;text-align:right;display:flex;flex-direction:column;gap:6px}
   .top-card .cover{height:100px;border-radius:16px}
   .chips{display:flex;gap:8px;overflow-x:auto;padding:0 20px 4px;scrollbar-width:none}
@@ -462,6 +479,7 @@
       <b style="font-size:19px">أكل مطاعمك لحدي البيت</b><span style="font-size:13px">ادفع عند الاستلام أو ببنكك</span></div>
     <span style="width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h2l3 11.5M5.5 17.5 9 10h6l3.5 7.5M9 10 7.5 6H5"/></svg></span>
   </div>
+  <div id="h-feat"></div>
   <div id="h-dishes"></div>
   <div id="h-offers"></div>
   <div id="h-top"></div>
@@ -616,7 +634,10 @@ const CONFIG = {
   SUB_PRICE: 25000,      // سعر الاشتراك الشهري بالجنيه (عدّله)
   ADMIN_BANKAK: "4636998", // رقم حسابك في بنكك لاستلام الاشتراكات
   ADMIN_PHONE: "+249901758765", // رقم هاتف الإدارة للاتصال (المراسلة تتم داخل التطبيق)
-  FREE_SEATS: 20,        // عدد المطاعم المؤهلة للشهرين المجانيين
+  FREE_SEATS: 20,
+  // الإعلان المميز: يظهر المطعم في شريط الإعلانات أعلى الرئيسية وأول القائمة في مدينته
+  FEAT_PLANS: [{ days: 7, price: 7000, label: "أسبوع" }, { days: 30, price: 20000, label: "شهر", hint: "وفّر 30%" }],
+  FEAT_MAX_PER_CITY: 5,        // عدد المطاعم المؤهلة للشهرين المجانيين
   NEW_LIMIT: 50000,      // الحد الأقصى للدفع عند الاستلام في أول طلبين (مطابق للقواعد)
   DEFAULT_LOC: [15.6445, 32.4777] // أمدرمان
 };
@@ -1516,10 +1537,11 @@ function matchQuery(r, nq) {
   return [r.name, r.category, r.district, r.city].some(x => norm(x).includes(nq))
     || (menuBy[r.id] || []).some(m => norm(m.name).includes(nq) || norm(m.section).includes(nq));
 }
+const isFeatured = r => (r?.featuredUntil?.toMillis?.() || 0) > Date.now();
 function sortList(list, sort) {
   const d = r => myLoc && hasLoc(r) ? distKm(myLoc, [r.lat, r.lng]) : 9e9;
   const by = {
-    smart: (a, b) => (b.isOpen ? 1 : 0) - (a.isOpen ? 1 : 0) || d(a) - d(b),
+    smart: (a, b) => (b.isOpen ? 1 : 0) - (a.isOpen ? 1 : 0) || (isFeatured(b) ? 1 : 0) - (isFeatured(a) ? 1 : 0) || d(a) - d(b),
     near: (a, b) => d(a) - d(b),
     rating: (a, b) => avgOf(b) - avgOf(a) || (b.ratingCount || 0) - (a.ratingCount || 0),
     popular: (a, b) => (b.ratingCount || 0) - (a.ratingCount || 0),
@@ -1599,6 +1621,18 @@ function renderHome() {
         <span class="muted" style="font-size:12px">${esc(m.r.name)}</span>
         ${priceTag(m)}
       </button>`).join("")}</div>` : ""}` : "";
+  // شريط الإعلانات المميزة (مدفوعة): المفتوح أولاً، بحد أقصى 5 لكل مدينة
+  const feat = inCity.filter(isFeatured).sort((a, b) => (b.isOpen ? 1 : 0) - (a.isOpen ? 1 : 0)).slice(0, CONFIG.FEAT_MAX_PER_CITY);
+  $("#h-feat").innerHTML = feat.length && !filtering ? `<div class="feat-wrap"><div class="feat" id="feat-track">${feat.map(r => `
+    <button class="feat-card" data-rest="${esc(r.id)}">
+      <div class="cover" style="${coverBg(r.name)}">${imgTag(r.image)}<span class="icon">${catIcon(r.category, 56)}</span>
+        <span class="feat-shade"></span>
+        <span class="feat-badge">${I.star.replace('width="22" height="22"', 'width="13" height="13"')}مميز</span>
+        <div class="feat-info"><b>${esc(r.name)}</b>
+          <span>${deals.byRest[r.id] ? esc(deals.byRest[r.id]) + " · " : ""}${esc(r.category)} · ${r.isOpen ? "مفتوح الآن" : "مغلق"}</span></div>
+      </div></button>`).join("")}</div>
+    ${feat.length > 1 ? `<div class="feat-dots">${feat.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}</div>` : "";
+  startFeatAuto(feat.length);
   const top = inCity.filter(r => r.ratingCount).sort((a, b) => avgOf(b) - avgOf(a) || b.ratingCount - a.ratingCount).slice(0, 8);
   $("#h-top").innerHTML = top.length && !filtering ? `<div class="pad row gap6" style="margin-top:18px;margin-bottom:10px">${starIcon("#F59E0B", 20)}<h2 id="top-title">الأعلى تقييماً</h2></div>
     <div class="hscroll">${top.map(r => `<button class="top-card" data-rest="${esc(r.id)}">
@@ -1616,6 +1650,7 @@ function renderHome() {
         <span class="tag" style="color:${r.isOpen ? "var(--green)" : "var(--muted)"}">${r.isOpen ? "مفتوح الآن" : "مغلق"}</span>
         <span class="tag2">${svc(r)}</span>
         ${deals.byRest[r.id] ? `<span class="tag3">${deals.byRest[r.id]}</span>` : ""}
+        ${isFeatured(r) ? `<span class="feat-badge" style="top:auto;bottom:10px;left:10px;right:auto">مميز</span>` : ""}
       </div>
       <b style="font-size:16px">${hl(r.name, q)}</b>${meta(r)}
     </button>` : `
@@ -1698,6 +1733,23 @@ $("#h-refresh").addEventListener("click", showHome);
 $("#h-nearest").addEventListener("click", showNearest);
 $("#h-route").addEventListener("click", showOnRoute);
 $("#h-offers").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
+$("#h-feat").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
+// تمرير تلقائي للإعلانات كل 4 ثوانٍ، ويتوقف إذا لمس المستخدم الشريط
+let featTimer = null;
+function startFeatAuto(n) {
+  clearInterval(featTimer); if (n < 2) return;
+  const tr = $("#feat-track"); let touched = false;
+  tr.addEventListener("touchstart", () => touched = true, { passive: true });
+  tr.addEventListener("scroll", () => {
+    const i = Math.round(Math.abs(tr.scrollLeft) / tr.clientWidth);
+    document.querySelectorAll(".feat-dots i").forEach((d, k) => d.classList.toggle("on", k === i));
+  }, { passive: true });
+  featTimer = setInterval(() => {
+    if (touched || curScreen !== "home" || !tr.isConnected) return;
+    const i = (Math.round(Math.abs(tr.scrollLeft) / tr.clientWidth) + 1) % n;
+    tr.scrollTo({ left: -i * tr.clientWidth, behavior: "smooth" });
+  }, 4000);
+}
 $("#h-top").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
 $("#h-list").addEventListener("click", e => { if (e.target.closest('[data-unf="*"]')) { flt = { ...FLT0 }; saveFlt(); renderHome(); } });
 $("#h-list").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
@@ -2826,6 +2878,13 @@ async function renderOwnerSettings() {
         : `<div class="note n-orange">${I.info}حدد موقع مطعمك ليظهر للزبائن على الخريطة ويعرفوا المسافة إليه.</div>
            <button id="st-loc-edit" class="btn btn-outline" style="height:60px">${I.pin}حدد موقع المطعم على الخريطة</button>`}
     </section>
+    ${(() => { const until = r.featuredUntil?.toMillis?.() || 0, on = until > Date.now(), left = Math.ceil((until - Date.now()) / 864e5);
+      return `<section class="feat-promo ${on ? "on" : ""}">
+        <div class="row gap10"><span class="fp-ic">${I.star}</span>
+          <div class="col grow"><b>${on ? "مطعمك مميز الآن" : "اجعل مطعمك مميزاً"}</b>
+            <span>${on ? `يظهر في شريط الإعلانات أعلى الرئيسية وأول القائمة · باقي ${left} ${left > 2 && left < 11 ? "أيام" : "يوماً"}` : `اظهر في شريط الإعلانات أعلى الرئيسية وأول قائمة مطاعم ${esc(r.city)}. من ${money(CONFIG.FEAT_PLANS[0].price)} للأسبوع.`}</span></div></div>
+        <button class="btn btn-sm ${on ? "btn-ghost" : "btn-primary"}" id="st-feat">${on ? "تمديد الإعلان" : "اشترِ إعلاناً مميزاً"}</button>
+      </section>`; })()}
     <h2 style="margin-top:6px">ساعات العمل</h2>
     <section class="box col gap10" id="st-sched">
       <label class="row between"><span class="col"><b>فتح وإغلاق تلقائي</b><span class="muted" style="font-size:12px">يُغلق المطعم للزبائن خارج هذه الساعات حتى لو نسيت إغلاقه</span></span>
@@ -2875,6 +2934,7 @@ async function renderOwnerSettings() {
       const v = $("#st-bankak").value.trim(), h = $("#st-hours").value.trim();
       return busy(e.target, async () => { await F.updateMyRestaurant({ bankak: v, hours: h }); myRest.bankak = v; myRest.hours = h; toast("تم الحفظ"); });
     }
+    if (e.target.closest("#st-feat")) return openFeatured();
     const dy = e.target.closest("[data-day]");
     if (dy) return dy.classList.toggle("on");
     if (e.target.closest("#sc-save")) {
@@ -2917,6 +2977,36 @@ function zoneSheet() {
 }
 
 // ───── تجديد الاشتراك ─────
+// شراء إعلان مميز: نفس طريقة الاشتراك (تحويل بنكك + رقم العملية + تفعيل الأدمن)
+async function openFeatured() {
+  const r = myRest;
+  let plan = CONFIG.FEAT_PLANS[0], used = 0;
+  try { used = (await F.listOpenRestaurants()).filter(x => x.city === r.city && x.id !== r.id && isFeatured(x)).length; } catch {}
+  const full = used >= CONFIG.FEAT_MAX_PER_CITY && !isFeatured(r);
+  const b = openSheet(`<div class="col" style="align-items:center;text-align:center;gap:6px">
+      <span class="fp-ic" style="width:56px;height:56px;border-radius:18px">${I.star}</span>
+      <h2 style="margin:0">إعلان مميز لمطعمك</h2>
+      <span class="muted" style="line-height:1.8">مطعمك في شريط الإعلانات أعلى الصفحة الرئيسية، وأول قائمة مطاعم ${esc(r.city)}، مع شارة «مميز».</span></div>
+    ${full ? `<div class="note n-orange">${I.info}<span>اكتملت المقاعد المميزة في ${esc(r.city)} (${CONFIG.FEAT_MAX_PER_CITY} مطاعم). جرّب بعد أيام عندما ينتهي أحد الإعلانات.</span></div>` : `
+    <div class="col gap10" id="ft-plans">${CONFIG.FEAT_PLANS.map((p, i) => `<label class="opt-row"><input type="radio" name="ft" value="${i}" ${i ? "" : "checked"}>
+      <span class="col grow"><b>${p.label}</b><span class="muted" style="font-size:12px">${p.days} ${p.days > 10 ? "يوماً" : "أيام"}${p.hint ? ` · <b style="color:var(--green)">${p.hint}</b>` : ""}</span></span><b>${money(p.price)}</b></label>`).join("")}</div>
+    <span class="muted" style="font-size:12px;text-align:center">${CONFIG.FEAT_MAX_PER_CITY - used} من ${CONFIG.FEAT_MAX_PER_CITY} مقاعد مميزة متاحة في ${esc(r.city)}</span>
+    <div class="note n-blue">${I.info}<span>حوّل <b id="ft-amt-t">${money(plan.price)}</b> إلى حساب بنكك: <b dir="ltr">${esc(CONFIG.ADMIN_BANKAK)}</b>، ثم اكتب رقم العملية. نفعّل الإعلان بعد التحقق.</span></div>
+    <label class="field">رقم العملية<input id="ft-txn" dir="ltr" inputmode="numeric" maxlength="40"></label>
+    <p id="ft-err" class="err"></p>
+    <button id="ft-send" class="btn btn-primary">إرسال للمراجعة</button>`}`);
+  if (full) return;
+  b.querySelector("#ft-plans").onchange = e => { plan = CONFIG.FEAT_PLANS[+e.target.value]; b.querySelector("#ft-amt-t").textContent = money(plan.price); };
+  b.querySelector("#ft-send").onclick = e => {
+    const txnId = b.querySelector("#ft-txn").value.trim();
+    if (txnId.length < 4) return b.querySelector("#ft-err").textContent = "اكتب رقم العملية.";
+    busy(e.target, async () => {
+      try { await F.submitPayment({ txnId, amount: plan.price, kind: "featured", days: plan.days }); closeSheet(); toast("تم الإرسال. سنفعّل إعلانك بعد التحقق من التحويل."); }
+      catch { b.querySelector("#ft-err").textContent = "تعذر الإرسال. حاول مرة أخرى."; }
+    });
+  };
+}
+
 function openRenew() {
   const b = openSheet(`<h2>تجديد الاشتراك عبر بنكك</h2>
     <div class="note n-blue">${I.info}<span>حوّل ${CONFIG.SUB_PRICE ? "<b>" + money(CONFIG.SUB_PRICE) + "</b>" : "قيمة الاشتراك"} إلى حساب بنكك: <b dir="ltr">${esc(CONFIG.ADMIN_BANKAK || "—")}</b>، ثم أرسل رقم العملية. نفعّل الاشتراك بعد التحقق.</span></div>
@@ -3004,7 +3094,7 @@ async function loadAdmin() {
           </div></div>`;
       }
       return `<div class="box col gap10">
-        <div class="row between"><span class="row gap6"><b>${esc(r.name)}</b>${verifiedTag(r)}</span>
+        <div class="row between"><span class="row gap6"><b>${esc(r.name)}</b>${verifiedTag(r)}${isFeatured(r) ? `<span class="badge" style="background:#FEF3C7;color:#92400E">مميز</span>` : ""}</span>
           <span class="badge ${r.subActiveUntil == null ? "b-blue" : r.listed === false ? "b-red" : d > 0 ? "b-green" : "b-red"}">${r.subActiveUntil == null ? "بانتظار التفعيل" : r.listed === false ? "موقوف" : d > 0 ? `باقي ${d} يوماً` : "منتهي"}</span></div>
         <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span><a class="link" href="tel:${esc(r.phone)}" dir="ltr">${esc(r.phone)}</a></div>
         ${r.autoApproved ? `<div class="row between gap10 note n-blue" style="padding:8px 12px">${I.shield}<span style="flex:1;font-size:13px">قُبل تلقائياً${r.autoReview?.confidence ? ` (ثقة ${Math.round(r.autoReview.confidence * 100)}%)` : ""}</span>
@@ -3025,9 +3115,11 @@ async function loadAdmin() {
         <div class="row between"><b>${esc(r?.name || "مطعم")}</b><span class="muted">${tsDate(p.createdAt)?.toLocaleString(LOC) || ""}</span></div>
         <div class="row2" style="font-size:13px"><div class="col"><span class="muted">رقم العملية</span><b dir="ltr" style="text-align:right">${esc(p.txnId)}</b></div>
           <div class="col"><span class="muted">المبلغ</span><b>${money(p.amount)}</b></div></div>
-        <div class="row gap10"><button class="btn btn-sm btn-green" data-pay-ok="${esc(p.id)}">تفعيل شهر</button>
+        ${p.kind === "featured" ? (() => { const used = rest.filter(x => x.city === r?.city && isFeatured(x) && x.id !== r?.id).length, plan = CONFIG.FEAT_PLANS.find(x => x.days === p.days);
+          return `<div class="note" style="background:#FEF3C7;color:#78350F">${I.star}<span><b>إعلان مميز · ${p.days} ${p.days > 10 ? "يوماً" : "أيام"}</b>${plan && plan.price !== p.amount ? ` · السعر ${money(plan.price)}` : ""} · المقاعد في ${esc(r?.city || "")}: ${used}/${CONFIG.FEAT_MAX_PER_CITY}</span></div>`; })() : ""}
+        <div class="row gap10"><button class="btn btn-sm btn-green" data-pay-ok="${esc(p.id)}">${p.kind === "featured" ? "تفعيل الإعلان" : "تفعيل شهر"}</button>
           <button class="btn btn-sm btn-danger" style="width:90px" data-pay-no="${esc(p.id)}">رفض</button></div></div>`; }).join("")
-      : emptyState("لا توجد تحويلات", "ستظهر تحويلات الاشتراك هنا للمراجعة.");
+      : emptyState("لا توجد تحويلات", "ستظهر تحويلات الاشتراكات والإعلانات المميزة هنا للمراجعة.");
     body.dataset.pays = JSON.stringify(pays.map(p => p.id));
     body._pays = pays;
   }
@@ -3111,8 +3203,8 @@ async function renderAdminStats(rest, banned) {
     </section>
     <h2 style="margin-top:6px">المال</h2>
     <div class="kpis">
-      ${kpi(money(gmv), "مبيعات المطاعم (30 يوماً)")}${kpi(money(subMonth), "اشتراكات آخر 30 يوماً", "var(--green)")}
-      ${kpi(money(subRev), "إجمالي الاشتراكات المعتمدة")}${kpi(rated.length ? `<span class="row gap6">${starIcon("#F59E0B", 18)}${avgAll.toFixed(1)}</span>` : "—", "متوسط تقييم المطاعم")}
+      ${kpi(money(gmv), "مبيعات المطاعم (30 يوماً)")}${kpi(money(subMonth), "دخلك آخر 30 يوماً", "var(--green)")}
+      ${kpi(money(subRev), "إجمالي الدخل المعتمد")}${kpi(money(pays.filter(p => p.kind === "featured").reduce((a, p) => a + (p.amount || 0), 0)), "منها إعلانات مميزة")}${kpi(rest.filter(isFeatured).length, "مطاعم مميزة الآن")}${kpi(rated.length ? `<span class="row gap6">${starIcon("#F59E0B", 18)}${avgAll.toFixed(1)}</span>` : "—", "متوسط تقييم المطاعم")}
     </div>
     <section class="box col gap10"><b>الأكثر طلباً (30 يوماً)</b>
       ${topRest.length ? topRest.map(([id, n], i) => `<div class="row gap10"><span class="badge ${i ? "b-gray" : "b-orange"}">${i + 1}</span>
@@ -3237,7 +3329,7 @@ $("#ad-body").addEventListener("click", e => {
     const p = body._pays.find(x => x.id === (ok || no).dataset[ok ? "payOk" : "payNo"]);
     return busy(ok || no, async () => {
       if (ok) await F.adminApprovePayment(p, adRest.find(r => r.id === p.restaurantId)); else await F.adminRejectPayment(p);
-      toast(ok ? "تم تفعيل الاشتراك شهراً" : "تم الرفض"); loadAdmin();
+      toast(ok ? (p.kind === "featured" ? "تم تفعيل الإعلان المميز" : "تم تفعيل الاشتراك شهراً") : "تم الرفض"); loadAdmin();
     });
   }
   const sp = e.target.closest("[data-sup]");

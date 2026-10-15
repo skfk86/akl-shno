@@ -230,6 +230,13 @@ await t("المطعم يرسل تحويل بنكك", () => assertSucceeds(setDoc
   { restaurantId: "owner2", txnId: "12345", amount: 10000, status: "pending", createdAt: serverTimestamp() })));
 await t("لا يرسل تحويلاً مقبولاً مسبقاً", () => assertFails(setDoc(doc(db("owner2"), "payments", "p2"),
   { restaurantId: "owner2", txnId: "12345", amount: 10000, status: "approved", createdAt: serverTimestamp() })));
+await t("المطعم يطلب إعلاناً مميزاً لأسبوع", () => assertSucceeds(setDoc(doc(db("owner2"), "payments", "f1"),
+  { restaurantId: "owner2", txnId: "777", amount: 7000, kind: "featured", days: 7, status: "pending", createdAt: serverTimestamp() })));
+await t("لا إعلان مميز بمدة غير مسموحة", () => assertFails(setDoc(doc(db("owner2"), "payments", "f2"),
+  { restaurantId: "owner2", txnId: "778", amount: 1000, kind: "featured", days: 365, status: "pending", createdAt: serverTimestamp() })));
+await t("لا نوع تحويل غير معروف", () => assertFails(setDoc(doc(db("owner2"), "payments", "f3"),
+  { restaurantId: "owner2", txnId: "779", amount: 1000, kind: "gift", status: "pending", createdAt: serverTimestamp() })));
+await t("المطعم لا يجعل نفسه مميزاً", () => assertFails(updateDoc(doc(db("owner"), "restaurants", "owner"), { featuredUntil: future })));
 await t("مطعم غير مقبول لا يرسل تحويلاً", () => assertFails(setDoc(doc(db("owner3"), "payments", "p3"),
   { restaurantId: "owner3", txnId: "999", amount: 25000, status: "pending", createdAt: serverTimestamp() })));
 await t("لا يوافق على تحويله بنفسه", () => assertFails(updateDoc(doc(db("owner2"), "payments", "p1"), { status: "approved" })));

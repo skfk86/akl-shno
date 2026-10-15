@@ -347,9 +347,10 @@ export function disputeReport(orderId, text) {
 }
 
 // ═════════ الاشتراك ═════════
-export function submitPayment({ txnId, amount }) {
+// kind: "sub" اشتراك شهري، أو "featured" إعلان مميز لمدة days (7 أو 30)
+export function submitPayment({ txnId, amount, kind = "sub", days = 30 }) {
   return addDoc(collection(db, "payments"), {
-    restaurantId: uid(), txnId, amount,
+    restaurantId: uid(), txnId, amount, kind, days,
     status: "pending", createdAt: serverTimestamp()
   });
 }
@@ -386,7 +387,9 @@ export async function adminListPayments() {
 export async function adminApprovePayment(p, restaurant, days = 30) {
   const b = writeBatch(db);
   b.update(doc(db, "payments", p.id), { status: "approved" });
-  b.update(doc(db, "restaurants", p.restaurantId), {
+  if (p.kind === "featured")
+    b.update(doc(db, "restaurants", p.restaurantId), { featuredUntil: extend(restaurant?.featuredUntil, p.days || 7), featuredNotified: null });
+  else b.update(doc(db, "restaurants", p.restaurantId), {
     subActiveUntil: extend(restaurant?.subActiveUntil, days), listed: true
   });
   await b.commit();

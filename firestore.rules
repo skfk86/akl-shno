@@ -94,7 +94,7 @@ service cloud.firestore {
 
       allow update: if isAdmin()
         || (signedIn() && uid() == rid
-            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'subActiveUntil', 'freeTrial', 'listed', 'verified', 'ratingSum', 'ratingCount', 'lastRatingId', 'approved', 'rejectReason', 'reviewedAt', 'autoReview', 'autoApproved', 'proofHash'])
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'subActiveUntil', 'freeTrial', 'listed', 'verified', 'ratingSum', 'ratingCount', 'lastRatingId', 'approved', 'rejectReason', 'reviewedAt', 'autoReview', 'autoApproved', 'proofHash', 'featuredUntil', 'featuredNotified'])
             // المطعم يستطيع فقط إرسال طلب المراجعة، والقرار للإدارة
             && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['review']) || request.resource.data.review == 'pending'))
         || ratingFromCustomer(rid);
@@ -338,6 +338,8 @@ service cloud.firestore {
         && request.resource.data.restaurantId == uid()
         && accepted(uid())
         && request.resource.data.status == 'pending'
+        && request.resource.data.get('kind', 'sub') in ['sub', 'featured']
+        && (request.resource.data.get('kind', 'sub') == 'sub' || request.resource.data.get('days', 0) in [7, 30])
         && request.resource.data.txnId is string
         && request.resource.data.txnId.size() <= 40
         && request.resource.data.amount is number

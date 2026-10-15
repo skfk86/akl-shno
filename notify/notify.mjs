@@ -127,6 +127,15 @@ for (const d of expiring.docs) {
   await d.ref.update({ expiryNotified: until });
 }
 
+// ───── الإعلان المميز: تذكير قبل انتهائه بيوم ─────
+const featSoon = Timestamp.fromMillis(Date.now() + 864e5);
+for (const d of (await db.collection("restaurants").where("featuredUntil", "<=", featSoon).get()).docs) {
+  const r = d.data(), until = r.featuredUntil?.toMillis?.();
+  if (!until || until < Date.now() || r.featuredNotified === until) continue;
+  await push(d.id, "إعلانك المميز ينتهي غداً", `مددّه من الإعدادات ليبقى ${r.name} في أعلى الصفحة الرئيسية.`, { kind: "featured" });
+  await d.ref.update({ featuredNotified: until });
+}
+
 // المراجعة التلقائية نفسها تعمل في مهمة مستقلة (review.yml) تشغّل نموذج الذكاء الاصطناعي على خادم GitHub.
 const reviewCfg = (await db.doc("settings/review").get()).data() || {};
 const autoOn = reviewCfg.auto !== false;

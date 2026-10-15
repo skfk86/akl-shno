@@ -544,6 +544,31 @@ await t("إحصاءات الأدمن", async () => {
   const x = await admin.textContent("#ad-body");
   expect(x.includes("زبون مسجّل") && x.includes("طلبات اليوم") && x.includes("مطعم الاختبار"), "stats incomplete");
 });
+await t("المطعم يطلب إعلاناً مميزاً لشهر", async () => {
+  await tap(owner, '.screen.on nav [data-go="settings"]'); await sleep(1200);
+  expect((await owner.textContent("#ow-body")).includes("اجعل مطعمك مميزاً"), "no featured promo card");
+  await tap(owner, "#st-feat"); await sleep(1500);
+  await owner.locator('#ft-plans input[value="1"]').check({ force: true }); await sleep(200);
+  expect((await owner.textContent("#ft-amt-t")).includes("20,000"), "month price wrong");
+  await owner.fill("#ft-txn", "889900"); await tap(owner, "#ft-send"); await sleep(2000);
+  expect(!(await owner.evaluate(() => document.querySelector("#sheet").classList.contains("on"))), "sheet still open: " + await owner.textContent("#ft-err").catch(() => ""));
+});
+await t("الأدمن يرى طلب الإعلان ويفعّله", async () => {
+  await tap(admin, '#ad-seg [data-t="pay"]'); await sleep(1800);
+  const x = await admin.textContent("#ad-body");
+  expect(x.includes("إعلان مميز") && x.includes("30 يوماً"), "featured request not shown");
+  await tap(admin, "[data-pay-ok]"); await sleep(2000);
+});
+await t("الزبون يرى المطعم في شريط الإعلانات وأول القائمة", async () => {
+  await cust.goto(URL); await waitScreen(cust, "s-home"); await sleep(2500);
+  expect((await cust.textContent("#h-feat")).includes("مطعم الاختبار"), "not in featured carousel");
+  expect((await cust.textContent("#h-list .card b")).includes("مطعم الاختبار"), "not first in list");
+});
+await t("لوحة المطعم تعرض «مطعمك مميز الآن»", async () => {
+  await owner.goto(URL); await waitScreen(owner, "s-owner"); await sleep(1500);
+  await tap(owner, '.screen.on nav [data-go="settings"]'); await sleep(1200);
+  expect((await owner.textContent("#ow-body")).includes("مطعمك مميز الآن"), "owner not shown as featured");
+});
 await t("«عن التطبيق» يعرض قواعد الأمان والعقوبات", async () => {
   await tap(cust, '.screen.on nav [data-go="home"]').catch(() => {});
   await cust.evaluate(() => document.querySelector("#s-about") && null);
