@@ -29,7 +29,8 @@ console.log("\nالمراجعة التلقائية للمطاعم");
 let res;
 await t("صورة غير موثوقة لا تُقبل تلقائياً", async () => {
   res = await reviewRestaurant(db, await rest("r1"));
-  console.log("      →", res.decision, "|", res.reason, "|", res.report.ai?.note || "no ai");
+  console.log("      →", res.decision, "|", res.reason, "|", res.report.ai ? `ai ${Math.round(res.report.confidence * 100)}% «${res.report.ai.sign}» ${res.report.ai.note}` : "no ai");
+  res.report.checks.forEach(c => console.log("      ", c.ok ? "+" : "-", c.label));
   expect(res.decision !== "approve", "graphic image was auto-approved");
 });
 if (aiProvider()) await t(`الذكاء الاصطناعي (${aiProvider()}) متاح ويرد`, async () => {

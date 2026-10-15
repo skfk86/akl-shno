@@ -9,7 +9,6 @@ import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 import { getAuth } from "firebase-admin/auth";
-import { reviewRestaurant } from "./review.mjs";
 
 initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SA)) });
 const db = getFirestore(), fcm = getMessaging();
@@ -128,31 +127,9 @@ for (const d of expiring.docs) {
   await d.ref.update({ expiryNotified: until });
 }
 
-// ───── المراجعة التلقائية لطلبات المطاعم (يمكن إيقافها من لوحة الأدمن) ─────
+// المراجعة التلقائية نفسها تعمل في مهمة مستقلة (review.yml) تشغّل نموذج الذكاء الاصطناعي على خادم GitHub.
 const reviewCfg = (await db.doc("settings/review").get()).data() || {};
-if (reviewCfg.auto !== false) {
-  const pend = await db.collection("restaurants").where("review", "==", "pending").get();
-  const restAll = (await db.collection("restaurants").get()).docs.map(d => d.data());
-  let seats = 20 - restAll.filter(r => r.freeTrial).length;
-  for (const d of pend.docs) {
-    const r = d.data(), key = r.reviewAt?.toMillis?.() || 0;
-    if (!key || r.autoReview?.key === key) continue;          // رُوجع هذا الإرسال من قبل
-    const { decision, reason, hashes, report } = await reviewRestaurant(db, d);
-    const upd = { autoReview: report, proofHash: hashes };
-    if (decision === "approve") {
-      Object.assign(upd, { approved: true, review: "approved", rejectReason: "", reviewedAt: Timestamp.now(), autoApproved: true });
-      if (seats > 0 && r.subActiveUntil == null) {
-        Object.assign(upd, { subActiveUntil: Timestamp.fromMillis(Date.now() + 60 * 864e5), freeTrial: true, listed: true }); seats--;
-      }
-      for (const a of admins) await push(a, `قُبل تلقائياً: ${r.name}`, "اجتازت الإثباتات كل الفحوصات. يمكنك إلغاء القبول من لوحة الأدمن.", { kind: "review", rid: d.id });
-    } else if (decision === "reject") {
-      Object.assign(upd, { approved: false, review: "rejected", rejectReason: reason, reviewedAt: Timestamp.now() });
-    }
-    await d.ref.update(upd);
-    for (const h of Object.values(hashes)) await db.doc(`proofHashes/${h}`).set({ rid: d.id, at: Timestamp.now() }, { merge: true });
-    console.log(`auto-review ${r.name}: ${decision}${reason ? " · " + reason : ""}`);
-  }
-}
+const autoOn = reviewCfg.auto !== false;
 
 // ───── توثيق المطاعم: طلب مراجعة جديد ← الأدمن، والقرار ← صاحب المطعم ─────
 const reviews = await db.collection("restaurants").where("review", "in", ["pending", "approved", "rejected"]).get();
@@ -160,7 +137,9 @@ for (const d of reviews.docs) {
   const r = d.data();
   if (r.review === "pending") {
     const key = r.reviewAt?.toMillis?.() || 0;
-    if (key && r.notifiedReview !== key) {
+    // ننتظر نتيجة الفحص التلقائي قبل إزعاج الأدمن (أو 30 دقيقة كحد أقصى)
+    const waiting = autoOn && r.autoReview?.key !== key && Date.now() - key < 30 * 60e3;
+    if (key && r.notifiedReview !== key && !waiting) {
       for (const a of admins) await push(a, "مطعم يحتاج مراجعتك", `${r.name} · ${r.district || ""}، ${r.city || ""}${r.autoReview?.reason ? " · " + r.autoReview.reason : ""}`, { kind: "review", rid: d.id });
       await d.ref.update({ notifiedReview: key });
     }
@@ -168,6 +147,8 @@ for (const d of reviews.docs) {
     const key = `${r.review}-${r.reviewedAt?.toMillis?.() || 0}`;
     if (r.notifiedDecision !== key) {
       if (r.review === "approved") await push(d.id, "تم قبول مطعمك في أكل شنو؟", "أضف المنيو ومناطق التوصيل وابدأ استقبال الطلبات.", { kind: "approved" });
+      if (r.review === "approved" && r.autoApproved)
+        for (const a of admins) await push(a, `قُبل تلقائياً: ${r.name}`, "اجتازت الإثباتات كل الفحوصات. يمكنك إلغاء القبول من لوحة الأدمن.", { kind: "review", rid: d.id });
       else await push(d.id, "لم يُقبل طلب مطعمك", (r.rejectReason ? "السبب: " + r.rejectReason + ". " : "") + "صحّح الإثباتات وأعد الإرسال من التطبيق.", { kind: "rejected" });
       await d.ref.update({ notifiedDecision: key });
     }

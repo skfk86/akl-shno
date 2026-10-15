@@ -1,0 +1,40 @@
+name: Auto-review restaurants
+# يفحص طلبات المطاعم المعلّقة بنموذج رؤية مفتوح المصدر يعمل على خادم GitHub نفسه (Ollama + Qwen2.5-VL).
+# مجاني بالكامل للمستودعات العامة، ولا يحتاج أي حساب أو مفتاح خارجي. يتخطى التحميل إذا لم توجد طلبات.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+concurrency: { group: review, cancel-in-progress: false }
+permissions: { contents: read }
+env:
+  OLLAMA_MODEL: qwen2.5vl:3b
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults: { run: { working-directory: notify } }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - name: Anything to review?
+        id: count
+        env: { FIREBASE_SA: "${{ secrets.FIREBASE_SA }}" }
+        run: echo "n=$(node review-run.mjs --count | tail -1)" >> "$GITHUB_OUTPUT"
+      - name: Cache vision model
+        if: steps.count.outputs.n != '0'
+        uses: actions/cache@v4
+        with: { path: ~/.ollama/models, key: "ollama-${{ env.OLLAMA_MODEL }}" }
+      - name: Start Ollama
+        if: steps.count.outputs.n != '0'
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > /tmp/ollama.log 2>&1 &)
+          for i in $(seq 30); do curl -s localhost:11434 >/dev/null && break; sleep 1; done
+          ollama pull "$OLLAMA_MODEL"
+      - name: Review
+        if: steps.count.outputs.n != '0'
+        env: { FIREBASE_SA: "${{ secrets.FIREBASE_SA }}" }
+        run: node review-run.mjs

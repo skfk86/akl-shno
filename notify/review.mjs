@@ -24,6 +24,7 @@ Answer ONLY with JSON:
 {"real_photo":bool,"is_storefront":bool,"screenshot_or_graphic":bool,"sign_visible":bool,"sign_text":"text read on the sign or empty","name_match":"yes|partial|no|unknown","license_is_document":${hasLicense ? "bool" : "null"},"confidence":0..1,"reason_ar":"one short Arabic sentence explaining your judgement"}`;
 
 // مزوّدو الذكاء الاصطناعي المجانيون، يُستخدم أول مزوّد مفاتيحه موجودة في أسرار GitHub:
+//   محلي على خادم GitHub (الافتراضي): OLLAMA_MODEL — نموذج رؤية مفتوح المصدر، بلا أي حساب
 //   Cloudflare Workers AI: CF_ACCOUNT_ID + CF_API_TOKEN   (حساب مجاني بلا بطاقة، 10 آلاف وحدة يومياً)
 //   Google Gemini:         GEMINI_API_KEY
 //   أي خدمة متوافقة مع OpenAI: AI_URL + AI_KEY + AI_MODEL
@@ -56,6 +57,7 @@ async function cloudflare(prompt, images) {
 
 export function aiProvider() {
   const e = process.env;
+  if (e.OLLAMA_MODEL) return "local";
   if (e.CF_ACCOUNT_ID && e.CF_API_TOKEN) return "cloudflare";
   if (e.GEMINI_API_KEY) return "gemini";
   if (e.AI_URL && e.AI_KEY && e.AI_MODEL) return "custom";
@@ -63,11 +65,14 @@ export function aiProvider() {
 }
 
 async function askAI(r, images) {
+  images = [...images];
   const p = aiProvider(), e = process.env;
   if (!p || !images.length) return null;
-  const prompt = PROMPT(r, p !== "cloudflare" && images.length > 1);
+  const prompt = PROMPT(r, !["cloudflare", "local"].includes(p) && images.length > 1);
+  if (p === "local") images = images.slice(0, 1);   // نموذج صغير: صورة الواجهة فقط، أدق وأسرع
   try {
-    const out = p === "cloudflare" ? await cloudflare(prompt, images)
+    const out = p === "local" ? await openaiCompat("http://127.0.0.1:11434/v1/chat/completions", "ollama", e.OLLAMA_MODEL, prompt, images)
+      : p === "cloudflare" ? await cloudflare(prompt, images)
       : p === "gemini" ? await openaiCompat("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", e.GEMINI_API_KEY, "gemini-2.5-flash", prompt, images)
       : await openaiCompat(e.AI_URL, e.AI_KEY, e.AI_MODEL, prompt, images);
     if (!out) { console.log(`  ai ${p}: no JSON in answer`); return null; }
