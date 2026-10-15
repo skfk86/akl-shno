@@ -4,6 +4,7 @@
 // التشغيل: firebase emulators:exec --only auth,firestore "node e2e.mjs"
 
 import { chromium } from "playwright";
+import sharp from "sharp";
 import { createServer } from "node:http";
 import { readFileSync, existsSync, mkdirSync, cpSync, writeFileSync } from "node:fs";
 import { extname, join } from "node:path";
@@ -47,6 +48,9 @@ const URL = "http://127.0.0.1:5173/index.html";
 const PROOF_IMG = new globalThis.URL("./real-photo.jpg", import.meta.url).pathname;
 const FAKE_IMG = new globalThis.URL("./fake-poster.jpg", import.meta.url).pathname;
 const SHOT_IMG = new globalThis.URL("./screenshot.jpg", import.meta.url).pathname;
+// صورة حقيقية مع بيانات كاميرا (EXIF) بتاريخ التقاط قبل ago ميلي ثانية، كما تخرج من كاميرا الهاتف
+const exifTime = d => `${d.getFullYear()}:${String(d.getMonth() + 1).padStart(2, "0")}:${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
+const cameraJpeg = ago => sharp(PROOF_IMG).withExif({ IFD0: { Make: "samsung", Model: "SM-A155F" }, IFD2: { DateTimeOriginal: exifTime(new Date(Date.now() - ago)) } }).jpeg({ quality: 90 }).toBuffer();
 
 // ───── أدوات ─────
 let pass = 0, fail = 0;
@@ -154,10 +158,21 @@ await t("زر الواجهة يفتح الكاميرا مباشرة", async () =
   }));
   expect(cap === "environment", "capture=" + cap);
 });
-await t("رفع صورة واجهة المطعم", async () => {
+await t("صورة من المعرض بلا بيانات كاميرا تُرفض", async () => {
   const [fc] = await Promise.all([owner.waitForEvent("filechooser"), tap(owner, '[data-vf-pick="sign"]')]);
   await fc.setFiles(PROOF_IMG); await sleep(1500);
-  expect(await owner.locator('[data-vf-pick="sign"].has').count() === 1, "image not attached");
+  expect((await owner.textContent("#ow-body")).includes("ليست ملتقطة بكاميرا"), "gallery photo without camera data accepted");
+});
+await t("صورة كاميرا قديمة (قبل يومين) تُرفض", async () => {
+  const [fc] = await Promise.all([owner.waitForEvent("filechooser"), tap(owner, '[data-vf-pick="sign"]')]);
+  await fc.setFiles({ name: "IMG_old.jpg", mimeType: "image/jpeg", buffer: await cameraJpeg(2 * 864e5) }); await sleep(1500);
+  expect((await owner.textContent("#ow-body")).includes("صورة قديمة"), "old photo accepted");
+});
+await t("صورة كاميرا ملتقطة الآن تُقبل", async () => {
+  const [fc] = await Promise.all([owner.waitForEvent("filechooser"), tap(owner, '[data-vf-pick="sign"]')]);
+  await fc.setFiles({ name: "IMG_now.jpg", mimeType: "image/jpeg", buffer: await cameraJpeg(5 * 60e3) }); await sleep(1800);
+  expect(await owner.locator('[data-vf-pick="sign"].has').count() === 1, "fresh camera photo not attached: " + (await owner.textContent("#ow-body")).slice(0, 200));
+  expect((await owner.textContent("#ow-body")).includes("صورة كاميرا"), "camera badge missing");
 });
 await t("تحديد الموقع ثم الإرسال للمراجعة", async () => {
   await tap(owner, "#st-loc-edit"); await sleep(2500);
