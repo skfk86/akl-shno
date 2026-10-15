@@ -39,10 +39,14 @@ async function askAI(r, images) {
         body: JSON.stringify({ model, temperature: 0, max_tokens: 400, response_format: { type: "json_object" },
           messages: [{ role: "user", content }] })
       });
-      if (!res.ok) { console.log(`  ai ${model}: HTTP ${res.status} ${(await res.text()).slice(0, 160)}`); continue; }
-      const j = await res.json();
-      const out = JSON.parse(j.choices?.[0]?.message?.content || "{}");
-      return { ...out, model };
+      const raw = await res.text();
+      if (!res.ok) { console.log(`  ai ${model}: HTTP ${res.status} ${raw.slice(0, 200).replace(/\s+/g, " ")}`); continue; }
+      let txt;
+      try { txt = JSON.parse(raw).choices?.[0]?.message?.content || ""; }
+      catch { console.log(`  ai ${model}: non-JSON response (${res.headers.get("content-type")}): ${raw.slice(0, 200).replace(/\s+/g, " ")}`); continue; }
+      const m = txt.match(/\{[\s\S]*\}/);   // بعض النماذج تحيط JSON بنص أو ```json
+      if (!m) { console.log(`  ai ${model}: no JSON in answer: ${txt.slice(0, 160)}`); continue; }
+      return { ...JSON.parse(m[0]), model };
     } catch (e) { console.log(`  ai ${model}: ${e.message}`); }
   }
   return null;
