@@ -36,7 +36,7 @@ connectFirestoreEmulator(db, "127.0.0.1", 8080);`)
 if (!fb.includes("connectFirestoreEmulator(db")) throw new Error("patching firebase.js failed");
 writeFileSync(join(WWW, "firebase.js"), fb);
 
-const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml" };
+const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml", ".webp": "image/webp" };
 const server = createServer((req, res) => {
   const p = join(WWW, decodeURIComponent(req.url.split("?")[0]).replace(/^\/$/, "/index.html"));
   if (!existsSync(p)) { res.writeHead(404); return res.end(); }
@@ -150,6 +150,23 @@ await t("حساب الأدمن يفتح لوحة الأدمن", async () => {
 await t("المطعم الجديد يظهر «بانتظار المراجعة» مع صورة الإثبات", async () => {
   await sleep(1500); expect((await admin.textContent("#ad-body")).includes("بانتظار المراجعة"), "not listed as pending review");
   expect(await admin.locator("[data-proof]").count() >= 1, "no proof image");
+});
+await t("رفض المطعم مع ذكر السبب", async () => {
+  await tap(admin, "[data-reject]"); await sleep(300);
+  await admin.fill("#rj-text", "الصورة غير واضحة"); await tap(admin, "#rj-ok"); await sleep(2000);
+  expect((await admin.textContent("#ad-body")).includes("مرفوض"), "not marked rejected");
+});
+await t("المطعم يرى سبب الرفض لحظياً", async () => {
+  for (let i = 0; i < 20 && !(await owner.textContent("#ow-body")).includes("لم يُقبل"); i++) await sleep(300);
+  const x = await owner.textContent("#ow-body");
+  expect(x.includes("لم يُقبل") && x.includes("الصورة غير واضحة"), "rejection reason not shown");
+  expect(!(await owner.locator("#s-owner nav.tabs").isVisible()), "dashboard unlocked after rejection");
+});
+await t("المطعم يعيد الإرسال فيعود «بانتظار المراجعة»", async () => {
+  await tap(owner, "#vf-send"); await sleep(2500);
+  expect((await owner.textContent("#ow-body")).includes("قيد المراجعة"), "not pending again");
+  await tap(admin, '#ad-seg [data-t="rest"]'); await sleep(1800);
+  expect((await admin.textContent("#ad-body")).includes("بانتظار المراجعة"), "admin does not see resubmission");
 });
 await t("قبول المطعم وتفعيل الشهرين المجانيين", async () => {
   await tap(admin, '[data-approve][data-trial-too="1"]'); await sleep(2000);
@@ -407,6 +424,115 @@ await t("الأدمن يرى الاعتراض ويلغي البلاغ", async ()
 await shot(admin, "06-admin-reports");
 
 // ═════════════════════════════════════════
+section("6ب. الأحجام والإضافات، السلة، ساعات العمل");
+await t("المطعم يضيف صنفاً بأحجام وإضافات", async () => {
+  await tap(owner, '.screen.on nav [data-go="menu"]'); await sleep(1000);
+  await tap(owner, '[data-new="item"]'); await sleep(300);
+  await owner.fill("#it-name", "شاورما لحم"); await owner.fill("#it-price", "5000");
+  await tap(owner, '[data-og-add="one"]'); await sleep(200);
+  await owner.fill('[data-og="0"] .ch:nth-child(2) [data-cprice]', "2000");
+  await tap(owner, '[data-og-add="many"]'); await sleep(200);
+  await owner.fill('[data-og="1"] [data-cname]', "جبنة"); await owner.fill('[data-og="1"] [data-cprice]', "1000");
+  await tap(owner, "#it-save"); await sleep(1800);
+  expect((await owner.textContent("#ow-body")).includes("خيارات: الحجم، الإضافات"), "options summary missing");
+});
+await t("لا تُحفظ مجموعة خيارات بلا اسم", async () => {
+  await tap(owner, '[data-new="item"]'); await sleep(300);
+  await owner.fill("#it-name", "تجربة"); await owner.fill("#it-price", "1000");
+  await tap(owner, '[data-og-add="many"]'); await sleep(200);
+  await owner.fill('[data-og="0"] [data-gname]', ""); await owner.fill('[data-og="0"] [data-cname]', "صوص");
+  await tap(owner, "#it-save"); await sleep(300);
+  expect((await owner.textContent("#it-err")).includes("اسماً"), "no validation");
+  await owner.evaluate(() => document.querySelector("#sheet").classList.remove("on"));
+});
+await t("قسم السلة في الشريط السفلي: فارغة", async () => {
+  await cust.goto(URL); await waitScreen(cust, "s-home"); await sleep(2000);
+  await tap(cust, '.screen.on nav [data-go="cart"]'); await waitScreen(cust, "s-cart");
+  expect((await cust.textContent("#cart-body")).includes("سلتك فارغة"), "empty cart state missing");
+});
+await t("الزبون يختار الحجم والإضافات والسعر يُحسب صحيحاً", async () => {
+  await tap(cust, '.screen.on [data-go="home"]'); await waitScreen(cust, "s-home"); await sleep(1500);
+  await tap(cust, '#h-list [data-rest]'); await waitScreen(cust, "s-rest"); await sleep(1800);
+  await cust.locator('.item:has-text("شاورما لحم") [data-add]').click(); await sleep(400);
+  await cust.locator('label.opt-row:has-text("كبير")').click();
+  await cust.locator('label.opt-row:has-text("جبنة")').click(); await sleep(200);
+  const tot = await cust.textContent("#opt-total");
+  expect(tot.includes("8,000"), "expected 5,000 + 2,000 + 1,000 = 8,000, got " + tot);
+  await tap(cust, "#opt-add"); await sleep(500);
+});
+await t("عدد السلة يظهر على أيقونتها، والصنف باسم خياراته", async () => {
+  await tap(cust, '.screen.on [data-go="home"]'); await waitScreen(cust, "s-home"); await sleep(500);
+  expect((await cust.textContent('.screen.on nav [data-go="cart"] .dot')).trim() === "1", "cart badge wrong");
+  await tap(cust, '.screen.on nav [data-go="cart"]'); await waitScreen(cust, "s-cart"); await sleep(400);
+  const x = await cust.textContent("#cart-body");
+  expect(x.includes("شاورما لحم (كبير، جبنة)") && x.includes("8,000"), "cart item wrong");
+});
+await t("حذف آخر صنف يعيد السلة فارغة", async () => {
+  await tap(cust, "[data-dec]"); await sleep(400);
+  expect((await cust.textContent("#cart-body")).includes("سلتك فارغة"), "cart not empty");
+});
+const sdToday = new Date(Date.now() + 2 * 3600e3).getUTCDay();
+await t("ساعات العمل: المطعم يُغلق تلقائياً في يوم عطلته", async () => {
+  await tap(owner, '.screen.on nav [data-go="settings"]'); await sleep(1200);
+  await owner.locator("#sc-auto").check({ force: true }); await sleep(200);
+  await owner.fill("#sc-open", "00:00"); await owner.fill("#sc-close", "00:00");
+  await tap(owner, `#sc-days [data-day="${sdToday}"]`);
+  await tap(owner, "#sc-save"); await sleep(1500);
+  expect((await owner.textContent("#ow-head")).includes("خارج ساعات العمل"), "owner head not showing out-of-hours");
+});
+await t("الزبون يرى المطعم مغلقاً ومتى يفتح", async () => {
+  await cust.goto(URL); await waitScreen(cust, "s-home"); await sleep(2500);
+  await tap(cust, '#h-list [data-rest]'); await waitScreen(cust, "s-rest"); await sleep(1800);
+  const x = await cust.textContent("#r-body");
+  expect(x.includes("مغلق الآن") && x.includes("يفتح"), "closed note missing");
+  expect(await cust.locator("[data-add]:not([disabled])").count() === 0, "can still add while closed");
+});
+await t("إلغاء الجدول يعيد فتح المطعم", async () => {
+  await owner.locator("#sc-auto").uncheck({ force: true }); await tap(owner, "#sc-save"); await sleep(1500);
+  expect((await owner.textContent("#ow-head")).includes("مفتوح"), "not reopened");
+});
+
+// ═════════════════════════════════════════
+section("6ج. الدعم وإحصاءات الأدمن");
+await t("الزبون يراسل الدعم", async () => {
+  await tap(cust, '.screen.on [data-go="home"]'); await waitScreen(cust, "s-home");
+  await tap(cust, '.screen.on nav [data-go="inbox"]'); await waitScreen(cust, "s-inbox");
+  await tap(cust, '#in-list [data-go="support"]'); await waitScreen(cust, "s-chat");
+  await cust.fill("#ch-input", "عندي مشكلة في الطلب"); await tap(cust, "#ch-send"); await sleep(1800);
+  await tap(cust, "#ch-back");
+});
+await t("المطعم يراسل الدعم ويظهر باسم مطعمه", async () => {
+  await tap(owner, '.screen.on nav [data-go="inbox"]'); await waitScreen(owner, "s-inbox");
+  await tap(owner, '#in-list [data-go="support"]'); await waitScreen(owner, "s-chat");
+  await owner.fill("#ch-input", "استفسار عن الاشتراك"); await tap(owner, "#ch-send"); await sleep(1800);
+  await tap(owner, "#ch-back"); await tap(owner, '.screen.on nav [data-go="orders"]');
+  await tap(admin, '#ad-seg [data-t="sup"]'); await sleep(1800);
+  const x = await admin.textContent("#ad-body");
+  expect(x.includes("مطعم الاختبار") && x.includes("أحمد"), "support threads/names wrong: " + x.slice(0, 120));
+});
+await t("الأدمن يرى نقطة الدعم ويرد، والزبون تصله نقطة الرد", async () => {
+  expect(await admin.locator("#ad-sup-dot:not([hidden])").count() === 1, "no admin support dot");
+  await admin.locator('[data-sup]:has-text("أحمد")').click(); await waitScreen(admin, "s-chat"); await sleep(1000);
+  await admin.fill("#ch-input", "تم حل المشكلة"); await tap(admin, "#ch-send"); await sleep(2500);
+  expect((await cust.locator('nav [data-go="inbox"] .dot:not([hidden])').count()) >= 1, "customer got no support badge");
+  await tap(admin, "#ch-back");
+});
+await t("إحصاءات الأدمن", async () => {
+  await tap(admin, '#ad-seg [data-t="stats"]'); await sleep(2500);
+  const x = await admin.textContent("#ad-body");
+  expect(x.includes("زبون مسجّل") && x.includes("طلبات اليوم") && x.includes("مطعم الاختبار"), "stats incomplete");
+});
+await t("«عن التطبيق» يعرض قواعد الأمان والعقوبات", async () => {
+  await tap(cust, '.screen.on nav [data-go="home"]').catch(() => {});
+  await cust.evaluate(() => document.querySelector("#s-about") && null);
+  await tap(cust, "[data-drawer]"); await sleep(300); await tap(cust, '#drawer [data-go="about"]'); await waitScreen(cust, "s-about");
+  const x = await cust.textContent("#s-about");
+  expect(x.includes("قواعد الأمان") && x.includes("3 إنذارات") && x.includes("علامات الاحتيال"), "rules missing");
+  expect(await cust.locator('#s-about img[src="icon.webp"]').count() === 1, "app icon missing");
+  await tap(cust, "#ab-back");
+});
+
+// ═════════════════════════════════════════
 section("7. الحساب والتنقل");
 await t("حسابي يعرض الطلبات والعنوان المحفوظ", async () => {
   await tap(cust, '.screen.on [data-go="home"]').catch(() => {});
@@ -451,6 +577,32 @@ await t("الزبون يحذف حسابه ويعود لشاشة الترحيب",
 await t("الدخول من جديد يبدأ حساباً جديداً", async () => {
   await tap(cust, '[data-role="customer"]'); await waitScreen(cust, "s-customer");
 });
+
+section("9. شاشة صغيرة (360 بكسل): لا شيء يخرج عن الشاشة");
+{
+  const small = await user("small", "small@test.sd");
+  await small.setViewportSize({ width: 360, height: 740 });
+  await small.goto(URL);
+  await tap(small, '[data-role="customer"]'); await waitScreen(small, "s-customer");
+  await small.fill("#c-name", "سارة"); await small.fill("#c-phone", "911223344");
+  await tap(small, "#c-save"); await waitScreen(small, "s-home"); await sleep(2000);
+  const over = () => small.evaluate(() => { const s = document.querySelector(".screen.on"); return Math.max(s.scrollWidth - s.clientWidth, document.documentElement.scrollWidth - innerWidth); });
+  const navOk = () => small.evaluate(() => { const n = document.querySelector(".screen.on nav.tabs"); if (!n) return true; const r = n.getBoundingClientRect(); return r.bottom <= innerHeight + 1 && r.height > 40; });
+  for (const tab of ["home", "cart", "myorders", "inbox", "account"]) {
+    await t(`«${tab}»: بلا تمرير أفقي والشريط السفلي ظاهر`, async () => {
+      await tap(small, `.screen.on nav [data-go="${tab}"]`); await sleep(900);
+      expect(await over() <= 1, "horizontal overflow " + await over());
+      await small.evaluate(() => { const s = document.querySelector(".screen.on"); s.scrollTop = s.scrollHeight; }); await sleep(200);
+      expect(await navOk(), "bottom nav hidden after scrolling");
+    });
+  }
+  await t("صفحة المطعم وعن التطبيق بلا تمرير أفقي", async () => {
+    await tap(small, '.screen.on nav [data-go="home"]'); await sleep(1500);
+    if (await small.locator("#h-list [data-rest]").count()) { await tap(small, "#h-list [data-rest]"); await waitScreen(small, "s-rest"); await sleep(1500); expect(await over() <= 1, "rest overflow"); await tap(small, '.screen.on [data-go="home"]'); await sleep(500); }
+    await tap(small, "[data-drawer]"); await sleep(300); await tap(small, '#drawer [data-go="about"]'); await waitScreen(small, "s-about");
+    expect(await over() <= 1, "about overflow");
+  });
+}
 
 section("أخطاء JavaScript أثناء الفحص");
 await t("لا توجد أخطاء JavaScript", () => expect(!pageErrors.length, pageErrors.slice(0, 5).join(" | ")));
