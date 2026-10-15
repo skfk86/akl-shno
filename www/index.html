@@ -1884,6 +1884,7 @@ $("#h-refresh").addEventListener("click", showHome);
 $("#h-nearest").addEventListener("click", showNearest);
 $("#h-route").addEventListener("click", showOnRoute);
 $("#h-offers").addEventListener("click", e => { const c = e.target.closest("[data-rest]"); if (c) openRestaurant(c.dataset.rest); });
+$("#s-rest").addEventListener("click", e => { if (e.target.closest("[data-mini-back]")) showHome(); });
 // ترويسة صفحة المطعم: الغلاف يتحرك ببطء مع التمرير، ويظهر شريط علوي ثابت باسم المطعم
 $("#s-rest").addEventListener("scroll", e => {
   const y = e.target.scrollTop, mini = $("#r-mini"), cov = document.querySelector("#r-body .r-cover");
@@ -1962,7 +1963,7 @@ function renderRestaurant() {
     ${mins.length ? chip(I.bag.replace('width="24" height="24"', 'width="16" height="16"'), money(Math.min(...mins)).replace(" ج", ""), "الحد الأدنى (ج)") : ""}
   </div>`;
   $("#r-body").innerHTML = `
-    <div class="r-mini" id="r-mini"><button class="icon-btn" data-go="home" aria-label="رجوع">${I.back}</button>
+    <div class="r-mini" id="r-mini"><button class="icon-btn" data-mini-back aria-label="رجوع">${I.back}</button>
       <b class="grow" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.name)}</b>${r.ratingCount ? `<span class="row" style="gap:3px;font-size:13px;font-weight:700">${starIcon("#F59E0B", 14)}${avgOf(r).toFixed(1)}</span>` : ""}</div>
     <div class="cover r-cover" style="height:220px;border-radius:0;box-shadow:none;${coverBg(r.name, r.category)}">${imgTag(r.image)}<span class="icon" style="margin-bottom:24px">${catIcon(r.category, 72)}</span>
       <button class="icon-btn" data-go="home" aria-label="رجوع" style="position:absolute;top:16px;right:16px;background:var(--card)">${I.back}</button>
