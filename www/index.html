@@ -323,6 +323,14 @@
   .og-add button{display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;border:1.5px dashed #FDBA74;background:#fff;font:inherit;color:var(--ink);text-align:right}
   .og-add button:active{transform:scale(.98)}
   .og-add b{font-size:13px}.og-add small{font-size:11px;color:var(--muted)}
+  #s-cart .bar{bottom:70px}
+  .cg{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding-top:6px}
+  .cg-burst{width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;
+    background:radial-gradient(circle at 30% 30%,#FB923C,var(--accent));box-shadow:0 0 0 10px var(--accent-soft),0 12px 30px rgba(194,65,12,.35);animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes pop{from{transform:scale(.4);opacity:0}}
+  .cg-step{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff}
+  .cg-step.ok{background:var(--green);border-color:var(--green)}
+  .cg-step svg{width:14px;height:14px}
   .unread-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;box-shadow:0 0 0 3px var(--accent-soft)}
   #ad-sup-dot{top:2px;left:4px;min-width:16px;height:16px;font-size:10px}
   .dot{position:absolute;top:-3px;left:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
@@ -478,7 +486,7 @@
 <section id="s-rest" class="screen"><div id="r-body" class="col grow"></div></section>
 
 <!-- ═════════ الزبون: السلة ═════════ -->
-<section id="s-cart" class="screen" style="background:var(--bg2)"><div id="cart-body" class="col grow"></div></section>
+<section id="s-cart" class="screen" style="background:var(--bg2)"><div id="cart-body" class="col grow"></div><nav class="tabs" data-nav="customer"></nav></section>
 
 <!-- ═════════ الزبون: التتبع ═════════ -->
 <section id="s-track" class="screen"><div id="t-body" class="col grow"></div></section>
@@ -659,6 +667,8 @@ I.lock = '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fil
 I.store = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9M3 9h18M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M5 12v8h14v-8M10 20v-5h4v5"/></svg>';
 I.layers = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg>';
 I.size = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h10M9 21l-1-10h8l-1 10"/><path d="M6 11h12M10 11V6a2 2 0 0 1 4 0v5"/></svg>';
+I.cart = '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.6l2.3 11.2a1.8 1.8 0 0 0 1.8 1.4h8.6a1.8 1.8 0 0 0 1.8-1.4L21.5 7H6"/></svg>';
+I.party = '<svg aria-hidden="true" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 11.3 2 22l10.7-3.8"/><path d="M4 3h.01M22 8h.01M15 2h.01M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98-.7.1-1.22.72-1.22 1.43V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/></svg>';
 I.x = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 I.flag = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4a1 1 0 0 1 1-1h13l-2 5 2 5H5"/></svg>';
 
@@ -1299,12 +1309,12 @@ const skeleton = (n, h) => Array(n).fill(`<div class="skel" style="height:${h}px
 
 // ═════════ أشرطة التنقل ═════════
 const NAVS = {
-  customer: [["home", I.home, "الرئيسية"], ["myorders", I.bag, "طلباتي"], ["inbox", I.chat, "الرسائل"], ["account", I.user, "حسابي"]],
+  customer: [["home", I.home, "الرئيسية"], ["cart", I.cart, "السلة"], ["myorders", I.bag, "طلباتي"], ["inbox", I.chat, "الرسائل"], ["account", I.user, "حسابي"]],
   owner: [["orders", I.clip, "الطلبات"], ["inbox", I.chat, "الرسائل"], ["menu", I.menu, "المنيو"], ["stats", I.chart, "الإحصاءات"], ["settings", I.gear, "الإعدادات"]]
 };
 function renderNav(kind, active) {
   document.querySelectorAll(`nav[data-nav="${kind}"]`).forEach(n => {
-    n.innerHTML = NAVS[kind].map(([k, ic, t]) => `<button data-go="${k}" class="${k === active ? "on" : ""}">${ic}${t}${k === "inbox" ? `<span class="dot" ${inboxUnread() ? "" : "hidden"}>${inboxUnread()}</span>` : ""}</button>`).join("");
+    n.innerHTML = NAVS[kind].map(([k, ic, t]) => `<button data-go="${k}" class="${k === active ? "on" : ""}">${ic}${t}${k === "inbox" ? `<span class="dot" ${inboxUnread() ? "" : "hidden"}>${inboxUnread()}</span>` : ""}${k === "cart" ? `<span class="dot" ${cartCount() ? "" : "hidden"}>${cartCount()}</span>` : ""}</button>`).join("");
   });
 }
 document.addEventListener("click", e => {
@@ -1313,6 +1323,7 @@ document.addEventListener("click", e => {
   if (k === "logout") return doLogout();
   if (k === "home") return showHome();
   if (k === "myorders") return showMyOrders();
+  if (k === "cart") return openCart();
   if (k === "account") return showAccount();
   if (k === "about") return showAbout();
   if (k === "support") return openChat(supportThread());
@@ -1815,6 +1826,7 @@ $("#r-body").addEventListener("click", e => {
   if (a) {
     const m = curRest.menu.find(x => x.id === a.dataset.add);
     if (hasOpts(m)) return chooseOptions(m);
+    setTimeout(refreshCartBadge);
     const it = cart.items[m.id] || (cart.items[m.id] = { id: m.id, name: m.name, price: Number(m.price), qty: 0 });
     it.qty++;
     try { navigator.vibrate?.(15); } catch {}
@@ -1832,8 +1844,13 @@ let map = null, marker = null;
 const draft = { zone: "", landmark: "", label: "", pay: "cash", txn: "", loc: null, save: false, saveLabel: "البيت" };
 
 function openCart() {
+  renderNav("customer", "cart");
   show("cart");
   renderCart();
+}
+function refreshCartBadge() {
+  const n = cartCount();
+  document.querySelectorAll('[data-go="cart"] .dot').forEach(d => { d.hidden = !n; d.textContent = n; });
 }
 
 function cartTotals() {
@@ -1845,8 +1862,19 @@ function cartTotals() {
 
 function renderCart() {
   if (map) { map.remove(); map = null; marker = null; }
-  const r = cart.r, items = Object.values(cart.items).filter(i => i.qty > 0);
-  if (!items.length) { return openRestaurant(r.id); }
+  refreshCartBadge();
+  const r = cart?.r, items = cart ? Object.values(cart.items).filter(i => i.qty > 0) : [];
+  if (!items.length) {
+    $("#cart-body").innerHTML = `<div class="header"><h1>السلة</h1></div>
+      <div class="col grow" style="padding:20px;justify-content:center">
+        <div class="empty"><div class="ic">${I.cart}</div><b style="color:var(--ink)">سلتك فارغة</b>
+          <span>${r ? `أضف أصنافاً من ${esc(r.name)} أو تصفح مطاعم أخرى.` : "اختر مطعماً وأضف ما تشتهيه، وستجده هنا."}</span></div>
+        <div class="col gap10" style="margin-top:18px">
+          ${r ? `<button class="btn btn-primary" data-cart-rest>${I.menu}العودة إلى منيو ${esc(r.name)}</button>` : ""}
+          <button class="btn ${r ? "btn-ghost" : "btn-primary"}" data-go="home">${I.home}تصفح المطاعم</button></div>
+      </div>`;
+    return;
+  }
   const { sub, z, fee, total } = cartTotals();
   const forcePrepaid = me.strikes >= 2;
   if (forcePrepaid) draft.pay = "bankak";
@@ -1913,7 +1941,7 @@ $("#cart-body").addEventListener("click", e => {
   const inc = e.target.closest("[data-inc]"), dec = e.target.closest("[data-dec]");
   if (inc) { cart.items[inc.dataset.inc].qty++; return renderCart(); }
   if (dec) { const it = cart.items[dec.dataset.dec]; it.qty--; if (it.qty <= 0) delete cart.items[it.id]; return renderCart(); }
-  if (e.target.closest("#cart-back")) return openRestaurant(cart.r.id);
+  if (e.target.closest("#cart-back") || e.target.closest("[data-cart-rest]")) return openRestaurant(cart.r.id);
   const ad = e.target.closest("[data-addr]");
   if (ad) { const a = me.addresses[+ad.dataset.addr]; Object.assign(draft, { loc: [a.lat, a.lng], landmark: a.landmark, label: a.label, save: false }); return renderCart(); }
   if (e.target.closest("#cart-pick")) return openPicker({
@@ -2245,7 +2273,7 @@ async function showOwner() {
     nav.hidden = true;
     unsubs.push(F.watchMyRestaurant(r => {
       const wasOk = isAccepted(myRest); myRest = r;
-      if (isAccepted(r) && !wasOk) { toast("تم قبول مطعمك! مرحباً بك في أكل شنو؟"); showOwner(); }
+      if (isAccepted(r) && !wasOk) showOwner();
       else if (curScreen === "owner") renderVerify();
     }));
     show("owner"); return renderVerify();
@@ -2274,6 +2302,31 @@ async function showOwner() {
     if (ownerTabNow === "stats") renderOwnerStats();
   }, e => console.error(e)));
   ownerTab("orders");
+  maybeCongrats();
+}
+
+// رسالة تهنئة تظهر مرة واحدة عند أول دخول بعد قبول المطعم
+function maybeCongrats() {
+  const r = myRest, key = "akl-congrats-" + r.id;
+  if (r.review !== "approved") return;
+  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch { return; }
+  const step = (done, t, sub) => `<div class="row gap10" style="align-items:flex-start"><span class="cg-step ${done ? "ok" : ""}">${done ? I.check : ""}</span>
+    <div class="col"><b style="font-size:14px">${t}</b><span class="muted" style="font-size:12px">${sub}</span></div></div>`;
+  const b = openSheet(`<div class="cg">
+      <div class="cg-burst">${I.party}</div>
+      <h2 style="margin:0;font-size:22px">تهانينا! تم قبول مطعمك</h2>
+      <p class="muted" style="margin:0;line-height:1.8">أهلاً بـ <b style="color:var(--ink)">${esc(r.name)}</b> في أكل شنو؟ ${r.freeTrial ? "فعّلنا لك <b style=\"color:var(--green)\">شهرين مجاناً</b>." : ""} جهّز مطعمك في دقائق ليبدأ الزبائن بالطلب:</p>
+    </div>
+    <div class="col gap14 box">
+      ${step(true, "توثيق المطعم", "تمت مراجعة إثباتاتك وقبولها")}
+      ${step(false, "أضف المنيو", "الأصناف والأسعار والصور، مع الأحجام والإضافات")}
+      ${step(false, "مناطق التوصيل وساعات العمل", "من الإعدادات: الرسوم والوقت لكل منطقة")}
+      ${step(false, "افتح المطعم", "من المفتاح أعلى اللوحة، وانتظر أول طلب")}
+    </div>
+    <button class="btn btn-primary" id="cg-go">${I.menu}ابدأ بإضافة المنيو</button>
+    <button class="btn btn-ghost" id="cg-later">لاحقاً</button>`);
+  b.querySelector("#cg-go").onclick = () => { closeSheet(); ownerTab("menu"); };
+  b.querySelector("#cg-later").onclick = closeSheet;
 }
 
 // ───── توثيق المطعم قبل القبول ─────

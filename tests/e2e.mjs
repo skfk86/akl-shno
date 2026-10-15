@@ -167,6 +167,11 @@ await t("لوحة المطعم تُفتح تلقائياً بعد القبول",
   for (let i = 0; i < 30 && !(await owner.locator("#s-owner nav.tabs").isVisible()); i++) await sleep(300);
   expect(await owner.locator("#s-owner nav.tabs").isVisible(), "dashboard not unlocked");
 });
+await t("رسالة «تهانينا» تظهر مرة واحدة بعد القبول", async () => {
+  for (let i = 0; i < 20 && !(await owner.locator("#cg-later").count()); i++) await sleep(250);
+  expect((await owner.textContent("#sheet")).includes("تهانينا"), "no congrats");
+  await tap(owner, "#cg-later"); await sleep(400);
+});
 await t("إضافة صنف بسعر مخفّض", async () => {
   await tap(owner, '.screen.on nav [data-go="menu"]'); await sleep(800);
   await tap(owner, '[data-new="item"]'); await sleep(300);
