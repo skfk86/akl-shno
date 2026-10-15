@@ -181,12 +181,6 @@ await t("المطعم الجديد يظهر «بانتظار المراجعة» 
   await sleep(1500); expect((await admin.textContent("#ad-body")).includes("بانتظار المراجعة"), "not listed as pending review");
   expect(await admin.locator("[data-proof]").count() >= 1, "no proof image");
 });
-await t("الفحص الفوري يكتب تقريره في لوحة الأدمن خلال ثوانٍ", async () => {
-  for (let i = 0; i < 30 && !(await admin.textContent("#ad-body")).includes("الفحص التلقائي:"); i++) await sleep(300);
-  const x = await admin.textContent("#ad-body");
-  expect(x.includes("الفحص التلقائي:"), "no instant report");
-  expect(x.includes("لا توجد بيانات كاميرا"), "camera check missing from report");
-});
 await t("رفض المطعم مع ذكر السبب", async () => {
   await tap(admin, "[data-reject]"); await sleep(300);
   await admin.fill("#rj-text", "الصورة غير واضحة"); await tap(admin, "#rj-ok"); await sleep(2000);
@@ -665,15 +659,7 @@ section("9. شاشة صغيرة (360 بكسل): لا شيء يخرج عن الش
   });
 }
 
-section("10. لوحة الأدمن: التحقق التلقائي وحذف الحسابات");
-await t("مفتاح التحقق التلقائي يظهر ويُحفظ", async () => {
-  await tap(admin, '#ad-seg [data-t="rest"]'); await sleep(1800);
-  expect((await admin.textContent("#ad-body")).includes("التحقق التلقائي"), "no auto-review card");
-  await admin.locator("#ad-auto").uncheck({ force: true }); await sleep(1800);
-  expect(!(await admin.locator("#ad-auto").isChecked()), "toggle not saved (off)");
-  await admin.locator("#ad-auto").check({ force: true }); await sleep(1800);
-  expect(await admin.locator("#ad-auto").isChecked(), "toggle not saved (on)");
-});
+section("10. لوحة الأدمن: حذف الحسابات");
 await t("قسم المستخدمين يعرض الحسابات ويبحث فيها", async () => {
   await tap(admin, '#ad-seg [data-t="users"]'); await sleep(2000);
   const x = await admin.textContent("#ad-body");

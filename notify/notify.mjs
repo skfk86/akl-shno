@@ -138,7 +138,7 @@ for (const d of (await db.collection("restaurants").where("featuredUntil", "<=",
 
 // المراجعة التلقائية نفسها تعمل في مهمة مستقلة (review.yml) تشغّل نموذج الذكاء الاصطناعي على خادم GitHub.
 const reviewCfg = (await db.doc("settings/review").get()).data() || {};
-const autoOn = reviewCfg.auto !== false;
+const autoOn = false;   // التحقق التلقائي متوقف حالياً: المراجعة يدوية فقط (reviewCfg محفوظ لإعادته لاحقاً)
 
 // ───── توثيق المطاعم: طلب مراجعة جديد ← الأدمن، والقرار ← صاحب المطعم ─────
 const reviews = await db.collection("restaurants").where("review", "in", ["pending", "approved", "rejected"]).get();

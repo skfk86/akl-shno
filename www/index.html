@@ -3319,7 +3319,7 @@ function startAdminWatch() {
     const ids = list.filter(r => r.autoReview?.key !== r.reviewAt?.toMillis?.()).map(r => r.id + ":" + (r.reviewAt?.toMillis?.() || 0));
     const fresh = adPendSeen ? ids.filter(x => !adPendSeen.has(x)) : [];
     adPendSeen = new Set(ids);
-    if (fresh.length && curScreen === "admin") { haptic(80); toast("طلب مطعم جديد، جارٍ فحصه…"); loadAdmin(); }
+    if (fresh.length && curScreen === "admin") { haptic(80); toast("طلب مطعم جديد بانتظار مراجعتك"); loadAdmin(); }
   });
   adSupUnsub = F.adminWatchSupport(th => {
     const n = th.filter(x => x.lastFrom === "user" && (x.lastAt?.toMillis?.() || 0) > getSeen({ kind: "support", id: x.id })).length;
@@ -3336,7 +3336,7 @@ async function showAdmin() {
 async function loadAdmin() {
   const [rest, pays, reps, banned] = await Promise.all([F.adminListRestaurants(), F.adminListPayments(), F.adminListDisputes(), F.adminListBanned().catch(() => [])]);
   adRest = rest;
-  setTimeout(() => runInstantReviews(rest));   // فحص فوري للطلبات الجديدة دون انتظار GitHub
+  // التحقق التلقائي متوقف حالياً (المراجعة يدوية فقط). لإعادته لاحقاً: runInstantReviews(rest) وبطاقة التشغيل.
   // إصلاح تلقائي: مطاعم فُعّلت قبل إضافة حقل listed لا تظهر للزبائن
   const fix = rest.filter(r => r.subActiveUntil != null && r.listed === undefined);
   if (fix.length) {
@@ -3350,8 +3350,7 @@ async function loadAdmin() {
     <div><b style="color:#FDBA74">${pays.length + reps.length + rest.filter(r => !isAccepted(r) && r.review === "pending").length}</b><span>بانتظار المراجعة</span></div>`;
   const body = $("#ad-body");
   if (adTab === "rest") {
-    const cfg = await F.adminGetSettings().catch(() => ({}));
-    const autoOn = cfg.auto !== false;
+    const autoOn = false;   // المراجعة يدوية فقط حالياً
     const rank = r => !isAccepted(r) ? (r.review === "pending" ? (r.autoReview?.passed ? 0 : 0.5) : r.review === "rejected" ? 3 : 1) : r.subActiveUntil ? 4 : 2;
     const sorted = rest.sort((a, b) => rank(a) - rank(b));
     const autoCard = `<section class="box col gap10" style="border:1.5px solid ${autoOn ? "var(--green)" : "var(--line)"}">
@@ -3365,7 +3364,7 @@ async function loadAdmin() {
         <div class="col gap6" style="padding:10px 4px 0">${(a.checks || []).map(c => `<span class="row gap6" style="font-size:13px;color:${c.ok ? "var(--green)" : "var(--red)"}">${c.ok ? I.check : I.x}<span style="color:var(--ink)">${esc(c.label)}</span></span>`).join("")}
         ${a.ai ? `<span class="muted" style="font-size:12px;line-height:1.7">وصف الذكاء الاصطناعي للصورة (ثقة ${Math.round((a.confidence || 0) * 100)}%): <span dir="ltr">${esc(a.ai.note)}</span></span>` : ""}</div></details>`;
     };
-    body.innerHTML = autoCard + (sorted.length ? sorted.map(r => {
+    body.innerHTML = (sorted.length ? sorted.map(r => {
       const d = daysLeft(r.subActiveUntil);
       if (!isAccepted(r)) {
         const p = r.proofs || {}, rv = r.review || "new";
