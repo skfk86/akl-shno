@@ -285,6 +285,27 @@ export async function adminListUsers() {
 export const adminListDeleteQueue = async () => list(await getDocs(collection(db, "deleteQueue")));
 export const adminDeleteAccount = (uid, { ban = false, reason = "", name = "" } = {}) =>
   setDoc(doc(db, "deleteQueue", uid), { at: serverTimestamp(), ban, reason, name });
+// حذف فوري من لوحة الأدمن: حظر الجهاز، إيقاف الحساب ومسح بياناته، وحذف المطعم والمنيو والصور.
+// حساب الدخول نفسه (Firebase Auth) يُحذف لاحقاً من الخادم عبر deleteQueue، لكن الحساب يتوقف فوراً.
+export async function adminDeleteAccountNow(uid, { ban = false, reason = "", name = "" } = {}) {
+  const u = (await getDoc(doc(db, "users", uid))).data() || {};
+  if (ban && u.deviceId) await setDoc(doc(db, "bannedDevices", u.deviceId), { uid, name: u.name || name, phone: u.phone || "", manual: true, reason: reason || "حذف من الإدارة", at: serverTimestamp() });
+  await updateDoc(doc(db, "users", uid), { deleted: true, deletedAt: serverTimestamp(), name: "حساب محذوف", phone: "", addresses: [], fcmToken: null }).catch(() => {});
+  const r = doc(db, "restaurants", uid);
+  if ((await getDoc(r)).exists()) {
+    for (const sub of ["menu", "offers", "zones"]) {
+      const s = await getDocs(collection(db, "restaurants", uid, sub));
+      if (!s.empty) { const b = writeBatch(db); s.docs.forEach(x => b.delete(x.ref)); await b.commit(); }
+    }
+    await deleteDoc(r);
+  }
+  const imgs = await getDocs(query(collection(db, "images"), where("owner", "==", uid)));
+  if (!imgs.empty) { const b = writeBatch(db); imgs.docs.forEach(x => b.delete(x.ref)); await b.commit(); }
+  await setDoc(doc(db, "deleteQueue", uid), { at: serverTimestamp(), ban, reason, name });
+}
+// متابعة لحظية: إن حُذف الحساب أو حُظر الجهاز أثناء استخدام التطبيق يُطرد المستخدم فوراً
+export const watchMyProfile = cb => onSnapshot(doc(db, "users", uid()), d => cb(d.exists() ? d.data() : null), () => {});
+export const watchDeviceBan = (id, cb) => onSnapshot(doc(db, "bannedDevices", id), d => cb(d.exists()), () => {});
 export async function adminListSupport() {
   return list(await getDocs(query(collection(db, "support"), orderBy("lastAt", "desc"), limit(100))));
 }

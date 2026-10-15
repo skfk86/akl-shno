@@ -1534,7 +1534,22 @@ async function deviceId() {
   if (!id) { id = "w-" + crypto.randomUUID(); try { localStorage.setItem("akl-dev", id); } catch {} }
   return id;
 }
-let deviceBanned = false;
+let deviceBanned = false, statusUnsubs = [];
+// طرد فوري: الحساب حذفته الإدارة أو الجهاز محظور
+async function kickOut(why) {
+  statusUnsubs.forEach(u => u()); statusUnsubs = [];
+  try { await F.logout(); } catch {}
+  show("welcome");
+  $("#welcome-err").innerHTML = why === "banned"
+    ? `تم حظر هذا الجهاز من استخدام أكل شنو؟ بسبب مخالفة الشروط.${CONFIG.ADMIN_PHONE ? ` إن كان هناك خطأ اتصل بنا: <span dir="ltr">${CONFIG.ADMIN_PHONE}</span>` : ""}`
+    : "تم حذف هذا الحساب من قبل الإدارة.";
+}
+function watchAccountStatus() {
+  statusUnsubs.forEach(u => u()); statusUnsubs = [];
+  if (isAdmin) return;
+  statusUnsubs.push(F.watchMyProfile(p => { if (p?.deleted) kickOut("deleted"); }));
+  if (me?.deviceId) statusUnsubs.push(F.watchDeviceBan(me.deviceId, b => { if (b) kickOut("banned"); }));
+}
 async function setupDevice() {
   try {
     const id = await deviceId();
@@ -1582,7 +1597,10 @@ F.watchAuth(async user => {
       $("#c-name").value = user.displayName || "";
       return show("customer");
     }
-    setupPush(); await setupDevice(); startInbox();
+    setupPush(); await setupDevice();
+    if (!isAdmin && (me.deleted || deviceBanned)) return kickOut(me.deleted ? "deleted" : "banned");
+    watchAccountStatus();
+    startInbox();
     if (isAdmin) { startAdminWatch(); return showAdmin(); }
     if (me.role === "owner") return showOwner();
     showHome();
@@ -1612,7 +1630,9 @@ $("#c-save").addEventListener("click", e => {
   busy(e.target, async () => {
     await F.createProfile({ role: "customer", name, phone: "+249" + phone });
     me = await F.getProfile();
-    setupPush(); await setupDevice(); startInbox();
+    setupPush(); await setupDevice();
+    if (deviceBanned) return kickOut("banned");   // جهاز محظور: لا حساب جديد
+    watchAccountStatus(); startInbox();
     showHome();
   });
 });
@@ -1626,9 +1646,11 @@ $("#o-save").addEventListener("click", e => {
   data.phone = "+249" + data.phone;
   busy(e.target, async () => {
     await F.createProfile({ role: "owner", name: F.auth.currentUser.displayName || data.name, phone: data.phone });
-    await F.createRestaurant(data);
     me = await F.getProfile();
-    setupPush(); startInbox();
+    await setupDevice();
+    if (deviceBanned) return kickOut("banned");   // جهاز محظور: لا يسجّل مطعماً جديداً
+    await F.createRestaurant(data);
+    setupPush(); watchAccountStatus(); startInbox();
     showOwner();
   });
 });
@@ -3552,7 +3574,7 @@ async function openRestImages(r) {
 async function renderAdminUsers() {
   const body = $("#ad-body");
   const [users, queue] = await Promise.all([F.adminListUsers(), F.adminListDeleteQueue().catch(() => [])]);
-  const queued = new Set(queue.map(q => q.id)), me0 = F.auth.currentUser?.uid;
+  const queued = new Set([...queue.map(q => q.id), ...users.filter(u => u.deleted).map(u => u.id)]), me0 = F.auth.currentUser?.uid;
   const ROLE = { customer: ["زبون", "b-gray"], owner: ["صاحب مطعم", "b-orange"] };
   body.innerHTML = `<label class="search row gap10" style="margin:0"><input id="us-q" placeholder="ابحث بالاسم أو رقم الهاتف" style="flex:1;border:0;background:none;font:inherit;height:44px"></label>
     <span class="muted" style="font-size:12px">${users.length} مستخدم · الحذف يتم خلال دقائق، ويحذف حساب الدخول والملف والمطعم والمنيو والصور والمحادثات. تبقى سجلات الطلبات.</span>
@@ -3563,8 +3585,8 @@ async function renderAdminUsers() {
         <div class="col grow" style="min-width:0"><div class="row gap6"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.name || "بدون اسم")}</b><span class="badge ${rc}">${rl}</span>${u.strikes ? `<span class="badge b-red">${u.strikes} إنذار</span>` : ""}</div>
           <span class="muted" dir="ltr" style="text-align:right;font-size:13px">${esc(u.phone || "")}</span>
           <span class="muted" style="font-size:11px">${tsDate(u.createdAt)?.toLocaleDateString(LOC, { day: "numeric", month: "short", year: "numeric" }) || ""} · ${u.delivered || 0} طلب مستلَم</span></div>
-        ${u.id === me0 ? `<span class="badge b-blue">أنت</span>` : q ? `<span class="badge b-gray">قيد الحذف</span>`
-          : `<button class="icon-btn" data-del-user="${esc(u.id)}" data-name="${esc(u.name || "")}" aria-label="حذف الحساب" style="background:var(--red-soft);color:var(--red);flex-shrink:0">${I.trash}</button>`}
+        ${u.id === me0 ? `<span class="badge b-blue">أنت</span>` : q ? `<span class="badge b-gray">${u.deleted ? "محذوف" : "قيد الحذف"}</span>`
+          : u.deleted ? `<span class="badge b-gray">محذوف</span>` : `<button class="icon-btn" data-del-user="${esc(u.id)}" data-name="${esc(u.name || "")}" aria-label="حذف الحساب" style="background:var(--red-soft);color:var(--red);flex-shrink:0">${I.trash}</button>`}
       </div>`; }).join("") || emptyState("لا يوجد مستخدمون", "")}</div>`;
 }
 function confirmDeleteUser(uid, name) {
@@ -3581,9 +3603,9 @@ function confirmDeleteUser(uid, name) {
   b.querySelector("#du-confirm").oninput = ev => go.disabled = ev.target.value.trim() !== "حذف";
   go.onclick = () => busy(go, async () => {
     try {
-      await F.adminDeleteAccount(uid, { ban: b.querySelector("#du-ban").checked, reason: b.querySelector("#du-reason").value.trim(), name });
-      await F.adminSetListed(uid, false).catch(() => {});   // إن كان مطعماً: يختفي فوراً قبل اكتمال الحذف
-      closeSheet(); toast("سيُحذف الحساب خلال دقائق"); loadAdmin();
+      const ban = b.querySelector("#du-ban").checked;
+      await F.adminDeleteAccountNow(uid, { ban, reason: b.querySelector("#du-reason").value.trim(), name });
+      closeSheet(); toast(ban ? "تم حذف الحساب وحظر الجهاز" : "تم حذف الحساب"); loadAdmin();
     } catch (x) { console.error(x); toast("تعذر الحذف."); }
   });
 }

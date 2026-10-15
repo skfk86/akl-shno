@@ -618,8 +618,9 @@ await t("الدخول من جديد يبدأ حساباً جديداً", async (
 });
 
 section("9. شاشة صغيرة (360 بكسل): لا شيء يخرج عن الشاشة");
+let small;
 {
-  const small = await user("small", "small@test.sd");
+  small = await user("small", "small@test.sd");
   await small.setViewportSize({ width: 360, height: 740 });
   await small.goto(URL);
   await tap(small, '[data-role="customer"]'); await waitScreen(small, "s-customer");
@@ -665,7 +666,21 @@ await t("حذف حساب يحتاج تأكيداً ثم يدخل «قيد الح
   await admin.locator("#du-ban").check({ force: true });
   await admin.fill("#du-confirm", "حذف"); await tap(admin, "#du-go"); await sleep(2500);
   await admin.fill("#us-q", "سارة").catch(() => {}); await sleep(300);
-  expect((await admin.textContent("#ad-body")).includes("قيد الحذف"), "not queued");
+  const x = await admin.textContent("#ad-body");
+  expect(x.includes("محذوف") || x.includes("قيد الحذف"), "not deleted");
+});
+await t("المستخدم المحذوف يُطرد فوراً برسالة حظر الجهاز", async () => {
+  await waitScreen(small, "s-welcome", 15000);
+  expect((await small.textContent("#welcome-err")).includes("حظر"), "no ban message: " + await small.textContent("#welcome-err"));
+});
+await t("لا يستطيع إنشاء حساب جديد من نفس الجهاز المحظور", async () => {
+  await small.evaluate(() => { window.__LOGIN = { email: "small2@test.sd", pass: "test1234" }; });
+  await tap(small, '[data-role="customer"]'); await sleep(1500);
+  if (await screen(small) === "s-customer") {
+    await small.fill("#c-name", "سارة ٢"); await small.fill("#c-phone", "911223355"); await tap(small, "#c-save");
+  }
+  await waitScreen(small, "s-welcome", 15000);
+  expect((await small.textContent("#welcome-err")).includes("حظر"), "banned device created a new account");
 });
 await shot(admin, "10-admin-users");
 
