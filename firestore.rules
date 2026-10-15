@@ -94,7 +94,7 @@ service cloud.firestore {
 
       allow update: if isAdmin()
         || (signedIn() && uid() == rid
-            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'subActiveUntil', 'freeTrial', 'listed', 'verified', 'ratingSum', 'ratingCount', 'lastRatingId', 'approved', 'rejectReason', 'reviewedAt', 'autoReview', 'autoApproved', 'proofHash', 'featuredUntil', 'featuredNotified'])
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'subActiveUntil', 'freeTrial', 'listed', 'verified', 'ratingSum', 'ratingCount', 'lastRatingId', 'approved', 'rejectReason', 'reviewedAt', 'autoReview', 'autoApproved', 'proofHash', 'featuredUntil', 'featuredNotified', 'popular'])
             // المطعم يستطيع فقط إرسال طلب المراجعة، والقرار للإدارة
             && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['review']) || request.resource.data.review == 'pending'))
         || ratingFromCustomer(rid);

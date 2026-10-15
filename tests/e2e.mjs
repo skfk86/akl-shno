@@ -66,7 +66,7 @@ async function user(label, email, loc = HOME) {
     viewport: { width: 390, height: 844 }, locale: "ar",
     geolocation: { latitude: loc[0], longitude: loc[1] }, permissions: ["geolocation"]
   });
-  await ctx.addInitScript(([e]) => { window.__LOGIN = { email: e, pass: "test1234" }; }, [email]);
+  await ctx.addInitScript(([e, ob]) => { window.__LOGIN = { email: e, pass: "test1234" }; if (!ob) localStorage.setItem("akl-onboarded", "1"); }, [email, label === "owner"]);
   const pg = await ctx.newPage();
   pg.on("pageerror", e => pageErrors.push(`[${label}] ${e.message}`));
   pg.on("dialog", d => d.accept());
@@ -102,6 +102,14 @@ section("1. تسجيل المطعم");
 const owner = await user("owner", "owner@test.sd", REST);
 await owner.goto(URL);
 await t("شاشة الترحيب تظهر", () => waitScreen(owner, "s-welcome"));
+await t("شاشات التعريف تظهر أول مرة وتُغلق بـ«ابدأ الآن»", async () => {
+  for (let i = 0; i < 20 && !(await owner.locator("#onboard").count()); i++) await sleep(200);
+  expect(await owner.locator("#onboard .ob-slide").count() === 3, "no onboarding");
+  await tap(owner, "#ob-next"); await sleep(700); await tap(owner, "#ob-next"); await sleep(700);
+  expect((await owner.textContent("#ob-next")).includes("ابدأ"), "last slide button not 'ابدأ الآن'");
+  await tap(owner, "#ob-next"); await sleep(600);
+  expect(await owner.locator("#onboard").count() === 0, "onboarding not closed");
+});
 await t("اختيار «أملك مطعماً» يفتح نموذج التسجيل", async () => {
   await tap(owner, '[data-role="owner"]'); await waitScreen(owner, "s-ownerreg");
 });

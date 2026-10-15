@@ -198,7 +198,21 @@ if (Date.now() - (meta.at?.toMillis?.() || 0) > 20 * 3600e3) {
     for (const id of [p.sign, p.license].filter(Boolean)) { await db.doc(`images/${id}`).delete().catch(() => {}); proofs++; }
     await d.ref.update({ proofs: { sign: "", license: "" } });
   }
-  await metaRef.set({ at: Timestamp.now(), ordersCursor, msgs, threads, proofs });
+  // «الأكثر طلباً» لكل مطعم: أعلى 3 أصناف من الطلبات المسلَّمة آخر 30 يوماً (الزبائن لا يقرؤون طلبات غيرهم)
+  const month = await db.collection("orders").where("createdAt", ">", Timestamp.fromMillis(Date.now() - 30 * 864e5)).get();
+  const counts = {};
+  for (const o of month.docs) {
+    const x = o.data(); if (x.status !== "delivered") continue;
+    const c = counts[x.restaurantId] ||= {};
+    for (const it of x.items || []) { const id = String(it.id || "").split("|")[0]; if (id) c[id] = (c[id] || 0) + (it.qty || 1); }
+  }
+  let popularUpdated = 0;
+  for (const [rid, c] of Object.entries(counts)) {
+    const top = Object.entries(c).filter(([, n]) => n >= 3).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => id);
+    const ref = db.doc(`restaurants/${rid}`), cur = (await ref.get()).get("popular") || [];
+    if (JSON.stringify(cur) !== JSON.stringify(top)) { await ref.update({ popular: top }).catch(() => {}); popularUpdated++; }
+  }
+  await metaRef.set({ at: Timestamp.now(), ordersCursor, msgs, threads, proofs, popularUpdated });
   console.log(`cleanup: messages ${msgs} · threads ${threads} · proof images ${proofs}`);
 }
 
