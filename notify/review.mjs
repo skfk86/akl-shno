@@ -7,8 +7,12 @@
 
 import { createHash } from "node:crypto";
 
-const MODELS = ["openai/gpt-4.1-mini", "openai/gpt-4o-mini"];
-const ENDPOINT = "https://models.github.ai/inference/chat/completions";
+// [العنوان، اسم النموذج] بالترتيب: الأول هو الرسمي الحالي، والثاني احتياطي
+const TARGETS = [
+  ["https://models.github.ai/inference/chat/completions", "openai/gpt-4.1-mini"],
+  ["https://models.github.ai/inference/chat/completions", "openai/gpt-4o-mini"],
+  ["https://models.inference.ai.azure.com/chat/completions", "gpt-4o-mini"]
+];
 const SUDAN = { minLat: 8.6, maxLat: 22.3, minLng: 21.8, maxLng: 38.7 };
 
 const norm = s => String(s || "").toLowerCase()
@@ -31,14 +35,15 @@ async function askAI(r, images) {
   if (!token || !images.length) return null;
   const content = [{ type: "text", text: PROMPT(r, images.length > 1) },
     ...images.map(url => ({ type: "image_url", image_url: { url, detail: "low" } }))];
-  for (const model of MODELS) {
+  for (const [endpoint, model] of TARGETS) {
     try {
-      const res = await fetch(ENDPOINT, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      const res = await fetch(endpoint, {
+        method: "POST", redirect: "manual",
+        headers: { "content-type": "application/json", accept: "application/json", authorization: `Bearer ${token}` },
         body: JSON.stringify({ model, temperature: 0, max_tokens: 400, response_format: { type: "json_object" },
           messages: [{ role: "user", content }] })
       });
+      if (res.status >= 300 && res.status < 400) { console.log(`  ai ${model}: redirect ${res.status} → ${res.headers.get("location")}`); continue; }
       const raw = await res.text();
       if (!res.ok) { console.log(`  ai ${model}: HTTP ${res.status} ${raw.slice(0, 200).replace(/\s+/g, " ")}`); continue; }
       let txt;
