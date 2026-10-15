@@ -138,41 +138,10 @@ await t("لا يُرسل للمراجعة بدون صورة الواجهة", asy
   await tap(owner, "#vf-send"); await sleep(300);
   expect((await owner.textContent("#vf-err")).includes("واجهة"), "no error");
 });
-await t("صورة تصميم/ملصق تُرفض فور رفعها مع السبب", async () => {
-  const [fc] = await Promise.all([owner.waitForEvent("filechooser"), tap(owner, '[data-vf-pick="sign"]')]);
-  expect(fc.isMultiple() === false, "multi");
-  await fc.setFiles(FAKE_IMG); await sleep(1500);
-  expect((await owner.textContent("#ow-body")).includes("ليست صورة كاميرا"), "graphic not rejected at upload");
-  expect(await owner.locator('[data-vf-pick="sign"].bad').count() === 1, "not marked bad");
-});
-await t("لقطة شاشة تُرفض فور رفعها", async () => {
-  const [fc] = await Promise.all([owner.waitForEvent("filechooser"), tap(owner, '[data-vf-pick="sign"]')]);
-  await fc.setFiles(SHOT_IMG); await sleep(1500);
-  expect(await owner.locator('[data-vf-pick="sign"].bad').count() === 1, "screenshot accepted");
-});
-await t("زر الواجهة يفتح الكاميرا مباشرة", async () => {
-  const cap = await owner.evaluate(() => new Promise(res => {
-    const orig = HTMLInputElement.prototype.click;
-    HTMLInputElement.prototype.click = function () { HTMLInputElement.prototype.click = orig; res(this.getAttribute("capture")); };
-    document.querySelector('[data-vf-pick="sign"]').click();
-  }));
-  expect(cap === "environment", "capture=" + cap);
-});
-await t("صورة من المعرض بلا بيانات كاميرا تُرفض", async () => {
+await t("رفع صورة واجهة المطعم (من المعرض أو الكاميرا)", async () => {
   const [fc] = await Promise.all([owner.waitForEvent("filechooser"), tap(owner, '[data-vf-pick="sign"]')]);
   await fc.setFiles(PROOF_IMG); await sleep(1500);
-  expect((await owner.textContent("#ow-body")).includes("ليست ملتقطة بكاميرا"), "gallery photo without camera data accepted");
-});
-await t("صورة كاميرا قديمة (قبل يومين) تُرفض", async () => {
-  const [fc] = await Promise.all([owner.waitForEvent("filechooser"), tap(owner, '[data-vf-pick="sign"]')]);
-  await fc.setFiles({ name: "IMG_old.jpg", mimeType: "image/jpeg", buffer: await cameraJpeg(2 * 864e5) }); await sleep(1500);
-  expect((await owner.textContent("#ow-body")).includes("صورة قديمة"), "old photo accepted");
-});
-await t("صورة كاميرا ملتقطة الآن تُقبل", async () => {
-  const [fc] = await Promise.all([owner.waitForEvent("filechooser"), tap(owner, '[data-vf-pick="sign"]')]);
-  await fc.setFiles({ name: "IMG_now.jpg", mimeType: "image/jpeg", buffer: await cameraJpeg(5 * 60e3) }); await sleep(1800);
-  expect(await owner.locator('[data-vf-pick="sign"].has').count() === 1, "fresh camera photo not attached: " + (await owner.textContent("#ow-body")).slice(0, 200));
-  expect((await owner.textContent("#ow-body")).includes("صورة كاميرا"), "camera badge missing");
+  expect(await owner.locator('[data-vf-pick="sign"].has').count() === 1, "image not attached");
 });
 await t("تحديد الموقع ثم الإرسال للمراجعة", async () => {
   await tap(owner, "#st-loc-edit"); await sleep(2500);
@@ -675,6 +644,14 @@ section("9. شاشة صغيرة (360 بكسل): لا شيء يخرج عن الش
 }
 
 section("10. لوحة الأدمن: حذف الحسابات");
+await t("الأدمن يفتح صور المطعم ويحذف صورة", async () => {
+  await tap(admin, '#ad-seg [data-t="rest"]'); await sleep(1800);
+  await tap(admin, "[data-rest-imgs]"); await sleep(1500);
+  const n = await admin.locator("[data-img-del]").count();
+  if (n) { await tap(admin, "[data-img-del]"); await sleep(1800); expect((await admin.textContent("#sheet")).includes("حُذفت"), "image not deleted"); }
+  else expect((await admin.textContent("#sheet")).includes("لا توجد صور"), "images sheet did not open");
+  await admin.evaluate(() => document.querySelector("#sheet").classList.remove("on"));
+});
 await t("قسم المستخدمين يعرض الحسابات ويبحث فيها", async () => {
   await tap(admin, '#ad-seg [data-t="users"]'); await sleep(2000);
   const x = await admin.textContent("#ad-body");

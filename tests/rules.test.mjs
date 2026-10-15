@@ -213,6 +213,8 @@ await t("الأدمن يرفض المطعم مع السبب", () => assertSuccee
   { approved: false, review: "rejected", rejectReason: "الصورة غير واضحة", reviewedAt: serverTimestamp() })));
 await t("الأدمن يقبل المطعم", () => assertSucceeds(updateDoc(doc(db("admin"), "restaurants", "owner3"),
   { approved: true, review: "approved", rejectReason: "", reviewedAt: serverTimestamp() })));
+await t("الأدمن يحذف صورة صنف بعد بلاغ", () => assertSucceeds(updateDoc(doc(db("admin"), "restaurants", "owner", "menu", "m1"), { image: null })));
+await t("مطعم آخر لا يعدّل صنف غيره", () => assertFails(updateDoc(doc(db("owner2"), "restaurants", "owner", "menu", "m1"), { image: null })));
 await t("بعد القبول يضيف المنيو", () => assertSucceeds(setDoc(doc(db("owner3"), "restaurants", "owner3", "menu", "y"), { name: "y", price: 2000 })));
 await t("المطعم لا يزوّر تقرير الفحص التلقائي", () => assertFails(updateDoc(doc(db("owner3"), "restaurants", "owner3"), { autoApproved: true })));
 await t("المطعم لا يكتب بصمة صوره", () => assertFails(updateDoc(doc(db("owner3"), "restaurants", "owner3"), { proofHash: { sign: "x" } })));

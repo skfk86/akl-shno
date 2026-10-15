@@ -176,6 +176,13 @@ export const saveDeviceId = id => updateDoc(doc(db, "users", uid()), { deviceId:
 export async function isDeviceBanned(id) {
   try { return (await getDoc(doc(db, "bannedDevices", id))).exists(); } catch { return false; }
 }
+// حذف صورة غير لائقة من مطعم (غلاف المطعم أو صورة صنف) بعد بلاغ
+export async function adminRemoveImage(rid, { itemId = null, imgId }) {
+  const b = writeBatch(db);
+  b.update(itemId ? doc(db, "restaurants", rid, "menu", itemId) : doc(db, "restaurants", rid), { image: null });
+  if (imgId) b.delete(doc(db, "images", imgId));
+  await b.commit();
+}
 // طلبات المطاعم المعلّقة لحظياً (للأدمن)
 export const adminWatchPending = cb => onSnapshot(query(collection(db, "restaurants"), where("review", "==", "pending")), s => cb(list(s)), () => {});
 // للفحص الفوري في لوحة الأدمن

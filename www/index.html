@@ -365,6 +365,8 @@
   .off{position:absolute;top:8px;right:8px;background:var(--red);color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
   .cover .tag3{position:absolute;top:10px;left:10px;background:var(--red);color:#fff;font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px}
   s.old{color:var(--muted);font-size:13px;font-weight:400}
+  .img-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .img-cell{display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
   .profile-card{display:flex;flex-direction:column;gap:8px;align-items:flex-start;width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--bg2);font:inherit;color:inherit;text-align:right}
   .pbar{width:100%;height:8px;border-radius:4px;background:var(--fill);overflow:hidden}
   .pbar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#F59E0B,var(--accent));transition:width .6s}
@@ -2696,7 +2698,7 @@ function renderVerify() {
       <div class="pimg">${img || I.camera}</div>
       <div class="col grow" style="text-align:right;gap:3px"><b>${title} ${req ? '<span style="color:var(--red)">*</span>' : '<span class="muted" style="font-weight:400;font-size:12px">(اختياري)</span>'}</b>
         <span class="muted" style="font-size:12px;line-height:1.6">${hint}</span>
-        <span style="font-size:12px;font-weight:700;color:var(--accent)" class="row gap6">${k === "sign" ? I.camera.replace('width="28" height="28"', 'width="15" height="15"') : ""}${img ? (k === "sign" ? "إعادة التصوير" : "تغيير الصورة") : (k === "sign" ? "التقط صورة بالكاميرا" : "صوّر أو اختر صورة")}</span></div></button>${status}</div>`;
+        <span style="font-size:12px;font-weight:700;color:var(--accent)" class="row gap6">${img ? "تغيير الصورة" : "صوّر أو اختر صورة"}</span></div></button>${status}</div>`;
   };
   const statusNote = sent
     ? `<div class="note n-blue">${I.clock}<span><b>طلبك قيد المراجعة.</b> نراجع الإثباتات ونتصل بك على <span dir="ltr">${esc(r.phone)}</span> خلال 24 إلى 48 ساعة، وتصلك رسالة عند القبول.</span></div>`
@@ -2707,7 +2709,7 @@ function renderVerify() {
     ${statusNote}
     ${editing ? `
       <h2>إثباتات المطعم</h2>
-      ${shot("sign", "صورة واجهة المطعم", "التقطها الآن بالكاميرا من أمام المطعم، وتظهر فيها اللافتة والاسم بوضوح. لا تُقبل صور المعرض أو لقطات الشاشة أو التصاميم.", true)}
+      ${shot("sign", "صورة واجهة المطعم", "صورة واضحة للمطعم من الخارج تظهر فيها اللافتة والاسم.", true)}
       ${shot("license", "الرخصة التجارية أو الشهادة الصحية", "إن وُجدت. تسرّع القبول.", false)}
       <section class="box col gap10">
         <div class="row between"><b>موقع المطعم على الخريطة <span style="color:var(--red)">*</span></b>
@@ -2732,11 +2734,9 @@ function renderVerify() {
     const pk = e.target.closest("[data-vf-pick]");
     if (pk) {
       const k = pk.dataset.vfPick;
-      const f = await pickPhoto(k === "sign"); if (!f) return;
-      toast("جارٍ فحص الصورة…");
-      const a = await analyzePhoto(f, k);
-      if (!a.ok) { vfErr[k] = a.problems; vfDraft[k] = null; delete vfMeta[k]; return renderVerify(); }
-      try { vfDraft[k] = await compressImage(f, 1100); vfMeta[k] = a.meta; delete vfErr[k]; renderVerify(); }
+      // بدون فحص للصورة: المراجعة يدوية من الأدمن، والصور السيئة تُحذف عند البلاغ
+      const f = await pickPhoto(false); if (!f) return;
+      try { vfDraft[k] = await compressImage(f, 1100); delete vfErr[k]; renderVerify(); }
       catch { toast("تعذر قراءة الصورة. جرّب صورة أخرى."); }
       return;
     }
@@ -2747,7 +2747,7 @@ function renderVerify() {
     const send = e.target.closest("#vf-send");
     if (send) {
       const err = $("#vf-err");
-      if (!vfDraft.sign && !p.sign) return err.textContent = vfErr.sign ? "صورة الواجهة لم تجتز الفحص. أعد التصوير." : "التقط صورة واجهة المطعم.";
+      if (!vfDraft.sign && !p.sign) return err.textContent = "أضف صورة واجهة المطعم.";
       if (!hasLoc(myRest)) return err.textContent = "حدد موقع المطعم على الخريطة.";
       return busy(send, async () => {
         try {
@@ -3397,6 +3397,7 @@ async function loadAdmin() {
         <div class="row gap10">
           ${r.subActiveUntil == null ? `<button class="btn btn-sm btn-green" data-trial="${esc(r.id)}" ${seatsLeft <= 0 ? "disabled" : ""}>${seatsLeft > 0 ? "تفعيل الشهرين المجانيين" : "انتهت المقاعد المجانية"}</button>`
             : `<button class="btn btn-sm ${r.listed === false ? "btn-green" : "btn-danger"}" data-list="${esc(r.id)}" data-v="${r.listed === false ? 1 : 0}">${r.listed === false ? "إعادة إظهار المطعم" : "إيقاف المطعم"}</button>`}
+          <button class="icon-btn" data-rest-imgs="${esc(r.id)}" aria-label="صور المطعم" style="background:var(--fill)">${I.camera.replace('width="28" height="28"', 'width="20" height="20"')}</button>
           ${r.subActiveUntil != null ? `<button class="btn btn-sm ${r.verified ? "btn-ghost" : "btn-outline"}" style="width:auto;padding:0 12px" data-verify="${esc(r.id)}" data-v="${r.verified ? 0 : 1}">${r.verified ? "إلغاء التوثيق" : "توثيق"}</button>` : ""}
           <a class="icon-btn" href="tel:${esc(r.phone)}" aria-label="اتصال" style="background:var(--green-soft);color:var(--green)">${I.phone}</a>
         </div>
@@ -3523,6 +3524,30 @@ $("#ad-body").addEventListener("input", e => {
   document.querySelectorAll("#us-list [data-u]").forEach(x => x.hidden = q && !norm(x.dataset.u).includes(q));
 });
 
+// ───── صور المطعم: الأدمن يحذف أي صورة سيئة أو غير لائقة بعد بلاغ ─────
+async function openRestImages(r) {
+  const b = openSheet(`<h2>صور ${esc(r.name)}</h2><div class="center"><div class="spinner"></div></div>`);
+  const menu = await F.listSub(r.id, "menu").catch(() => []);
+  const list = [...(r.image ? [{ img: r.image, label: "صورة الغلاف", item: null }] : []),
+    ...menu.filter(m => m.image).map(m => ({ img: m.image, label: m.name, item: m.id }))];
+  b.innerHTML = `<h2>صور ${esc(r.name)}</h2>
+    <span class="muted" style="font-size:13px">اضغط «حذف» على أي صورة سيئة أو غير لائقة. تُحذف فوراً ويظهر مكانها الغلاف الافتراضي.</span>
+    ${list.length ? `<div class="img-grid">${list.map((x, i) => `<div class="img-cell"><div class="pimg" style="width:100%;height:110px">${imgTag(x.img)}</div>
+      <span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.label)}</span>
+      <button class="btn btn-sm btn-danger" data-img-del="${i}" style="height:34px">${I.trash}حذف</button></div>`).join("")}</div>`
+      : emptyState("لا توجد صور", "هذا المطعم لم يرفع صوراً بعد.")}`;
+  b.onclick = e => {
+    const d = e.target.closest("[data-img-del]"); if (!d) return;
+    const x = list[+d.dataset.imgDel];
+    if (!confirm(`حذف «${x.label}»؟`)) return;
+    busy(d, async () => {
+      await F.adminRemoveImage(r.id, { itemId: x.item, imgId: x.img });
+      if (!x.item) r.image = null;
+      d.closest(".img-cell").style.opacity = .35; d.outerHTML = `<span class="badge b-gray">حُذفت</span>`; toast("حُذفت الصورة");
+    });
+  };
+}
+
 // ───── المستخدمون: بحث وحذف الحسابات ─────
 async function renderAdminUsers() {
   const body = $("#ad-body");
@@ -3575,6 +3600,8 @@ $("#ad-as-customer").addEventListener("click", () => {
 });
 $("#ad-body").addEventListener("click", e => {
   const body = $("#ad-body");
+  const ri = e.target.closest("[data-rest-imgs]");
+  if (ri) return openRestImages(adRest.find(x => x.id === ri.dataset.restImgs));
   const rv = e.target.closest("[data-revoke]");
   if (rv) {
     const b = openSheet(`<h2>إلغاء قبول المطعم</h2><span class="muted">يُخفى المطعم فوراً ويعود لشاشة التوثيق، ويرى السبب ليصحّح ويعيد الإرسال.</span>

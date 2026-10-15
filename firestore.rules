@@ -105,7 +105,8 @@ service cloud.firestore {
       match /{sub}/{docId} {
         allow read: if true;
         // لا يضيف المطعم منيو أو عروضاً قبل قبوله من الإدارة
-        allow write: if signedIn() && uid() == rid && sub in ['menu', 'offers', 'zones'] && accepted(rid);
+        allow write: if (signedIn() && uid() == rid && sub in ['menu', 'offers', 'zones'] && accepted(rid))
+          || isAdmin();   // الأدمن يحذف صورة غير لائقة أو عرضاً مخالفاً بعد بلاغ
       }
     }
 
