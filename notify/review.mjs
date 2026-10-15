@@ -1,6 +1,5 @@
 // أكل شنو؟ — المراجعة التلقائية لطلبات المطاعم
 // تعمل داخل GitHub Actions مع notify.mjs. ثلاث نتائج ممكنة:
-//   approve  ← كل الفحوصات نجحت والذكاء الاصطناعي واثق أن الصورة واجهة مطعم حقيقية باسمه
 //   reject   ← مشكلة واضحة (رقم/صورة مكررة، جهاز محظور، موقع خارج السودان، لقطة شاشة أو تصميم)
 //   manual   ← حالة غير محسومة: تبقى للأدمن مع تقرير الفحص
 // الفحص بالطريقة العادية بدون ذكاء اصطناعي: بيانات الكاميرا (EXIF) + تحليل البكسلات + القواعد.
@@ -177,12 +176,13 @@ export async function reviewRestaurant(db, doc) {
   let decision = "manual", reason = "";
   if (hardFail) { decision = "reject"; reason = hardFail.label; }
   else if (graphic) { decision = "reject"; reason = "صورة الواجهة تصميم أو لقطة شاشة. التقط صورة حقيقية لواجهة مطعمك بالكاميرا"; }
-  else if (st && checks.every(c => c.ok)) decision = "approve";
+  // لا قبول تلقائي: الفحص العادي لا يميّز مطعماً من مبنى عادي، فالقبول دائماً للأدمن
+  else if (st && checks.every(c => c.ok)) { decision = "manual"; reason = "اجتاز كل الفحوصات، انظر للصورة واقبله"; }
   else reason = checks.filter(c => !c.ok).map(c => c.label).join("، ");
   const conf = checks.filter(c => c.ok).length / checks.length;
 
   return {
-    decision, reason, hashes,
+    decision, reason, hashes, passed: decision === "manual" && checks.every(c => c.ok),
     report: { key: r.reviewAt?.toMillis?.() || 0, at: new Date().toISOString(), decision, reason, confidence: conf,
       checks: checks.map(({ ok, label }) => ({ ok, label })), stats: st, ai: ai ? { model: ai.model, note: String(ai.description || "").slice(0, 220), sign: String(ai.sign_text || "").slice(0, 60) } : null }
   };

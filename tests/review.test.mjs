@@ -52,11 +52,11 @@ await t("لقطة شاشة من التطبيق ← رفض تلقائي", async (
   console.log("      →", r.decision, "|", JSON.stringify(r.report.stats));
   expect(r.decision === "reject", r.decision + " " + r.reason);
 });
-await t("صورة كاميرا حقيقية حديثة + كل الفحوصات ← قبول تلقائي", async () => {
+await t("صورة كاميرا حقيقية حديثة + كل الفحوصات ← للأدمن مع «اجتاز» (لا قبول تلقائي)", async () => {
   const r = await reviewRestaurant(db, await rest("ok1", fresh(camera()), photo));
   console.log("      →", r.decision, "|", r.reason, "|", JSON.stringify(r.report.stats));
   r.report.checks.forEach(c => console.log("      ", c.ok ? "+" : "-", c.label));
-  expect(r.decision === "approve", r.decision + " " + r.reason);
+  expect(r.decision === "manual" && r.passed, r.decision + " " + r.reason);
 });
 await t("صورة حقيقية بلا بيانات كاميرا (من المعرض أو الإنترنت) ← للأدمن", async () => {
   const r = await reviewRestaurant(db, await rest("m1", fresh(), await uniq(photo)));

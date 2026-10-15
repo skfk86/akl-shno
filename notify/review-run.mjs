@@ -19,7 +19,8 @@ const restAll = (await db.collection("restaurants").get()).docs.map(d => d.data(
 let seats = 20 - restAll.filter(r => r.freeTrial).length;
 for (const d of pend) {
   const r = d.data();
-  const { decision, reason, hashes, report } = await reviewRestaurant(db, d);
+  const { decision, reason, hashes, report, passed } = await reviewRestaurant(db, d);
+  report.passed = !!passed;
   const upd = { autoReview: report, proofHash: hashes };
   if (decision === "approve") {
     Object.assign(upd, { approved: true, review: "approved", rejectReason: "", reviewedAt: Timestamp.now(), autoApproved: true });

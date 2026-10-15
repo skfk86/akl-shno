@@ -140,7 +140,7 @@ for (const d of reviews.docs) {
     // ننتظر نتيجة الفحص التلقائي قبل إزعاج الأدمن (أو 30 دقيقة كحد أقصى)
     const waiting = autoOn && r.autoReview?.key !== key && Date.now() - key < 30 * 60e3;
     if (key && r.notifiedReview !== key && !waiting) {
-      for (const a of admins) await push(a, "مطعم يحتاج مراجعتك", `${r.name} · ${r.district || ""}، ${r.city || ""}${r.autoReview?.reason ? " · " + r.autoReview.reason : ""}`, { kind: "review", rid: d.id });
+      for (const a of admins) await push(a, r.autoReview?.passed ? "مطعم اجتاز الفحص، بانتظار قبولك" : "مطعم يحتاج مراجعتك", `${r.name} · ${r.district || ""}، ${r.city || ""}${r.autoReview?.reason ? " · " + r.autoReview.reason : ""}`, { kind: "review", rid: d.id });
       await d.ref.update({ notifiedReview: key });
     }
   } else {

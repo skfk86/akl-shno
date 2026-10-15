@@ -83,6 +83,7 @@
   .n-orange{background:var(--accent-soft);color:var(--accent-dark)}
   .n-blue{background:#EFF6FF;color:#1E3A8A}
   .n-red{background:var(--red-soft);color:#991B1B}
+  .n-green{background:var(--green-soft);color:#166534}
   .box{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 1px 2px rgba(28,25,23,.04)}
   .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;padding:4px;border-radius:14px;background:var(--fill);font-size:13px}
   .seg button{border:0;background:none;padding:10px 4px;border-radius:10px;color:var(--muted)}
@@ -2969,16 +2970,16 @@ async function loadAdmin() {
   if (adTab === "rest") {
     const cfg = await F.adminGetSettings().catch(() => ({}));
     const autoOn = cfg.auto !== false;
-    const rank = r => !isAccepted(r) ? (r.review === "pending" ? 0 : r.review === "rejected" ? 3 : 1) : r.subActiveUntil ? 4 : 2;
+    const rank = r => !isAccepted(r) ? (r.review === "pending" ? (r.autoReview?.passed ? 0 : 0.5) : r.review === "rejected" ? 3 : 1) : r.subActiveUntil ? 4 : 2;
     const sorted = rest.sort((a, b) => rank(a) - rank(b));
     const autoCard = `<section class="box col gap10" style="border:1.5px solid ${autoOn ? "var(--green)" : "var(--line)"}">
       <label class="row between gap10"><span class="row gap10"><span class="oe-ic" style="background:${autoOn ? "var(--green)" : "#A8A29E"};box-shadow:none">${I.shield}</span>
-        <span class="col"><b>التحقق التلقائي</b><span class="muted" style="font-size:12px">${autoOn ? "يفحص كل طلب مطعم خلال دقائق: يقبل الواضح، ويرفض المزيّف، ويترك لك المشكوك فيه" : "متوقف: كل الطلبات تنتظر مراجعتك"}</span></span></span>
+        <span class="col"><b>التحقق التلقائي</b><span class="muted" style="font-size:12px">${autoOn ? "يفحص كل طلب خلال دقائق: يرفض لقطات الشاشة والتصاميم والمكرر تلقائياً، ويرسل لك السليم بتقرير لتقبله" : "متوقف: كل الطلبات تنتظر مراجعتك"}</span></span></span>
         <span class="switch"><input type="checkbox" id="ad-auto" ${autoOn ? "checked" : ""}><span></span></span></label></section>`;
     const reportHtml = r => {
       const a = r.autoReview; if (!a) return r.review === "pending" && autoOn ? `<div class="note" style="background:var(--fill)">${I.clock}<span>بانتظار الفحص التلقائي (خلال دقائق)…</span></div>` : "";
-      const tone = a.decision === "approve" ? "n-blue" : a.decision === "reject" ? "n-red" : "n-orange";
-      return `<details class="ar-rep"><summary class="note ${tone}">${I.shield}<span style="flex:1"><b>الفحص التلقائي:</b> ${a.decision === "approve" ? "قبول" : a.decision === "reject" ? "رفض" : "يحتاج مراجعتك"}${a.reason ? " · " + esc(a.reason) : ""}</span></summary>
+      const tone = a.passed ? "n-green" : a.decision === "reject" ? "n-red" : "n-orange";
+      return `<details class="ar-rep"><summary class="note ${tone}">${I.shield}<span style="flex:1"><b>الفحص التلقائي:</b> ${a.passed ? "✓ اجتاز كل الفحوصات" : a.decision === "reject" ? "رفض" : "يحتاج انتباهك"}${a.reason && !a.passed ? " · " + esc(a.reason) : ""}</span></summary>
         <div class="col gap6" style="padding:10px 4px 0">${(a.checks || []).map(c => `<span class="row gap6" style="font-size:13px;color:${c.ok ? "var(--green)" : "var(--red)"}">${c.ok ? I.check : I.x}<span style="color:var(--ink)">${esc(c.label)}</span></span>`).join("")}
         ${a.ai ? `<span class="muted" style="font-size:12px;line-height:1.7">وصف الذكاء الاصطناعي للصورة (ثقة ${Math.round((a.confidence || 0) * 100)}%): <span dir="ltr">${esc(a.ai.note)}</span></span>` : ""}</div></details>`;
     };
