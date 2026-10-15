@@ -214,6 +214,15 @@ await t("الأدمن يرفض المطعم مع السبب", () => assertSuccee
 await t("الأدمن يقبل المطعم", () => assertSucceeds(updateDoc(doc(db("admin"), "restaurants", "owner3"),
   { approved: true, review: "approved", rejectReason: "", reviewedAt: serverTimestamp() })));
 await t("بعد القبول يضيف المنيو", () => assertSucceeds(setDoc(doc(db("owner3"), "restaurants", "owner3", "menu", "y"), { name: "y", price: 2000 })));
+await t("المطعم لا يزوّر تقرير الفحص التلقائي", () => assertFails(updateDoc(doc(db("owner3"), "restaurants", "owner3"), { autoApproved: true })));
+await t("المطعم لا يكتب بصمة صوره", () => assertFails(updateDoc(doc(db("owner3"), "restaurants", "owner3"), { proofHash: { sign: "x" } })));
+await t("الأدمن يشغّل ويوقف التحقق التلقائي", () => assertSucceeds(setDoc(doc(db("admin"), "settings", "review"), { auto: false })));
+await t("غير الأدمن لا يغيّر الإعدادات", () => assertFails(setDoc(doc(db("owner"), "settings", "review"), { auto: true })));
+await t("غير الأدمن لا يقرأ الإعدادات", () => assertFails(getDoc(doc(db("cust"), "settings", "review"))));
+await t("الأدمن يطلب حذف حساب", () => assertSucceeds(setDoc(doc(db("admin"), "deleteQueue", "cust"), { at: serverTimestamp(), ban: true, reason: "احتيال", name: "cust" })));
+await t("الأدمن لا يحذف حساب أدمن", () => assertFails(setDoc(doc(db("admin"), "deleteQueue", "admin"), { at: serverTimestamp(), ban: false, reason: "", name: "" })));
+await t("غير الأدمن لا يطلب حذف حساب", () => assertFails(setDoc(doc(db("owner"), "deleteQueue", "cust"), { at: serverTimestamp(), ban: false, reason: "", name: "" })));
+await t("بصمات الصور غير متاحة للتطبيق", () => assertFails(getDoc(doc(db("admin"), "proofHashes", "x"))));
 
 console.log("\nالاشتراكات");
 await seed();

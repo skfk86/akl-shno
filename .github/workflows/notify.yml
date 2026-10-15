@@ -4,10 +4,11 @@ on:
     - cron: "*/5 * * * *"
   workflow_dispatch:
 concurrency: { group: notify, cancel-in-progress: false }
+permissions: { contents: read, models: read }
 jobs:
   notify:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     defaults: { run: { working-directory: notify } }
     steps:
       - uses: actions/checkout@v5
@@ -15,4 +16,4 @@ jobs:
         with: { node-version: 22 }
       - run: npm install --no-audit --no-fund
       - run: node notify.mjs
-        env: { FIREBASE_SA: "${{ secrets.FIREBASE_SA }}" }
+        env: { FIREBASE_SA: "${{ secrets.FIREBASE_SA }}", GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }

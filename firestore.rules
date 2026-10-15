@@ -94,7 +94,7 @@ service cloud.firestore {
 
       allow update: if isAdmin()
         || (signedIn() && uid() == rid
-            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'subActiveUntil', 'freeTrial', 'listed', 'verified', 'ratingSum', 'ratingCount', 'lastRatingId', 'approved', 'rejectReason', 'reviewedAt'])
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'subActiveUntil', 'freeTrial', 'listed', 'verified', 'ratingSum', 'ratingCount', 'lastRatingId', 'approved', 'rejectReason', 'reviewedAt', 'autoReview', 'autoApproved', 'proofHash'])
             // المطعم يستطيع فقط إرسال طلب المراجعة، والقرار للإدارة
             && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['review']) || request.resource.data.review == 'pending'))
         || ratingFromCustomer(rid);
@@ -167,6 +167,17 @@ service cloud.firestore {
 
     // ───────── الأجهزة المحظورة ─────────
     // تُضاف تلقائياً من مرسل الإشعارات عند وصول الإنذارات إلى 3، ويرفعها الأدمن.
+    // إعدادات الإدارة (مثل تشغيل المراجعة التلقائية) وطابور حذف الحسابات: للأدمن فقط
+    match /settings/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /deleteQueue/{uid} {
+      allow read, delete: if isAdmin();
+      allow create: if isAdmin() && !exists(/databases/$(db)/documents/admins/$(uid))
+        && request.resource.data.keys().hasOnly(['at', 'ban', 'reason', 'name'])
+        && request.resource.data.at == request.time;
+    }
+
     match /bannedDevices/{id} {
       allow get: if signedIn();
       allow list, delete: if isAdmin();

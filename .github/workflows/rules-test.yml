@@ -2,10 +2,11 @@ name: Test Firestore rules
 on:
   push:
     branches: [main]
-    paths: [firestore.rules, tests/**, .github/workflows/rules-test.yml]
+    paths: [firestore.rules, tests/**, notify/review.mjs, .github/workflows/rules-test.yml]
   workflow_dispatch:
 permissions:
   contents: write
+  models: read
 jobs:
   rules:
     runs-on: ubuntu-latest
@@ -22,9 +23,15 @@ jobs:
           set -o pipefail
           cp ../firestore.rules firestore.rules
           npx firebase emulators:exec --project demo-akl-shno --only firestore "node rules.test.mjs" 2>&1 | tee out.txt
+      - name: Run auto-review tests
+        if: always()
+        env: { GITHUB_TOKEN: "${{ github.token }}" }
+        run: |
+          set -o pipefail
+          npx firebase emulators:exec --project demo-akl-shno --only firestore "node review.test.mjs" 2>&1 | tee -a out.txt
       - name: Post results on the commit
         if: always()
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          { echo "\`\`\`"; grep -E "✓|✗|نجح" out.txt 2>/dev/null || echo "no output"; echo "\`\`\`"; } > body.md
+          { echo "\`\`\`"; grep -E "✓|✗|نجح|→|المراجعة" out.txt 2>/dev/null || echo "no output"; echo "\`\`\`"; } > body.md
           gh api repos/${{ github.repository }}/commits/${{ github.sha }}/comments -F body=@body.md > /dev/null

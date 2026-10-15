@@ -604,6 +604,32 @@ section("9. شاشة صغيرة (360 بكسل): لا شيء يخرج عن الش
   });
 }
 
+section("10. لوحة الأدمن: التحقق التلقائي وحذف الحسابات");
+await t("مفتاح التحقق التلقائي يظهر ويُحفظ", async () => {
+  await tap(admin, '#ad-seg [data-t="rest"]'); await sleep(1800);
+  expect((await admin.textContent("#ad-body")).includes("التحقق التلقائي"), "no auto-review card");
+  await admin.locator("#ad-auto").uncheck({ force: true }); await sleep(1800);
+  expect(!(await admin.locator("#ad-auto").isChecked()), "toggle not saved (off)");
+  await admin.locator("#ad-auto").check({ force: true }); await sleep(1800);
+  expect(await admin.locator("#ad-auto").isChecked(), "toggle not saved (on)");
+});
+await t("قسم المستخدمين يعرض الحسابات ويبحث فيها", async () => {
+  await tap(admin, '#ad-seg [data-t="users"]'); await sleep(2000);
+  const x = await admin.textContent("#ad-body");
+  expect(x.includes("سارة") && x.includes("صاحب مطعم"), "users list incomplete");
+  await admin.fill("#us-q", "سارة"); await sleep(300);
+  expect(await admin.locator("#us-list [data-u]:not([hidden])").count() === 1, "search did not filter");
+});
+await t("حذف حساب يحتاج تأكيداً ثم يدخل «قيد الحذف»", async () => {
+  await admin.locator('[data-del-user][data-name="سارة"]').click(); await sleep(300);
+  expect(await admin.locator("#du-go[disabled]").count() === 1, "delete should need confirmation");
+  await admin.locator("#du-ban").check({ force: true });
+  await admin.fill("#du-confirm", "حذف"); await tap(admin, "#du-go"); await sleep(2500);
+  await admin.fill("#us-q", "سارة").catch(() => {}); await sleep(300);
+  expect((await admin.textContent("#ad-body")).includes("قيد الحذف"), "not queued");
+});
+await shot(admin, "10-admin-users");
+
 section("أخطاء JavaScript أثناء الفحص");
 await t("لا توجد أخطاء JavaScript", () => expect(!pageErrors.length, pageErrors.slice(0, 5).join(" | ")));
 

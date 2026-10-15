@@ -8,6 +8,8 @@
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
+import { getAuth } from "firebase-admin/auth";
+import { reviewRestaurant } from "./review.mjs";
 
 initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SA)) });
 const db = getFirestore(), fcm = getMessaging();
@@ -126,6 +128,32 @@ for (const d of expiring.docs) {
   await d.ref.update({ expiryNotified: until });
 }
 
+// ───── المراجعة التلقائية لطلبات المطاعم (يمكن إيقافها من لوحة الأدمن) ─────
+const reviewCfg = (await db.doc("settings/review").get()).data() || {};
+if (reviewCfg.auto !== false) {
+  const pend = await db.collection("restaurants").where("review", "==", "pending").get();
+  const restAll = (await db.collection("restaurants").get()).docs.map(d => d.data());
+  let seats = 20 - restAll.filter(r => r.freeTrial).length;
+  for (const d of pend.docs) {
+    const r = d.data(), key = r.reviewAt?.toMillis?.() || 0;
+    if (!key || r.autoReview?.key === key) continue;          // رُوجع هذا الإرسال من قبل
+    const { decision, reason, hashes, report } = await reviewRestaurant(db, d);
+    const upd = { autoReview: report, proofHash: hashes };
+    if (decision === "approve") {
+      Object.assign(upd, { approved: true, review: "approved", rejectReason: "", reviewedAt: Timestamp.now(), autoApproved: true });
+      if (seats > 0 && r.subActiveUntil == null) {
+        Object.assign(upd, { subActiveUntil: Timestamp.fromMillis(Date.now() + 60 * 864e5), freeTrial: true, listed: true }); seats--;
+      }
+      for (const a of admins) await push(a, `قُبل تلقائياً: ${r.name}`, "اجتازت الإثباتات كل الفحوصات. يمكنك إلغاء القبول من لوحة الأدمن.", { kind: "review", rid: d.id });
+    } else if (decision === "reject") {
+      Object.assign(upd, { approved: false, review: "rejected", rejectReason: reason, reviewedAt: Timestamp.now() });
+    }
+    await d.ref.update(upd);
+    for (const h of Object.values(hashes)) await db.doc(`proofHashes/${h}`).set({ rid: d.id, at: Timestamp.now() }, { merge: true });
+    console.log(`auto-review ${r.name}: ${decision}${reason ? " · " + reason : ""}`);
+  }
+}
+
 // ───── توثيق المطاعم: طلب مراجعة جديد ← الأدمن، والقرار ← صاحب المطعم ─────
 const reviews = await db.collection("restaurants").where("review", "in", ["pending", "approved", "rejected"]).get();
 for (const d of reviews.docs) {
@@ -133,7 +161,7 @@ for (const d of reviews.docs) {
   if (r.review === "pending") {
     const key = r.reviewAt?.toMillis?.() || 0;
     if (key && r.notifiedReview !== key) {
-      for (const a of admins) await push(a, "مطعم جديد بانتظار المراجعة", `${r.name} · ${r.district || ""}، ${r.city || ""}`, { kind: "review", rid: d.id });
+      for (const a of admins) await push(a, "مطعم يحتاج مراجعتك", `${r.name} · ${r.district || ""}، ${r.city || ""}${r.autoReview?.reason ? " · " + r.autoReview.reason : ""}`, { kind: "review", rid: d.id });
       await d.ref.update({ notifiedReview: key });
     }
   } else {
@@ -184,6 +212,30 @@ if (Date.now() - (meta.at?.toMillis?.() || 0) > 20 * 3600e3) {
   console.log(`cleanup: messages ${msgs} · threads ${threads} · proof images ${proofs}`);
 }
 
+// ───── حذف الحسابات بطلب الأدمن ─────
+// يحذف حساب الدخول والملف الشخصي والمطعم والمنيو والصور والمحادثات. تبقى سجلات الطلبات للمحاسبة والنزاعات.
+async function wipeCol(ref) {
+  const snap = await ref.get();
+  for (let i = 0; i < snap.docs.length; i += 400) { const b = db.batch(); snap.docs.slice(i, i + 400).forEach(x => b.delete(x.ref)); await b.commit(); }
+}
+for (const q of (await db.collection("deleteQueue").get()).docs) {
+  const uid = q.id, ban = q.get("ban") === true;
+  if ((await db.doc(`admins/${uid}`).get()).exists) { await q.ref.delete(); continue; }   // لا يُحذف أدمن
+  const u = (await db.doc(`users/${uid}`).get()).data() || {};
+  if (ban && u.deviceId) await db.doc(`bannedDevices/${u.deviceId}`).set({ uid, name: u.name || "", phone: u.phone || "", manual: true, reason: q.get("reason") || "حذف من الإدارة", at: Timestamp.now() });
+  const rest = db.doc(`restaurants/${uid}`);
+  for (const sub of ["menu", "offers", "zones"]) await wipeCol(rest.collection(sub));
+  await rest.delete();
+  await wipeCol(db.collection("images").where("owner", "==", uid));
+  await wipeCol(db.doc(`support/${uid}`).collection("messages")); await db.doc(`support/${uid}`).delete();
+  for (const f of ["customerId", "restaurantId"])
+    for (const c of (await db.collection("chats").where(f, "==", uid).get()).docs) { await wipeCol(c.ref.collection("messages")); await c.ref.delete(); }
+  await db.doc(`users/${uid}`).delete();
+  await getAuth().deleteUser(uid).catch(e => { if (e.code !== "auth/user-not-found") console.log("  auth delete:", e.code); });
+  await q.ref.delete();
+  console.log(`deleted account ${uid}${ban ? " + device banned" : ""}`);
+}
+
 // ───── حظر الأجهزة: 3 إنذارات ← الجهاز محظور، وأقل من ذلك ← يُرفع ─────
 let bannedNew = 0, unbanned = 0;
 const strikers = await db.collection("users").where("strikes", ">=", 3).get();
@@ -196,7 +248,7 @@ for (const u of strikers.docs) {
   }
 }
 for (const b of (await db.collection("bannedDevices").get()).docs) {
-  const uid = b.get("uid"); if (!uid) continue;
+  const uid = b.get("uid"); if (!uid || b.get("manual")) continue;   // الحظر اليدوي من الإدارة لا يُرفع تلقائياً
   const s = (await db.doc(`users/${uid}`).get()).get("strikes") || 0;
   if (s < 3) { await b.ref.delete(); unbanned++; }
 }

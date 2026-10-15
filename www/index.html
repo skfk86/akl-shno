@@ -331,6 +331,10 @@
   .cg-step{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff}
   .cg-step.ok{background:var(--green);border-color:var(--green)}
   .cg-step svg{width:14px;height:14px}
+  #ad-seg{grid-auto-columns:max-content;overflow-x:auto;scrollbar-width:none}
+  #ad-seg::-webkit-scrollbar{display:none}
+  #ad-seg button{padding:10px 14px}
+  .ar-rep summary{list-style:none;cursor:pointer}.ar-rep summary::-webkit-details-marker{display:none}
   .unread-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;box-shadow:0 0 0 3px var(--accent-soft)}
   #ad-sup-dot{top:2px;left:4px;min-width:16px;height:16px;font-size:10px}
   .dot{position:absolute;top:-3px;left:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
@@ -510,7 +514,7 @@
     </div>
     <div id="ad-stats" class="stats"></div>
     <div class="seg" id="ad-seg">
-      <button data-t="rest" class="on">المطاعم</button><button data-t="pay">التحويلات</button><button data-t="rep">البلاغات</button><button data-t="sup" style="position:relative">الدعم<span class="dot" id="ad-sup-dot" hidden></span></button><button data-t="stats">الإحصاءات</button>
+      <button data-t="rest" class="on">المطاعم</button><button data-t="pay">التحويلات</button><button data-t="rep">البلاغات</button><button data-t="sup" style="position:relative">الدعم<span class="dot" id="ad-sup-dot" hidden></span></button><button data-t="stats">الإحصاءات</button><button data-t="users">المستخدمون</button>
     </div>
   </div>
   <div id="ad-body" class="list grow" style="padding-top:16px"></div>
@@ -2859,9 +2863,22 @@ async function loadAdmin() {
     <div><b style="color:#FDBA74">${pays.length + reps.length + rest.filter(r => !isAccepted(r) && r.review === "pending").length}</b><span>بانتظار المراجعة</span></div>`;
   const body = $("#ad-body");
   if (adTab === "rest") {
+    const cfg = await F.adminGetSettings().catch(() => ({}));
+    const autoOn = cfg.auto !== false;
     const rank = r => !isAccepted(r) ? (r.review === "pending" ? 0 : r.review === "rejected" ? 3 : 1) : r.subActiveUntil ? 4 : 2;
     const sorted = rest.sort((a, b) => rank(a) - rank(b));
-    body.innerHTML = sorted.length ? sorted.map(r => {
+    const autoCard = `<section class="box col gap10" style="border:1.5px solid ${autoOn ? "var(--green)" : "var(--line)"}">
+      <label class="row between gap10"><span class="row gap10"><span class="oe-ic" style="background:${autoOn ? "var(--green)" : "#A8A29E"};box-shadow:none">${I.shield}</span>
+        <span class="col"><b>التحقق التلقائي</b><span class="muted" style="font-size:12px">${autoOn ? "يفحص كل طلب مطعم خلال دقائق: يقبل الواضح، ويرفض المزيّف، ويترك لك المشكوك فيه" : "متوقف: كل الطلبات تنتظر مراجعتك"}</span></span></span>
+        <span class="switch"><input type="checkbox" id="ad-auto" ${autoOn ? "checked" : ""}><span></span></span></label></section>`;
+    const reportHtml = r => {
+      const a = r.autoReview; if (!a) return r.review === "pending" && autoOn ? `<div class="note" style="background:var(--fill)">${I.clock}<span>بانتظار الفحص التلقائي (خلال دقائق)…</span></div>` : "";
+      const tone = a.decision === "approve" ? "n-blue" : a.decision === "reject" ? "n-red" : "n-orange";
+      return `<details class="ar-rep"><summary class="note ${tone}">${I.shield}<span style="flex:1"><b>الفحص التلقائي:</b> ${a.decision === "approve" ? "قبول" : a.decision === "reject" ? "رفض" : "يحتاج مراجعتك"}${a.reason ? " · " + esc(a.reason) : ""}</span></summary>
+        <div class="col gap6" style="padding:10px 4px 0">${(a.checks || []).map(c => `<span class="row gap6" style="font-size:13px;color:${c.ok ? "var(--green)" : "var(--red)"}">${c.ok ? I.check : I.x}<span style="color:var(--ink)">${esc(c.label)}</span></span>`).join("")}
+        ${a.ai ? `<span class="muted" style="font-size:12px;line-height:1.7">رأي الذكاء الاصطناعي (ثقة ${Math.round((a.confidence || 0) * 100)}%): ${esc(a.ai.note)}</span>` : ""}</div></details>`;
+    };
+    body.innerHTML = autoCard + (sorted.length ? sorted.map(r => {
       const d = daysLeft(r.subActiveUntil);
       if (!isAccepted(r)) {
         const p = r.proofs || {}, rv = r.review || "new";
@@ -2873,6 +2890,7 @@ async function loadAdmin() {
           ${r.proofNote ? `<div class="note" style="background:var(--fill)"><span>${esc(r.proofNote)}</span></div>` : ""}
           ${hasLoc(r) ? `<a class="link row gap6" href="https://www.google.com/maps?q=${r.lat},${r.lng}" target="_blank">${I.pin}عرض الموقع على الخريطة</a>` : `<span class="muted">${I.pin} لم يحدد الموقع</span>`}
           ${rv === "rejected" && r.rejectReason ? `<span class="muted">سبب الرفض: ${esc(r.rejectReason)}</span>` : ""}
+          ${reportHtml(r)}
           <button class="btn btn-sm btn-green" data-approve="${esc(r.id)}" data-trial-too="${seatsLeft > 0 ? 1 : 0}">${I.check}${seatsLeft > 0 ? "قبول + شهرين مجاناً" : "قبول المطعم"}</button>
           <div class="row gap10">
             ${seatsLeft > 0 ? `<button class="btn btn-sm btn-outline" style="flex:1;min-width:0" data-approve="${esc(r.id)}" data-trial-too="0">قبول فقط</button>` : ""}
@@ -2884,14 +2902,17 @@ async function loadAdmin() {
         <div class="row between"><span class="row gap6"><b>${esc(r.name)}</b>${verifiedTag(r)}</span>
           <span class="badge ${r.subActiveUntil == null ? "b-blue" : r.listed === false ? "b-red" : d > 0 ? "b-green" : "b-red"}">${r.subActiveUntil == null ? "بانتظار التفعيل" : r.listed === false ? "موقوف" : d > 0 ? `باقي ${d} يوماً` : "منتهي"}</span></div>
         <div class="meta"><span>${esc(r.category)}</span><span>${esc(r.district)}، ${esc(r.city)}</span><a class="link" href="tel:${esc(r.phone)}" dir="ltr">${esc(r.phone)}</a></div>
+        ${r.autoApproved ? `<div class="row between gap10 note n-blue" style="padding:8px 12px">${I.shield}<span style="flex:1;font-size:13px">قُبل تلقائياً${r.autoReview?.confidence ? ` (ثقة ${Math.round(r.autoReview.confidence * 100)}%)` : ""}</span>
+          <button class="link" data-revoke="${esc(r.id)}" style="border:0;background:none;color:var(--red);font-weight:700;font-size:13px">إلغاء القبول</button></div>${reportHtml(r)}` : ""}
         <div class="row gap10">
           ${r.subActiveUntil == null ? `<button class="btn btn-sm btn-green" data-trial="${esc(r.id)}" ${seatsLeft <= 0 ? "disabled" : ""}>${seatsLeft > 0 ? "تفعيل الشهرين المجانيين" : "انتهت المقاعد المجانية"}</button>`
             : `<button class="btn btn-sm ${r.listed === false ? "btn-green" : "btn-danger"}" data-list="${esc(r.id)}" data-v="${r.listed === false ? 1 : 0}">${r.listed === false ? "إعادة إظهار المطعم" : "إيقاف المطعم"}</button>`}
           ${r.subActiveUntil != null ? `<button class="btn btn-sm ${r.verified ? "btn-ghost" : "btn-outline"}" style="width:auto;padding:0 12px" data-verify="${esc(r.id)}" data-v="${r.verified ? 0 : 1}">${r.verified ? "إلغاء التوثيق" : "توثيق"}</button>` : ""}
           <a class="icon-btn" href="tel:${esc(r.phone)}" aria-label="اتصال" style="background:var(--green-soft);color:var(--green)">${I.phone}</a>
         </div>
-      </div>`; }).join("") : emptyState("لا توجد مطاعم بعد", "");
+      </div>`; }).join("") : emptyState("لا توجد مطاعم بعد", ""));
   }
+  if (adTab === "users") await renderAdminUsers();
   if (adTab === "pay") {
     body.innerHTML = pays.length ? pays.map(p => {
       const r = rest.find(x => x.id === p.restaurantId);
@@ -2998,6 +3019,58 @@ async function renderAdminStats(rest, banned) {
     <section class="box row between"><span class="row gap6">${I.warn}أجهزة محظورة</span><b>${banned.length}</b></section>`;
 }
 
+$("#ad-body").addEventListener("change", async e => {
+  if (e.target.id !== "ad-auto") return;
+  const v = e.target.checked;
+  try { await F.adminSetAutoReview(v); toast(v ? "تم تشغيل التحقق التلقائي" : "تم إيقاف التحقق التلقائي"); loadAdmin(); }
+  catch { e.target.checked = !v; toast("تعذر الحفظ."); }
+});
+$("#ad-body").addEventListener("input", e => {
+  if (e.target.id !== "us-q") return;
+  const q = norm(e.target.value);
+  document.querySelectorAll("#us-list [data-u]").forEach(x => x.hidden = q && !norm(x.dataset.u).includes(q));
+});
+
+// ───── المستخدمون: بحث وحذف الحسابات ─────
+async function renderAdminUsers() {
+  const body = $("#ad-body");
+  const [users, queue] = await Promise.all([F.adminListUsers(), F.adminListDeleteQueue().catch(() => [])]);
+  const queued = new Set(queue.map(q => q.id)), me0 = F.auth.currentUser?.uid;
+  const ROLE = { customer: ["زبون", "b-gray"], owner: ["صاحب مطعم", "b-orange"] };
+  body.innerHTML = `<label class="search row gap10" style="margin:0"><input id="us-q" placeholder="ابحث بالاسم أو رقم الهاتف" style="flex:1;border:0;background:none;font:inherit;height:44px"></label>
+    <span class="muted" style="font-size:12px">${users.length} مستخدم · الحذف يتم خلال دقائق، ويحذف حساب الدخول والملف والمطعم والمنيو والصور والمحادثات. تبقى سجلات الطلبات.</span>
+    <div class="col gap10" id="us-list">${users.map(u => {
+      const [rl, rc] = ROLE[u.role] || ["مستخدم", "b-gray"], q = queued.has(u.id);
+      return `<div class="box row gap10" data-u="${esc((u.name || "") + " " + (u.phone || ""))}" style="${q ? "opacity:.55" : ""}">
+        <div class="avatar" style="width:42px;height:42px;font-size:16px;background:${colorOf(u.name || "?")}">${initial(u.name)}</div>
+        <div class="col grow" style="min-width:0"><div class="row gap6"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.name || "بدون اسم")}</b><span class="badge ${rc}">${rl}</span>${u.strikes ? `<span class="badge b-red">${u.strikes} إنذار</span>` : ""}</div>
+          <span class="muted" dir="ltr" style="text-align:right;font-size:13px">${esc(u.phone || "")}</span>
+          <span class="muted" style="font-size:11px">${tsDate(u.createdAt)?.toLocaleDateString(LOC, { day: "numeric", month: "short", year: "numeric" }) || ""} · ${u.delivered || 0} طلب مستلَم</span></div>
+        ${u.id === me0 ? `<span class="badge b-blue">أنت</span>` : q ? `<span class="badge b-gray">قيد الحذف</span>`
+          : `<button class="icon-btn" data-del-user="${esc(u.id)}" data-name="${esc(u.name || "")}" aria-label="حذف الحساب" style="background:#FEF2F2;color:var(--red);flex-shrink:0">${I.trash}</button>`}
+      </div>`; }).join("") || emptyState("لا يوجد مستخدمون", "")}</div>`;
+}
+function confirmDeleteUser(uid, name) {
+  const b = openSheet(`<div class="col" style="align-items:center;gap:8px;text-align:center">
+      <div class="oe-ic" style="width:56px;height:56px;border-radius:18px;background:var(--red);box-shadow:none">${I.trash}</div>
+      <h2 style="margin:0">حذف حساب «${esc(name || "المستخدم")}»</h2>
+      <span class="muted" style="line-height:1.8">يُحذف حساب الدخول والملف الشخصي، ومطعمه ومنيوه وصوره ومحادثاته إن وجدت. لا يمكن التراجع.</span></div>
+    <label class="field">السبب (اختياري)<input id="du-reason" maxlength="120" placeholder="مثلاً: احتيال، أو بطلب منه"></label>
+    <label class="row between box" style="padding:12px 14px"><span class="col"><b style="font-size:14px">حظر جهازه أيضاً</b><span class="muted" style="font-size:12px">يمنعه من إنشاء حساب جديد من نفس الهاتف</span></span>
+      <span class="switch"><input type="checkbox" id="du-ban"><span></span></span></label>
+    <label class="field">اكتب «حذف» للتأكيد<input id="du-confirm" autocomplete="off"></label>
+    <button id="du-go" class="btn btn-danger" disabled>حذف الحساب نهائياً</button>`);
+  const go = b.querySelector("#du-go");
+  b.querySelector("#du-confirm").oninput = ev => go.disabled = ev.target.value.trim() !== "حذف";
+  go.onclick = () => busy(go, async () => {
+    try {
+      await F.adminDeleteAccount(uid, { ban: b.querySelector("#du-ban").checked, reason: b.querySelector("#du-reason").value.trim(), name });
+      await F.adminSetListed(uid, false).catch(() => {});   // إن كان مطعماً: يختفي فوراً قبل اكتمال الحذف
+      closeSheet(); toast("سيُحذف الحساب خلال دقائق"); loadAdmin();
+    } catch (x) { console.error(x); toast("تعذر الحذف."); }
+  });
+}
+
 $("#ad-seg").addEventListener("click", e => {
   const b = e.target.closest("[data-t]"); if (!b) return;
   adTab = b.dataset.t;
@@ -3010,6 +3083,19 @@ $("#ad-as-customer").addEventListener("click", () => {
 });
 $("#ad-body").addEventListener("click", e => {
   const body = $("#ad-body");
+  const rv = e.target.closest("[data-revoke]");
+  if (rv) {
+    const b = openSheet(`<h2>إلغاء قبول المطعم</h2><span class="muted">يُخفى المطعم فوراً ويعود لشاشة التوثيق، ويرى السبب ليصحّح ويعيد الإرسال.</span>
+      <textarea id="rv-text" rows="3" maxlength="200" placeholder="السبب">تحتاج الإثباتات مراجعة إضافية</textarea>
+      <button id="rv-ok" class="btn btn-danger">إلغاء القبول</button>`);
+    b.querySelector("#rv-ok").onclick = ev => busy(ev.target, async () => {
+      await F.adminRevokeApproval(rv.dataset.revoke, b.querySelector("#rv-text").value.trim() || "تحتاج الإثباتات مراجعة إضافية");
+      closeSheet(); toast("أُلغي القبول"); loadAdmin();
+    });
+    return;
+  }
+  const del = e.target.closest("[data-del-user]");
+  if (del) return confirmDeleteUser(del.dataset.delUser, del.dataset.name || "");
   const pf = e.target.closest("[data-proof]");
   if (pf) { openSheet(`<div class="pimg" style="width:100%;height:auto;min-height:240px;border-radius:16px">${imgTag(pf.dataset.proof)}</div>`); return; }
   const ap = e.target.closest("[data-approve]");

@@ -252,6 +252,19 @@ export async function adminStats() {
   ]);
   return { customers, owners, orders, pays };
 }
+// ═════════ المراجعة التلقائية وحذف الحسابات (أدمن) ═════════
+export const adminGetSettings = async () => (await getDoc(doc(db, "settings", "review"))).data() || {};
+export const adminSetAutoReview = auto => setDoc(doc(db, "settings", "review"), { auto }, { merge: true });
+// إلغاء قبول مطعم (مثلاً قُبل تلقائياً بالخطأ): يُخفى ويعود لشاشة التوثيق مع السبب
+export const adminRevokeApproval = (rid, reason) => updateDoc(doc(db, "restaurants", rid), {
+  approved: false, review: "rejected", rejectReason: reason, listed: false, subActiveUntil: null, freeTrial: false, autoApproved: false, reviewedAt: serverTimestamp()
+});
+export async function adminListUsers() {
+  return list(await getDocs(query(collection(db, "users"), orderBy("createdAt", "desc"), limit(300))));
+}
+export const adminListDeleteQueue = async () => list(await getDocs(collection(db, "deleteQueue")));
+export const adminDeleteAccount = (uid, { ban = false, reason = "", name = "" } = {}) =>
+  setDoc(doc(db, "deleteQueue", uid), { at: serverTimestamp(), ban, reason, name });
 export async function adminListSupport() {
   return list(await getDocs(query(collection(db, "support"), orderBy("lastAt", "desc"), limit(100))));
 }
