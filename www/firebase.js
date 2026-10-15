@@ -176,6 +176,17 @@ export const saveDeviceId = id => updateDoc(doc(db, "users", uid()), { deviceId:
 export async function isDeviceBanned(id) {
   try { return (await getDoc(doc(db, "bannedDevices", id))).exists(); } catch { return false; }
 }
+// طلبات المطاعم المعلّقة لحظياً (للأدمن)
+export const adminWatchPending = cb => onSnapshot(query(collection(db, "restaurants"), where("review", "==", "pending")), s => cb(list(s)), () => {});
+// للفحص الفوري في لوحة الأدمن
+export const adminGetUser = async id => (await getDoc(doc(db, "users", id))).data() || null;
+export const adminProofHashOwner = async h => { const s = await getDoc(doc(db, "proofHashes", h)); return s.exists() ? s.data().rid : null; };
+export async function adminApplyReview(rid, upd, hashes) {
+  const b = writeBatch(db);
+  b.update(doc(db, "restaurants", rid), { ...upd, ...(upd.review === "rejected" ? { reviewedAt: serverTimestamp() } : {}) });
+  Object.values(hashes).forEach(h => b.set(doc(db, "proofHashes", h), { rid, at: serverTimestamp() }, { merge: true }));
+  await b.commit();
+}
 export async function adminListBanned() {
   return list(await getDocs(collection(db, "bannedDevices")));
 }

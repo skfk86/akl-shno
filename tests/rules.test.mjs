@@ -222,7 +222,8 @@ await t("غير الأدمن لا يقرأ الإعدادات", () => assertFail
 await t("الأدمن يطلب حذف حساب", () => assertSucceeds(setDoc(doc(db("admin"), "deleteQueue", "cust"), { at: serverTimestamp(), ban: true, reason: "احتيال", name: "cust" })));
 await t("الأدمن لا يحذف حساب أدمن", () => assertFails(setDoc(doc(db("admin"), "deleteQueue", "admin"), { at: serverTimestamp(), ban: false, reason: "", name: "" })));
 await t("غير الأدمن لا يطلب حذف حساب", () => assertFails(setDoc(doc(db("owner"), "deleteQueue", "cust"), { at: serverTimestamp(), ban: false, reason: "", name: "" })));
-await t("بصمات الصور غير متاحة للتطبيق", () => assertFails(getDoc(doc(db("admin"), "proofHashes", "x"))));
+await t("بصمات الصور: الأدمن فقط يقرأ ويكتب", () => assertSucceeds(getDoc(doc(db("admin"), "proofHashes", "x"))));
+await t("بصمات الصور غير متاحة لغير الأدمن", () => assertFails(setDoc(doc(db("owner"), "proofHashes", "x"), { rid: "owner" })));
 
 console.log("\nالاشتراكات");
 await seed();

@@ -171,6 +171,10 @@ service cloud.firestore {
     match /settings/{id} {
       allow read, write: if isAdmin();
     }
+    // بصمات صور الإثبات (لكشف الصور المكررة): للأدمن فقط
+    match /proofHashes/{h} {
+      allow read, write: if isAdmin();
+    }
     match /deleteQueue/{uid} {
       allow read, delete: if isAdmin();
       allow create: if isAdmin() && !exists(/databases/$(db)/documents/admins/$(uid))

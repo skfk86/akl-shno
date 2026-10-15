@@ -3241,9 +3241,86 @@ function openRenew() {
 // ════════════════════════════════════════
 let adTab = "rest", adRest = [];
 
+// ───── الفحص الفوري لطلبات المطاعم داخل لوحة الأدمن ─────
+// نفس فحوصات الخادم (notify/review.mjs) تماماً، لكن تعمل لحظة فتح اللوحة دون انتظار مهام GitHub المجدولة.
+const sha32 = async s => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+const digitsOf = p => String(p || "").replace(/\D/g, "").replace(/^0+/, "").replace(/^249/, "");
+const nameKey = s => norm(s).replace(/^(مطعم|كافتيريا|كافيه|شواية|بوفيه)\s+/, "").replace(/\s+/g, " ");
+async function statsOfDataUrl(url) {
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+  const k = Math.min(1, 1100 / Math.max(img.naturalWidth, img.naturalHeight)), w = Math.round(img.naturalWidth * k), h = Math.round(img.naturalHeight * k);
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(img, 0, 0, w, h);
+  return pixelStats(g.getImageData(0, 0, w, h).data, w, h);
+}
+async function instantReview(r, all) {
+  const p = r.proofs || {}, checks = [], add = (ok, label, hard = false) => checks.push({ ok, label, hard });
+  const imgs = {};
+  for (const k of ["sign", "license"]) if (p[k]) imgs[k] = await F.getImage(p[k]).catch(() => null);
+  add(!!imgs.sign, imgs.sign ? "صورة الواجهة مرفوعة" : "صورة الواجهة مفقودة", true);
+  const hashes = {}; for (const [k, v] of Object.entries(imgs)) if (v) hashes[k] = await sha32(v);
+  const inSudan = typeof r.lat === "number" && r.lat > 8.6 && r.lat < 22.3 && r.lng > 21.8 && r.lng < 38.7;
+  add(inSudan, inSudan ? "الموقع داخل السودان" : "الموقع غير محدد أو خارج السودان", true);
+  const others = all.filter(o => o.id !== r.id), ph = digitsOf(r.phone);
+  add(/^(9|1)\d{8}$/.test(ph), /^(9|1)\d{8}$/.test(ph) ? "رقم هاتف سوداني صحيح" : "رقم الهاتف غير صحيح");
+  const phoneDup = ph.length >= 9 && others.some(o => digitsOf(o.phone) === ph);
+  add(!phoneDup, phoneDup ? "رقم الهاتف مستخدم في مطعم آخر" : "رقم الهاتف غير مكرر", true);
+  const nameDup = others.some(o => nameKey(o.name) === nameKey(r.name) && o.city === r.city);
+  add(!nameDup, nameDup ? "يوجد مطعم بنفس الاسم في نفس المدينة" : "الاسم غير مكرر في المدينة");
+  let imgDup = false;
+  for (const h of Object.values(hashes)) { const owner = await F.adminProofHashOwner(h).catch(() => null); if (owner && owner !== r.id) imgDup = true; }
+  add(!imgDup, imgDup ? "الصورة مستخدمة في طلب مطعم آخر" : "الصورة غير مستخدمة من قبل", true);
+  const dev = (await F.adminGetUser(r.id).catch(() => null))?.deviceId;
+  const banned = dev ? await F.isDeviceBanned(dev) : false;
+  add(!banned, banned ? "جهاز صاحب المطعم محظور" : "الجهاز غير محظور", true);
+  const m = r.proofMeta?.sign || null, EDITORS = /photoshop|canva|picsart|snapseed|gimp|lightroom|illustrator|figma|remini|facetune/i;
+  add(!!m?.camera, m?.camera ? `صورة من كاميرا الهاتف${m.make ? ` (${String(m.make + " " + (m.model || "")).trim().slice(0, 30)})` : ""}` : "لا توجد بيانات كاميرا في الصورة");
+  const takenAgo = m?.taken ? (r.reviewAt?.toMillis?.() || Date.now()) - m.taken : null;
+  add(takenAgo != null && takenAgo > -864e5 && takenAgo < 7 * 864e5, takenAgo == null ? "تاريخ الالتقاط غير معروف" : takenAgo < 7 * 864e5 ? "التُقطت حديثاً" : "الصورة قديمة (التُقطت قبل أكثر من أسبوع)");
+  add(!EDITORS.test(m?.software || ""), EDITORS.test(m?.software || "") ? `الصورة معدّلة ببرنامج (${m.software})` : "لا أثر لبرامج تعديل الصور");
+  const st = imgs.sign ? await statsOfDataUrl(imgs.sign).catch(() => null) : null;
+  const graphic = !!st && (st.flat > 0.6 || st.colors < 150);
+  if (st) {
+    add(!graphic && st.flat < 0.45, graphic ? "الصورة تصميم أو لقطة شاشة (مساحات لونية مسطحة)" : st.flat < 0.45 ? "تفاصيل الصورة طبيعية كصور الكاميرا" : "تفاصيل الصورة غير كافية للحكم");
+    add(st.lum >= 35 && st.lum <= 240, st.lum < 35 ? "الصورة مظلمة جداً" : st.lum > 240 ? "الصورة ساطعة جداً" : "الإضاءة مناسبة");
+  }
+  const hardFail = checks.find(c => c.hard && !c.ok);
+  let decision = "manual", reason = "";
+  if (hardFail) { decision = "reject"; reason = hardFail.label; }
+  else if (graphic) { decision = "reject"; reason = "صورة الواجهة تصميم أو لقطة شاشة. التقط صورة حقيقية لواجهة مطعمك بالكاميرا"; }
+  else if (st && checks.every(c => c.ok)) reason = "اجتاز كل الفحوصات، انظر للصورة واقبله";
+  else reason = checks.filter(c => !c.ok).map(c => c.label).join("، ");
+  const passed = decision === "manual" && checks.every(c => c.ok);
+  const report = { key: r.reviewAt?.toMillis?.() || 0, at: new Date().toISOString(), decision, reason, passed,
+    confidence: checks.filter(c => c.ok).length / checks.length, checks: checks.map(({ ok, label }) => ({ ok, label })), stats: st, ai: null, by: "admin-app" };
+  const upd = { autoReview: report, proofHash: hashes };
+  if (decision === "reject") Object.assign(upd, { approved: false, review: "rejected", rejectReason: reason });
+  await F.adminApplyReview(r.id, upd, hashes);
+  return decision;
+}
+let reviewing = false;
+async function runInstantReviews(rest) {
+  if (reviewing) return; reviewing = true;
+  try {
+    const cfg = await F.adminGetSettings().catch(() => ({}));
+    if (cfg.auto === false) return;
+    const todo = rest.filter(r => r.review === "pending" && !isAccepted(r) && r.reviewAt && r.autoReview?.key !== r.reviewAt.toMillis());
+    let rejected = 0;
+    for (const r of todo) { try { if (await instantReview(r, rest) === "reject") rejected++; } catch (e) { console.error("review", r.id, e); } }
+    if (todo.length) { toast(rejected ? `تم فحص ${todo.length} طلب، ورُفض ${rejected} تلقائياً` : `تم فحص ${todo.length} طلب مطعم`); if (adTab === "rest") loadAdmin(); }
+  } finally { reviewing = false; }
+}
+
 let adSupUnsub = null;
+let adPendUnsub = null, adPendSeen = null;
 function startAdminWatch() {
-  adSupUnsub?.();
+  adSupUnsub?.(); adPendUnsub?.();
+  adPendUnsub = F.adminWatchPending(list => {
+    const ids = list.filter(r => r.autoReview?.key !== r.reviewAt?.toMillis?.()).map(r => r.id + ":" + (r.reviewAt?.toMillis?.() || 0));
+    const fresh = adPendSeen ? ids.filter(x => !adPendSeen.has(x)) : [];
+    adPendSeen = new Set(ids);
+    if (fresh.length && curScreen === "admin") { haptic(80); toast("طلب مطعم جديد، جارٍ فحصه…"); loadAdmin(); }
+  });
   adSupUnsub = F.adminWatchSupport(th => {
     const n = th.filter(x => x.lastFrom === "user" && (x.lastAt?.toMillis?.() || 0) > getSeen({ kind: "support", id: x.id })).length;
     const d = $("#ad-sup-dot"); d.hidden = !n; d.textContent = n;
@@ -3259,6 +3336,7 @@ async function showAdmin() {
 async function loadAdmin() {
   const [rest, pays, reps, banned] = await Promise.all([F.adminListRestaurants(), F.adminListPayments(), F.adminListDisputes(), F.adminListBanned().catch(() => [])]);
   adRest = rest;
+  setTimeout(() => runInstantReviews(rest));   // فحص فوري للطلبات الجديدة دون انتظار GitHub
   // إصلاح تلقائي: مطاعم فُعّلت قبل إضافة حقل listed لا تظهر للزبائن
   const fix = rest.filter(r => r.subActiveUntil != null && r.listed === undefined);
   if (fix.length) {

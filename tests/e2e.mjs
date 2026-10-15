@@ -181,6 +181,12 @@ await t("المطعم الجديد يظهر «بانتظار المراجعة» 
   await sleep(1500); expect((await admin.textContent("#ad-body")).includes("بانتظار المراجعة"), "not listed as pending review");
   expect(await admin.locator("[data-proof]").count() >= 1, "no proof image");
 });
+await t("الفحص الفوري يكتب تقريره في لوحة الأدمن خلال ثوانٍ", async () => {
+  for (let i = 0; i < 30 && !(await admin.textContent("#ad-body")).includes("الفحص التلقائي:"); i++) await sleep(300);
+  const x = await admin.textContent("#ad-body");
+  expect(x.includes("الفحص التلقائي:"), "no instant report");
+  expect(x.includes("لا توجد بيانات كاميرا"), "camera check missing from report");
+});
 await t("رفض المطعم مع ذكر السبب", async () => {
   await tap(admin, "[data-reject]"); await sleep(300);
   await admin.fill("#rj-text", "الصورة غير واضحة"); await tap(admin, "#rj-ok"); await sleep(2000);
