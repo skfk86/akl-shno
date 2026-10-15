@@ -287,7 +287,7 @@
   .steps-v i{flex:1;height:2px;background:var(--line);border-radius:2px}
   .proof{display:flex;gap:12px;align-items:center;width:100%;padding:12px;border-radius:16px;border:2px dashed var(--line);background:var(--card);font:inherit;color:inherit;cursor:pointer}
   .proof.has{border-style:solid;border-color:var(--green)}
-  .proof.bad{border-style:solid;border-color:var(--red);background:#FEF2F2}
+  .proof.bad{border-style:solid;border-color:var(--red);background:var(--red-soft)}
   .pimg{width:76px;height:76px;border-radius:12px;background:var(--fill);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;color:var(--muted)}
   .pimg img{width:100%;height:100%;object-fit:cover}
   .acc-chip{position:absolute;top:48px;left:50%;transform:translateX(-50%);z-index:600;background:var(--card);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.18);white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
@@ -315,7 +315,7 @@
   .og-ic.one{background:#DBEAFE;color:#1D4ED8}.og-ic.many{background:#DCFCE7;color:#15803D}
   .og-name{flex:1;min-width:0;border:0;border-bottom:2px dashed transparent;background:none;font:inherit;font-weight:700;font-size:16px;padding:6px 2px;color:var(--ink)}
   .og-name:focus{outline:0;border-bottom-color:var(--accent)}
-  .og-del{width:36px;height:36px;border:0;border-radius:10px;background:#FEF2F2;color:var(--red);display:flex;align-items:center;justify-content:center}
+  .og-del{width:36px;height:36px;border:0;border-radius:10px;background:var(--red-soft);color:var(--red);display:flex;align-items:center;justify-content:center}
   .og-del svg{width:17px;height:17px}
   .og-type{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;background:var(--fill);border-radius:11px;font-size:12px}
   .og-type button{border:0;background:none;padding:7px;border-radius:9px;color:var(--muted);font:inherit;font-weight:500}
@@ -3564,7 +3564,7 @@ async function renderAdminUsers() {
           <span class="muted" dir="ltr" style="text-align:right;font-size:13px">${esc(u.phone || "")}</span>
           <span class="muted" style="font-size:11px">${tsDate(u.createdAt)?.toLocaleDateString(LOC, { day: "numeric", month: "short", year: "numeric" }) || ""} · ${u.delivered || 0} طلب مستلَم</span></div>
         ${u.id === me0 ? `<span class="badge b-blue">أنت</span>` : q ? `<span class="badge b-gray">قيد الحذف</span>`
-          : `<button class="icon-btn" data-del-user="${esc(u.id)}" data-name="${esc(u.name || "")}" aria-label="حذف الحساب" style="background:#FEF2F2;color:var(--red);flex-shrink:0">${I.trash}</button>`}
+          : `<button class="icon-btn" data-del-user="${esc(u.id)}" data-name="${esc(u.name || "")}" aria-label="حذف الحساب" style="background:var(--red-soft);color:var(--red);flex-shrink:0">${I.trash}</button>`}
       </div>`; }).join("") || emptyState("لا يوجد مستخدمون", "")}</div>`;
 }
 function confirmDeleteUser(uid, name) {
