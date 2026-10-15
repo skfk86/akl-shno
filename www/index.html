@@ -2820,11 +2820,11 @@ async function loadAdmin() {
           ${r.proofNote ? `<div class="note" style="background:var(--fill)"><span>${esc(r.proofNote)}</span></div>` : ""}
           ${hasLoc(r) ? `<a class="link row gap6" href="https://www.google.com/maps?q=${r.lat},${r.lng}" target="_blank">${I.pin}عرض الموقع على الخريطة</a>` : `<span class="muted">${I.pin} لم يحدد الموقع</span>`}
           ${rv === "rejected" && r.rejectReason ? `<span class="muted">سبب الرفض: ${esc(r.rejectReason)}</span>` : ""}
+          <button class="btn btn-sm btn-green" data-approve="${esc(r.id)}" data-trial-too="${seatsLeft > 0 ? 1 : 0}">${I.check}${seatsLeft > 0 ? "قبول + شهرين مجاناً" : "قبول المطعم"}</button>
           <div class="row gap10">
-            <button class="btn btn-sm btn-green" data-approve="${esc(r.id)}" data-trial-too="${seatsLeft > 0 ? 1 : 0}">${seatsLeft > 0 ? "قبول + شهرين مجاناً" : "قبول"}</button>
-            ${seatsLeft > 0 ? `<button class="btn btn-sm btn-outline" style="width:auto;padding:0 12px" data-approve="${esc(r.id)}" data-trial-too="0">قبول فقط</button>` : ""}
-            <button class="btn btn-sm btn-danger" style="width:auto;padding:0 14px" data-reject="${esc(r.id)}">رفض</button>
-            <a class="icon-btn" href="tel:${esc(r.phone)}" aria-label="اتصال" style="background:var(--green-soft);color:var(--green)">${I.phone}</a>
+            ${seatsLeft > 0 ? `<button class="btn btn-sm btn-outline" style="flex:1;min-width:0" data-approve="${esc(r.id)}" data-trial-too="0">قبول فقط</button>` : ""}
+            <button class="btn btn-sm btn-danger" style="flex:1;min-width:0" data-reject="${esc(r.id)}">رفض</button>
+            <a class="icon-btn" href="tel:${esc(r.phone)}" aria-label="اتصال" style="background:var(--green-soft);color:var(--green);flex-shrink:0">${I.phone}</a>
           </div></div>`;
       }
       return `<div class="box col gap10">
