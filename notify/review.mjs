@@ -7,6 +7,13 @@
 
 import { createHash } from "node:crypto";
 
+const SUDAN = { minLat: 8.6, maxLat: 22.3, minLng: 21.8, maxLng: 38.7 };
+const norm = s => String(s || "").toLowerCase()
+  .replace(/[\u064B-\u0652\u0640]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي")
+  .replace(/^(مطعم|كافتيريا|كافيه|شواية|بوفيه)\s+/, "").replace(/\s+/g, " ").trim();
+const digits = p => String(p || "").replace(/\D/g, "").replace(/^0+/, "").replace(/^249/, "");
+export const sha = s => createHash("sha256").update(String(s)).digest("hex").slice(0, 32);
+
 // ───── الذكاء الاصطناعي: وصف الصور وإرجاع JSON ─────
 const PROMPT = (r, hasLicense) => `You verify restaurant sign-ups for a food delivery app in Sudan.
 Restaurant name (Arabic): "${r.name}". Category: "${r.category}". City: "${r.city}".
