@@ -8,11 +8,11 @@ on:
 concurrency: { group: review, cancel-in-progress: false }
 permissions: { contents: read }
 env:
-  OLLAMA_MODEL: qwen2.5vl:3b
+  OLLAMA_MODEL: qwen2.5vl:7b
 jobs:
   review:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     defaults: { run: { working-directory: notify } }
     steps:
       - uses: actions/checkout@v5

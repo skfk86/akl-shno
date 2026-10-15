@@ -3,7 +3,7 @@
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { readFileSync } from "node:fs";
-import { reviewRestaurant, aiProvider } from "../notify/review.mjs";
+import { reviewRestaurant, aiProvider, nameMatch } from "../notify/review.mjs";
 
 initializeApp({ projectId: "demo-akl-shno" });
 const db = getFirestore();
@@ -13,7 +13,8 @@ async function t(name, fn) {
   catch (e) { fail++; console.log("  ✗", name, "\n     ", String(e.message || e).slice(0, 300)); }
 }
 const expect = (c, m) => { if (!c) throw new Error(m); };
-const jpg = "data:image/jpeg;base64," + readFileSync(new URL("./proof.jpg", import.meta.url)).toString("base64");
+const img = f => "data:image/jpeg;base64," + readFileSync(new URL(f, import.meta.url)).toString("base64");
+const jpg = img("./proof.jpg"), poster = img("./fake-poster.jpg");
 
 async function rest(id, extra = {}, img = jpg) {
   await db.doc(`images/img-${id}`).set({ owner: id, data: img });
@@ -26,12 +27,20 @@ async function rest(id, extra = {}, img = jpg) {
 }
 
 console.log("\nالمراجعة التلقائية للمطاعم");
+await t("مطابقة اسم اللافتة: «مطعم الريّان» = «الريان»", () => expect(nameMatch("مطعم الريّان", "الريان") === "yes", nameMatch("مطعم الريّان", "الريان")));
+await t("مطابقة اسم اللافتة: «شواية الساقية» ≠ «مطعم النيل»", () => expect(nameMatch("شواية الساقية", "مطعم النيل") === "no", "matched"));
+await t("لافتة فارغة ← غير معروف", () => expect(nameMatch("", "مطعم النيل") === "unknown", "should be unknown"));
 let res;
 await t("صورة غير موثوقة لا تُقبل تلقائياً", async () => {
   res = await reviewRestaurant(db, await rest("r1"));
-  console.log("      →", res.decision, "|", res.reason, "|", res.report.ai ? `ai ${Math.round(res.report.confidence * 100)}% «${res.report.ai.sign}» ${res.report.ai.note}` : "no ai");
+  console.log("      →", res.decision, "|", res.reason, "|", res.report.ai ? `${res.report.ai.type}/${res.report.ai.scene} «${res.report.ai.sign}» ${res.report.ai.note}` : "no ai");
   res.report.checks.forEach(c => console.log("      ", c.ok ? "+" : "-", c.label));
   expect(res.decision !== "approve", "graphic image was auto-approved");
+});
+await t("ملصق/إنفوغرافيك (مثل صور الطقس) لا يُقبل تلقائياً", async () => {
+  const r = await reviewRestaurant(db, await rest("p1", { phone: "+249912000666", name: "مطعم سادس" }, poster));
+  console.log("      →", r.decision, "|", r.reason, "|", r.report.ai ? `${r.report.ai.type}/${r.report.ai.scene} «${r.report.ai.sign}» ${r.report.ai.note}` : "no ai");
+  expect(r.decision !== "approve", "poster was auto-approved");
 });
 if (aiProvider()) await t(`الذكاء الاصطناعي (${aiProvider()}) متاح ويرد`, async () => {
   expect(res.report.ai, "AI provider configured but did not answer");

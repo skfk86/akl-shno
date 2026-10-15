@@ -2,15 +2,15 @@ name: Test auto-review with local AI
 on:
   push:
     branches: [main]
-    paths: [notify/review.mjs, tests/review.test.mjs, .github/workflows/review-ai-test.yml]
+    paths: [notify/review.mjs, tests/review.test.mjs, tests/fake-poster.jpg, .github/workflows/review-ai-test.yml]
   workflow_dispatch:
 permissions: { contents: write }
 env:
-  OLLAMA_MODEL: qwen2.5vl:3b
+  OLLAMA_MODEL: qwen2.5vl:7b
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     defaults: { run: { working-directory: tests } }
     steps:
       - uses: actions/checkout@v5

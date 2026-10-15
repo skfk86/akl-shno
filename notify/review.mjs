@@ -15,13 +15,27 @@ const digits = p => String(p || "").replace(/\D/g, "").replace(/^0+/, "").replac
 export const sha = s => createHash("sha256").update(String(s)).digest("hex").slice(0, 32);
 
 // ───── الذكاء الاصطناعي: وصف الصور وإرجاع JSON ─────
-const PROMPT = (r, hasLicense) => `You verify restaurant sign-ups for a food delivery app in Sudan.
-Restaurant name (Arabic): "${r.name}". Category: "${r.category}". City: "${r.city}".
-Image 1 should be a REAL photo taken by a phone of the restaurant's storefront (outside), ideally with its sign.
-${hasLicense ? "Image 2 should be a photo of a business license or health certificate document." : ""}
-Be strict about fakes: screenshots, app UIs, posters, infographics, designed graphics, memes, stock/marketing images, text-only images, or photos of a screen are NOT acceptable storefront photos.
-Answer ONLY with JSON:
-{"real_photo":bool,"is_storefront":bool,"screenshot_or_graphic":bool,"sign_visible":bool,"sign_text":"text read on the sign or empty","name_match":"yes|partial|no|unknown","license_is_document":${hasLicense ? "bool" : "null"},"confidence":0..1,"reason_ar":"one short Arabic sentence explaining your judgement"}`;
+// لا نعطي النموذج اسم المطعم: يقرأ اللافتة دون تلقين، ونقارن نحن الاسمين (النماذج الصغيرة تردد ما يُقال لها).
+const PROMPT = (r, hasLicense) => `Look carefully at image 1 and describe ONLY what you actually see. Do not guess.
+${hasLicense ? "Image 2 may be a business document.\n" : ""}Return ONLY this JSON:
+{"description":"2-3 sentences describing the image objectively: colors, objects, people, text, background",
+ "photo_type":"camera_photo | screenshot | graphic_or_illustration | photo_of_screen | other",
+ "scene":"restaurant_storefront | building_exterior | interior | food | document | poster_or_ad | abstract | other",
+ "sign_visible":true or false,
+ "sign_text":"exact text written on the shop sign, transcribed character by character in its original language; empty string if no sign or unreadable",
+ ${hasLicense ? '"license_is_document":true or false,' : ""}
+ "confidence":number between 0 and 1}
+Rules: a "camera_photo" has real-world perspective, natural lighting, depth and noise. Flat colored shapes, posters, infographics, app screens, memes and designed images are "graphic_or_illustration" or "screenshot". If the image is plain shapes or mostly text, scene is "abstract" or "poster_or_ad".`;
+
+// مطابقة اسم اللافتة مع اسم المطعم المسجّل (بعد توحيد الحروف وحذف كلمات مثل «مطعم»)
+const STOP = new Set(["مطعم", "كافتيريا", "كافيه", "بوفيه", "شواية", "اكل", "وجبات", "restaurant", "cafe", "the"]);
+const words = s => norm(s).split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 3 && !STOP.has(w));
+export function nameMatch(sign, name) {
+  const a = words(sign), b = words(name);
+  if (!a.length || !b.length) return "unknown";
+  const hit = b.filter(w => a.some(x => x.includes(w) || w.includes(x))).length;
+  return hit === b.length ? "yes" : hit ? "partial" : "no";
+}
 
 // مزوّدو الذكاء الاصطناعي المجانيون، يُستخدم أول مزوّد مفاتيحه موجودة في أسرار GitHub:
 //   محلي على خادم GitHub (الافتراضي): OLLAMA_MODEL — نموذج رؤية مفتوح المصدر، بلا أي حساب
@@ -116,10 +130,13 @@ export async function reviewRestaurant(db, doc) {
   // الذكاء الاصطناعي
   const ai = imgs.sign ? await askAI(r, [imgs.sign, imgs.license].filter(Boolean)) : null;
   if (ai) {
-    add(!!ai.real_photo && !ai.screenshot_or_graphic, ai.screenshot_or_graphic ? "الصورة لقطة شاشة أو تصميم وليست صورة حقيقية" : ai.real_photo ? "صورة حقيقية ملتقطة بالكاميرا" : "الصورة لا تبدو حقيقية");
-    add(!!ai.is_storefront, ai.is_storefront ? "تظهر واجهة مطعم" : "لا تظهر واجهة مطعم");
-    add(!!ai.sign_visible, ai.sign_visible ? `اللافتة ظاهرة${ai.sign_text ? `: «${String(ai.sign_text).slice(0, 40)}»` : ""}` : "اللافتة غير ظاهرة");
-    add(["yes", "partial"].includes(ai.name_match), ai.name_match === "yes" ? "الاسم على اللافتة يطابق اسم المطعم" : ai.name_match === "partial" ? "الاسم على اللافتة يطابق جزئياً" : "الاسم على اللافتة لا يطابق أو غير مقروء");
+    const photo = ai.photo_type === "camera_photo", front = ["restaurant_storefront", "building_exterior"].includes(ai.scene);
+    ai.name_match = nameMatch(ai.sign_text, r.name);
+    ai.screenshot_or_graphic = ["screenshot", "graphic_or_illustration", "photo_of_screen"].includes(ai.photo_type) || ["abstract", "poster_or_ad"].includes(ai.scene);
+    add(photo && !ai.screenshot_or_graphic, ai.screenshot_or_graphic ? "الصورة لقطة شاشة أو تصميم أو ملصق وليست صورة حقيقية" : photo ? "صورة حقيقية ملتقطة بالكاميرا" : "نوع الصورة غير واضح");
+    add(front, front ? "تظهر واجهة مبنى أو مطعم" : "لا تظهر واجهة مطعم");
+    add(!!ai.sign_visible && !!ai.sign_text, ai.sign_visible && ai.sign_text ? `اللافتة مقروءة: «${String(ai.sign_text).slice(0, 40)}»` : "لا توجد لافتة مقروءة");
+    add(["yes", "partial"].includes(ai.name_match), ai.name_match === "yes" ? "الاسم على اللافتة يطابق اسم المطعم" : ai.name_match === "partial" ? "الاسم على اللافتة يطابق جزئياً" : "الاسم على اللافتة لا يطابق اسم المطعم");
     if (imgs.license && typeof ai.license_is_document === "boolean") add(ai.license_is_document, ai.license_is_document ? "صورة الرخصة وثيقة حقيقية" : "صورة الرخصة لا تبدو وثيقة");
   }
 
@@ -129,13 +146,13 @@ export async function reviewRestaurant(db, doc) {
   let decision = "manual", reason = "";
   if (hardFail) { decision = "reject"; reason = hardFail.label; }
   else if (ai && ai.screenshot_or_graphic && conf >= 0.7) { decision = "reject"; reason = "صورة الواجهة لقطة شاشة أو تصميم. التقط صورة حقيقية لواجهة مطعمك بالكاميرا"; }
-  else if (ai && !ai.is_storefront && conf >= 0.85) { decision = "reject"; reason = "الصورة لا تُظهر واجهة مطعم. التقط صورة لواجهة المطعم من الخارج تظهر فيها اللافتة"; }
+  else if (ai && ["food", "document", "interior"].includes(ai.scene) && conf >= 0.85) { decision = "reject"; reason = "الصورة لا تُظهر واجهة مطعم. التقط صورة لواجهة المطعم من الخارج تظهر فيها اللافتة"; }
   else if (ai && checks.every(c => c.ok) && conf >= 0.75) decision = "approve";
   if (!ai && !hardFail) reason = "تعذر فحص الصورة آلياً، تحتاج مراجعة يدوية";
 
   return {
     decision, reason, hashes,
     report: { key: r.reviewAt?.toMillis?.() || 0, at: new Date().toISOString(), decision, reason, confidence: conf,
-      checks: checks.map(({ ok, label }) => ({ ok, label })), ai: ai ? { model: ai.model, note: String(ai.reason_ar || "").slice(0, 200), sign: String(ai.sign_text || "").slice(0, 60) } : null }
+      checks: checks.map(({ ok, label }) => ({ ok, label })), ai: ai ? { model: ai.model, note: String(ai.description || "").slice(0, 220), type: ai.photo_type || "", scene: ai.scene || "", sign: String(ai.sign_text || "").slice(0, 60) } : null }
   };
 }

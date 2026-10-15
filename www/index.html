@@ -2876,7 +2876,7 @@ async function loadAdmin() {
       const tone = a.decision === "approve" ? "n-blue" : a.decision === "reject" ? "n-red" : "n-orange";
       return `<details class="ar-rep"><summary class="note ${tone}">${I.shield}<span style="flex:1"><b>الفحص التلقائي:</b> ${a.decision === "approve" ? "قبول" : a.decision === "reject" ? "رفض" : "يحتاج مراجعتك"}${a.reason ? " · " + esc(a.reason) : ""}</span></summary>
         <div class="col gap6" style="padding:10px 4px 0">${(a.checks || []).map(c => `<span class="row gap6" style="font-size:13px;color:${c.ok ? "var(--green)" : "var(--red)"}">${c.ok ? I.check : I.x}<span style="color:var(--ink)">${esc(c.label)}</span></span>`).join("")}
-        ${a.ai ? `<span class="muted" style="font-size:12px;line-height:1.7">رأي الذكاء الاصطناعي (ثقة ${Math.round((a.confidence || 0) * 100)}%): ${esc(a.ai.note)}</span>` : ""}</div></details>`;
+        ${a.ai ? `<span class="muted" style="font-size:12px;line-height:1.7">وصف الذكاء الاصطناعي للصورة (ثقة ${Math.round((a.confidence || 0) * 100)}%): <span dir="ltr">${esc(a.ai.note)}</span></span>` : ""}</div></details>`;
     };
     body.innerHTML = autoCard + (sorted.length ? sorted.map(r => {
       const d = daysLeft(r.subActiveUntil);
