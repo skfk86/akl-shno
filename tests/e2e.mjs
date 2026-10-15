@@ -44,7 +44,9 @@ const server = createServer((req, res) => {
   res.end(readFileSync(p));
 }).listen(5173);
 const URL = "http://127.0.0.1:5173/index.html";
-const PROOF_IMG = new globalThis.URL("./proof.jpg", import.meta.url).pathname;
+const PROOF_IMG = new globalThis.URL("./real-photo.jpg", import.meta.url).pathname;
+const FAKE_IMG = new globalThis.URL("./fake-poster.jpg", import.meta.url).pathname;
+const SHOT_IMG = new globalThis.URL("./screenshot.jpg", import.meta.url).pathname;
 
 // ───── أدوات ─────
 let pass = 0, fail = 0;
@@ -123,6 +125,26 @@ await t("قبل القبول تظهر شاشة التوثيق فقط بلا قا
 await t("لا يُرسل للمراجعة بدون صورة الواجهة", async () => {
   await tap(owner, "#vf-send"); await sleep(300);
   expect((await owner.textContent("#vf-err")).includes("واجهة"), "no error");
+});
+await t("صورة تصميم/ملصق تُرفض فور رفعها مع السبب", async () => {
+  const [fc] = await Promise.all([owner.waitForEvent("filechooser"), tap(owner, '[data-vf-pick="sign"]')]);
+  expect(fc.isMultiple() === false, "multi");
+  await fc.setFiles(FAKE_IMG); await sleep(1500);
+  expect((await owner.textContent("#ow-body")).includes("ليست صورة كاميرا"), "graphic not rejected at upload");
+  expect(await owner.locator('[data-vf-pick="sign"].bad').count() === 1, "not marked bad");
+});
+await t("لقطة شاشة تُرفض فور رفعها", async () => {
+  const [fc] = await Promise.all([owner.waitForEvent("filechooser"), tap(owner, '[data-vf-pick="sign"]')]);
+  await fc.setFiles(SHOT_IMG); await sleep(1500);
+  expect(await owner.locator('[data-vf-pick="sign"].bad').count() === 1, "screenshot accepted");
+});
+await t("زر الواجهة يفتح الكاميرا مباشرة", async () => {
+  const cap = await owner.evaluate(() => new Promise(res => {
+    const orig = HTMLInputElement.prototype.click;
+    HTMLInputElement.prototype.click = function () { HTMLInputElement.prototype.click = orig; res(this.getAttribute("capture")); };
+    document.querySelector('[data-vf-pick="sign"]').click();
+  }));
+  expect(cap === "environment", "capture=" + cap);
 });
 await t("رفع صورة واجهة المطعم", async () => {
   const [fc] = await Promise.all([owner.waitForEvent("filechooser"), tap(owner, '[data-vf-pick="sign"]')]);
