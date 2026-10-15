@@ -3,23 +3,9 @@
 //   approve  ← كل الفحوصات نجحت والذكاء الاصطناعي واثق أن الصورة واجهة مطعم حقيقية باسمه
 //   reject   ← مشكلة واضحة (رقم/صورة مكررة، جهاز محظور، موقع خارج السودان، لقطة شاشة أو تصميم)
 //   manual   ← حالة غير محسومة: تبقى للأدمن مع تقرير الفحص
-// الذكاء الاصطناعي: GitHub Models (مجاني مع GITHUB_TOKEN)، ولا يحتاج أي حساب أو بطاقة.
+// الذكاء الاصطناعي: Cloudflare Workers AI أو Gemini (مجاني بمفتاح في أسرار GitHub). بدونه يعمل الفحص بالقواعد فقط.
 
 import { createHash } from "node:crypto";
-
-// [العنوان، اسم النموذج] بالترتيب: الأول هو الرسمي الحالي، والثاني احتياطي
-const TARGETS = [
-  ["https://models.github.ai/inference/chat/completions", "openai/gpt-4.1-mini"],
-  ["https://models.github.ai/inference/chat/completions", "openai/gpt-4o-mini"],
-  ["https://models.inference.ai.azure.com/chat/completions", "gpt-4o-mini"]
-];
-const SUDAN = { minLat: 8.6, maxLat: 22.3, minLng: 21.8, maxLng: 38.7 };
-
-const norm = s => String(s || "").toLowerCase()
-  .replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي")
-  .replace(/^(مطعم|كافتيريا|كافيه|شواية|بوفيه)\s+/, "").replace(/\s+/g, " ").trim();
-const digits = p => String(p || "").replace(/\D/g, "").replace(/^0+/, "").replace(/^249/, "");
-export const sha = s => createHash("sha256").update(String(s)).digest("hex").slice(0, 32);
 
 // ───── الذكاء الاصطناعي: وصف الصور وإرجاع JSON ─────
 const PROMPT = (r, hasLicense) => `You verify restaurant sign-ups for a food delivery app in Sudan.
@@ -30,31 +16,56 @@ Be strict about fakes: screenshots, app UIs, posters, infographics, designed gra
 Answer ONLY with JSON:
 {"real_photo":bool,"is_storefront":bool,"screenshot_or_graphic":bool,"sign_visible":bool,"sign_text":"text read on the sign or empty","name_match":"yes|partial|no|unknown","license_is_document":${hasLicense ? "bool" : "null"},"confidence":0..1,"reason_ar":"one short Arabic sentence explaining your judgement"}`;
 
-async function askAI(r, images) {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token || !images.length) return null;
-  const content = [{ type: "text", text: PROMPT(r, images.length > 1) },
-    ...images.map(url => ({ type: "image_url", image_url: { url, detail: "low" } }))];
-  for (const [endpoint, model] of TARGETS) {
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST", redirect: "manual",
-        headers: { "content-type": "application/json", accept: "application/json", authorization: `Bearer ${token}` },
-        body: JSON.stringify({ model, temperature: 0, max_tokens: 400, response_format: { type: "json_object" },
-          messages: [{ role: "user", content }] })
-      });
-      if (res.status >= 300 && res.status < 400) { console.log(`  ai ${model}: redirect ${res.status} → ${res.headers.get("location")}`); continue; }
-      const raw = await res.text();
-      if (!res.ok) { console.log(`  ai ${model}: HTTP ${res.status} ${raw.slice(0, 200).replace(/\s+/g, " ")}`); continue; }
-      let txt;
-      try { txt = JSON.parse(raw).choices?.[0]?.message?.content || ""; }
-      catch { console.log(`  ai ${model}: non-JSON response (${res.headers.get("content-type")}): ${raw.slice(0, 200).replace(/\s+/g, " ")}`); continue; }
-      const m = txt.match(/\{[\s\S]*\}/);   // بعض النماذج تحيط JSON بنص أو ```json
-      if (!m) { console.log(`  ai ${model}: no JSON in answer: ${txt.slice(0, 160)}`); continue; }
-      return { ...JSON.parse(m[0]), model };
-    } catch (e) { console.log(`  ai ${model}: ${e.message}`); }
-  }
+// مزوّدو الذكاء الاصطناعي المجانيون، يُستخدم أول مزوّد مفاتيحه موجودة في أسرار GitHub:
+//   Cloudflare Workers AI: CF_ACCOUNT_ID + CF_API_TOKEN   (حساب مجاني بلا بطاقة، 10 آلاف وحدة يومياً)
+//   Google Gemini:         GEMINI_API_KEY
+//   أي خدمة متوافقة مع OpenAI: AI_URL + AI_KEY + AI_MODEL
+// (GitHub Models أُوقفت نهائياً في 30 يوليو 2026)
+const parseJSON = txt => { const m = String(txt || "").match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; };
+
+async function openaiCompat(url, key, model, prompt, images) {
+  const res = await fetch(url, {
+    method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+    body: JSON.stringify({ model, temperature: 0, max_tokens: 400,
+      messages: [{ role: "user", content: [{ type: "text", text: prompt }, ...images.map(u => ({ type: "image_url", image_url: { url: u } }))] }] })
+  });
+  const raw = await res.text();
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${raw.slice(0, 160)}`);
+  return parseJSON(JSON.parse(raw).choices?.[0]?.message?.content);
+}
+
+const CF_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
+async function cloudflare(prompt, images) {
+  const url = `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/${CF_MODEL}`;
+  const call = body => fetch(url, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CF_API_TOKEN}` }, body: JSON.stringify(body) });
+  // النموذج يقبل صورة واحدة في كل طلب: نفحص الواجهة (والرخصة تُذكر في النص فقط)
+  const body = { messages: [{ role: "user", content: prompt }], image: images[0], max_tokens: 400, temperature: 0 };
+  let res = await call(body), raw = await res.text();
+  if (!res.ok && /agree|licen/i.test(raw)) { await call({ prompt: "agree" }); res = await call(body); raw = await res.text(); }  // قبول ترخيص Meta أول مرة
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${raw.slice(0, 160)}`);
+  const out = JSON.parse(raw).result;
+  return parseJSON(typeof out === "string" ? out : out?.response);
+}
+
+export function aiProvider() {
+  const e = process.env;
+  if (e.CF_ACCOUNT_ID && e.CF_API_TOKEN) return "cloudflare";
+  if (e.GEMINI_API_KEY) return "gemini";
+  if (e.AI_URL && e.AI_KEY && e.AI_MODEL) return "custom";
   return null;
+}
+
+async function askAI(r, images) {
+  const p = aiProvider(), e = process.env;
+  if (!p || !images.length) return null;
+  const prompt = PROMPT(r, p !== "cloudflare" && images.length > 1);
+  try {
+    const out = p === "cloudflare" ? await cloudflare(prompt, images)
+      : p === "gemini" ? await openaiCompat("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", e.GEMINI_API_KEY, "gemini-2.5-flash", prompt, images)
+      : await openaiCompat(e.AI_URL, e.AI_KEY, e.AI_MODEL, prompt, images);
+    if (!out) { console.log(`  ai ${p}: no JSON in answer`); return null; }
+    return { ...out, model: p };
+  } catch (x) { console.log(`  ai ${p}: ${x.message}`); return null; }
 }
 
 // ───── مراجعة مطعم واحد ─────
@@ -97,7 +108,7 @@ export async function reviewRestaurant(db, doc) {
     add(!!ai.is_storefront, ai.is_storefront ? "تظهر واجهة مطعم" : "لا تظهر واجهة مطعم");
     add(!!ai.sign_visible, ai.sign_visible ? `اللافتة ظاهرة${ai.sign_text ? `: «${String(ai.sign_text).slice(0, 40)}»` : ""}` : "اللافتة غير ظاهرة");
     add(["yes", "partial"].includes(ai.name_match), ai.name_match === "yes" ? "الاسم على اللافتة يطابق اسم المطعم" : ai.name_match === "partial" ? "الاسم على اللافتة يطابق جزئياً" : "الاسم على اللافتة لا يطابق أو غير مقروء");
-    if (imgs.license) add(ai.license_is_document !== false, ai.license_is_document ? "صورة الرخصة وثيقة حقيقية" : "صورة الرخصة لا تبدو وثيقة");
+    if (imgs.license && typeof ai.license_is_document === "boolean") add(ai.license_is_document, ai.license_is_document ? "صورة الرخصة وثيقة حقيقية" : "صورة الرخصة لا تبدو وثيقة");
   }
 
   // القرار

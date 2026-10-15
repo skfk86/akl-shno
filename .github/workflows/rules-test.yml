@@ -6,7 +6,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
-  models: read
 jobs:
   rules:
     runs-on: ubuntu-latest
@@ -23,17 +22,9 @@ jobs:
           set -o pipefail
           cp ../firestore.rules firestore.rules
           npx firebase emulators:exec --project demo-akl-shno --only firestore "node rules.test.mjs" 2>&1 | tee out.txt
-      - name: Probe GitHub Models
-        if: always()
-        env: { GITHUB_TOKEN: "${{ github.token }}" }
-        run: |
-          code=$(curl -sS -o probe.txt -w "%{http_code} %{content_type}" -X POST https://models.github.ai/inference/chat/completions \
-            -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json" \
-            -d '{"model":"openai/gpt-4.1-mini","messages":[{"role":"user","content":"Reply with the JSON {\"ok\":true}"}]}')
-          echo "  ai probe: $code $(head -c 300 probe.txt | tr '\n' ' ')" | tee -a out.txt
       - name: Run auto-review tests
         if: always()
-        env: { GITHUB_TOKEN: "${{ github.token }}" }
+        env: { CF_ACCOUNT_ID: "${{ secrets.CF_ACCOUNT_ID }}", CF_API_TOKEN: "${{ secrets.CF_API_TOKEN }}", GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}" }
         run: |
           set -o pipefail
           npx firebase emulators:exec --project demo-akl-shno --only firestore "node review.test.mjs" 2>&1 | tee -a out.txt

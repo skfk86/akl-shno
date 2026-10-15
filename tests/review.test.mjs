@@ -3,7 +3,7 @@
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { readFileSync } from "node:fs";
-import { reviewRestaurant } from "../notify/review.mjs";
+import { reviewRestaurant, aiProvider } from "../notify/review.mjs";
 
 initializeApp({ projectId: "demo-akl-shno" });
 const db = getFirestore();
@@ -27,15 +27,15 @@ async function rest(id, extra = {}, img = jpg) {
 
 console.log("\nالمراجعة التلقائية للمطاعم");
 let res;
-await t("صورة تصميم (ليست واجهة حقيقية) لا تُقبل تلقائياً", async () => {
+await t("صورة غير موثوقة لا تُقبل تلقائياً", async () => {
   res = await reviewRestaurant(db, await rest("r1"));
   console.log("      →", res.decision, "|", res.reason, "|", res.report.ai?.note || "no ai");
   expect(res.decision !== "approve", "graphic image was auto-approved");
 });
-await t("الذكاء الاصطناعي (GitHub Models) متاح ويرد", async () => {
-  expect(res.report.ai, "AI unavailable — check models: read permission and GITHUB_TOKEN");
-  console.log("      → model:", res.report.ai.model);
+if (aiProvider()) await t(`الذكاء الاصطناعي (${aiProvider()}) متاح ويرد`, async () => {
+  expect(res.report.ai, "AI provider configured but did not answer");
 });
+else console.log("      → لا يوجد مفتاح ذكاء اصطناعي بعد: الفحص يعمل بالقواعد فقط ويحوّل الباقي للأدمن");
 await t("تقرير الفحص يحوي البنود", async () => {
   expect(res.report.checks.length >= 6, "few checks: " + res.report.checks.length);
   expect(res.hashes.sign, "no image hash");
